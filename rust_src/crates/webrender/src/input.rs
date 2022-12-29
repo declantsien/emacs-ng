@@ -1,4 +1,4 @@
-use glutin::{
+use winit::{
     dpi::PhysicalPosition,
     event::{
         ElementState, ModifiersState, MouseButton, MouseScrollDelta, TouchPhase, VirtualKeyCode,
@@ -50,6 +50,7 @@ impl InputProcessor {
             timestamp: 0,
             frame_or_window: top_frame,
             arg: Qnil,
+            // device: Qt,
         };
 
         Some(iev)
@@ -78,6 +79,7 @@ impl InputProcessor {
             timestamp: 0,
             frame_or_window: top_frame,
             arg: Qnil,
+            // device: Qt,
         };
 
         Some(iev)
@@ -117,6 +119,7 @@ impl InputProcessor {
             timestamp: 0,
             frame_or_window: top_frame,
             arg: Qnil,
+            // device: Qt,
         };
 
         Some(iev)
@@ -195,6 +198,7 @@ impl InputProcessor {
             timestamp: 0,
             frame_or_window: top_frame,
             arg: lines.into(),
+            // device: Qt,
         };
 
         Some(iev)
