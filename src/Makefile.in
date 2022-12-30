@@ -754,8 +754,7 @@ LIBEMACSNG_DEP-INFO=$(LIBEMACSNG_ARCHIVE:.a=.d)
 LIBEMACSNG_CARGO_FILES = $(sort $(shell find ${rust_srcdir} -type f \
 -name 'Cargo.*' -o -name "build.rs"))
 
-$(LIBEMACSNG_ARCHIVE) $(LIBEMACSNG_DEP-INFO): globals.h $(LIBEMACSNG_CARGO_FILES) \
-$(libsrc)/hashdir/target/$(CARGO_BUILD_DIR)/hashdir$(EXEEXT)
+$(LIBEMACSNG_ARCHIVE) $(LIBEMACSNG_DEP-INFO): FORCE
 	touch $@
 	CARGO_BUILD_DEP_INFO_BASEDIR=$(realpath $(top_srcdir)) \
 	RUSTFLAGS="$(RUSTFLAGS)" \
