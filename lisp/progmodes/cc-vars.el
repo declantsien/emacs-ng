@@ -179,7 +179,7 @@ STYLE stands for the choice where the value is taken from some
 style setting.  PREAMBLE is optionally prepended to FOO; that is,
 if FOO contains :tag or :value, the respective two-element list
 component is ignored."
-  (declare (debug (symbolp form stringp &rest)))
+  (declare (debug (symbolp form stringp &rest)) (indent defun))
   (let* ((expanded-doc (concat doc "
 
 This is a style variable.  Apart from the valid values described
@@ -1043,6 +1043,8 @@ can always override the use of `c-default-style' by making calls to
 		  (const :format "Pike  " pike-mode) (string :format "%v"))
 	    (cons :format "%v"
 		  (const :format "AWK   " awk-mode) (string :format "%v"))
+	    (cons :format "%v"
+		  (const :format "C#   "  csharp-mode) (string :format "%v"))
 	    (cons :format "%v"
 		  (const :format "Other " other) (string :format "%v"))))
   :group 'c)

@@ -266,7 +266,7 @@ See `run-hooks'."
 		  :enable (vc-find-backend-function vc-dir-backend 'push)
 		  :help "Push the current branch's changes"))
     (define-key map [update]
-      '(menu-item "Update to Latest Version" vc-update
+      '(menu-item "Update to Latest Version" vc-pull
 		  :help "Update the current fileset's files to their tip revisions"))
     (define-key map [revert]
       '(menu-item "Revert to Base Version" vc-revert
@@ -306,8 +306,8 @@ See `run-hooks'."
     (define-key map "=" #'vc-diff)	   ;; C-x v =
     (define-key map "D" #'vc-root-diff)	   ;; C-x v D
     (define-key map "i" #'vc-register)	   ;; C-x v i
-    (define-key map "+" #'vc-update)	   ;; C-x v +
-    ;; I'd prefer some kind of symmetry with vc-update:
+    (define-key map "+" #'vc-pull)	   ;; C-x v +
+    ;; I'd prefer some kind of symmetry with vc-pull:
     (define-key map "P" #'vc-push)	   ;; C-x v P
     (define-key map "l" #'vc-print-log)	   ;; C-x v l
     (define-key map "L" #'vc-print-root-log) ;; C-x v L
@@ -325,6 +325,7 @@ See `run-hooks'."
     (define-key map "U" #'vc-dir-unmark-all-files)
     (define-key map "\C-?" #'vc-dir-unmark-file-up)
     (define-key map "\M-\C-?" #'vc-dir-unmark-all-files)
+    (define-key map "%" #'vc-dir-mark-by-regexp)
     ;; Movement.
     (define-key map "n" #'vc-dir-next-line)
     (define-key map " " #'vc-dir-next-line)
@@ -355,10 +356,10 @@ See `run-hooks'."
     (define-key map "G" #'vc-dir-ignore)
 
     (let ((branch-map (make-sparse-keymap)))
-      (define-key map "B" branch-map)
-      (define-key branch-map "c" #'vc-create-tag)
+      (define-key map "b" branch-map)
+      (define-key branch-map "c" #'vc-create-branch)
       (define-key branch-map "l" #'vc-print-branch-log)
-      (define-key branch-map "s" #'vc-retrieve-tag))
+      (define-key branch-map "s" #'vc-switch-branch))
 
     (let ((mark-map (make-sparse-keymap)))
       (define-key map "*" mark-map)
@@ -749,6 +750,23 @@ share the same state."
 			 (not (vc-dir-fileinfo->directory crt-data)))
 		(vc-dir-mark-file crt)))
 	    (setq crt (ewoc-next vc-ewoc crt))))))))
+
+(defun vc-dir-mark-by-regexp (regexp &optional unmark)
+  "Mark all files that match REGEXP.
+If UNMARK (interactively, the prefix), unmark instead."
+  (interactive "sMark files matching: \nP")
+  (ewoc-map
+   (lambda (filearg)
+     (when (and (not (vc-dir-fileinfo->directory filearg))
+                (eq (not unmark)
+                    (not (vc-dir-fileinfo->marked filearg)))
+                ;; We don't want to match on the part of the file
+                ;; that's above the current directory.
+                (string-match-p regexp (file-relative-name
+                                        (vc-dir-fileinfo->name filearg))))
+       (setf (vc-dir-fileinfo->marked filearg) (not unmark))
+       t))
+   vc-ewoc))
 
 (defun vc-dir-mark-files (mark-files)
   "Mark files specified by file names in the argument MARK-FILES.
@@ -1433,7 +1451,12 @@ These are the commands available for use in the file status buffer:
       (vc-dir-refresh)
     ;; FIXME: find a better way to pass the backend to `vc-dir-mode'.
     (let ((use-vc-backend backend))
-      (vc-dir-mode))))
+      (vc-dir-mode)
+      ;; Activate the backend-specific minor mode, if any.
+      (when-let ((minor-mode
+                  (intern-soft (format "vc-dir-%s-mode"
+                                       (downcase (symbol-name backend))))))
+        (funcall minor-mode 1)))))
 
 (defun vc-default-dir-extra-headers (_backend _dir)
   ;; Be loud by default to remind people to add code to display
@@ -1444,17 +1467,13 @@ These are the commands available for use in the file status buffer:
    (propertize "Please add backend specific headers here.  It's easy!"
 	       'face 'vc-dir-status-warning)))
 
-(defvar vc-dir-status-mouse-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map [mouse-2] #'vc-dir-toggle-mark)
-    map)
-  "Local keymap for toggling mark.")
+(defvar-keymap vc-dir-status-mouse-map
+  :doc "Local keymap for toggling mark."
+  "<mouse-2>" #'vc-dir-toggle-mark)
 
-(defvar vc-dir-filename-mouse-map
-   (let ((map (make-sparse-keymap)))
-     (define-key map [mouse-2] #'vc-dir-find-file-other-window)
-    map)
-  "Local keymap for visiting a file.")
+(defvar-keymap vc-dir-filename-mouse-map
+  :doc "Local keymap for visiting a file."
+  "<mouse-2>" #'vc-dir-find-file-other-window)
 
 (defun vc-default-dir-printer (_backend fileentry)
   "Pretty print FILEENTRY."
@@ -1539,9 +1558,8 @@ These are the commands available for use in the file status buffer:
 This implements the `bookmark-make-record-function' type for
 `vc-dir' buffers."
   (let* ((bookmark-name
-          (concat "(" (symbol-name vc-dir-backend) ") "
-                  (file-name-nondirectory
-                   (directory-file-name default-directory))))
+          (file-name-nondirectory
+           (directory-file-name default-directory)))
          (defaults (list bookmark-name default-directory)))
     `(,bookmark-name
       ,@(bookmark-make-record-default 'no-file)
@@ -1560,6 +1578,8 @@ type returned by `vc-dir-bookmark-make-record'."
                 (current-buffer))))
     (bookmark-default-handler
      `("" (buffer . ,buf) . ,(bookmark-get-bookmark-record bmk)))))
+
+(put 'vc-dir-bookmark-jump 'bookmark-handler-type "VC")
 
 
 (provide 'vc-dir)

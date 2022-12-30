@@ -7,7 +7,7 @@ use winit::{
 
 use emacs::{
     bindings::{event_kind, input_event, scroll_bar_part},
-    globals::Qnil,
+    globals::{Qnil, Qt},
     lisp::LispObject,
     sys::EmacsModifiers::{
         ctrl_modifier, down_modifier, meta_modifier, shift_modifier, super_modifier, up_modifier,
@@ -50,7 +50,7 @@ impl InputProcessor {
             timestamp: 0,
             frame_or_window: top_frame,
             arg: Qnil,
-            // device: Qt,
+            device: Qt,
         };
 
         Some(iev)
@@ -79,7 +79,7 @@ impl InputProcessor {
             timestamp: 0,
             frame_or_window: top_frame,
             arg: Qnil,
-            // device: Qt,
+            device: Qt,
         };
 
         Some(iev)
@@ -119,7 +119,7 @@ impl InputProcessor {
             timestamp: 0,
             frame_or_window: top_frame,
             arg: Qnil,
-            // device: Qt,
+            device: Qt,
         };
 
         Some(iev)
@@ -198,7 +198,7 @@ impl InputProcessor {
             timestamp: 0,
             frame_or_window: top_frame,
             arg: lines.into(),
-            // device: Qt,
+            device: Qt,
         };
 
         Some(iev)

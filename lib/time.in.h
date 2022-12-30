@@ -120,6 +120,17 @@ _GL_CXXALIAS_SYS (timespec_get, int, (struct timespec *ts, int base));
 _GL_CXXALIASWARN (timespec_get);
 # endif
 
+/* Set *TS to the current time resolution, and return BASE.
+   Upon failure, return 0.  */
+# if @GNULIB_TIMESPEC_GETRES@
+#  if ! @HAVE_TIMESPEC_GETRES@
+_GL_FUNCDECL_SYS (timespec_getres, int, (struct timespec *ts, int base)
+                                        _GL_ARG_NONNULL ((1)));
+#  endif
+_GL_CXXALIAS_SYS (timespec_getres, int, (struct timespec *ts, int base));
+_GL_CXXALIASWARN (timespec_getres);
+# endif
+
 /* Sleep for at least RQTP seconds unless interrupted,  If interrupted,
    return -1 and store the remaining time into RMTP.  See
    <https://pubs.opengroup.org/onlinepubs/9699919799/functions/nanosleep.html>.  */
@@ -424,8 +435,10 @@ _GL_WARN_ON_USE (asctime, "asctime can overrun buffers in some cases - "
 # endif
 # if defined GNULIB_POSIXCHECK
 #  undef asctime_r
+#  if HAVE_RAW_DECL_ASCTIME_R
 _GL_WARN_ON_USE (asctime_r, "asctime_r can overrun buffers in some cases - "
                  "better use strftime (or even sprintf) instead");
+#  endif
 # endif
 # if defined GNULIB_POSIXCHECK
 #  undef ctime
@@ -434,8 +447,10 @@ _GL_WARN_ON_USE (ctime, "ctime can overrun buffers in some cases - "
 # endif
 # if defined GNULIB_POSIXCHECK
 #  undef ctime_r
+#  if HAVE_RAW_DECL_CTIME_R
 _GL_WARN_ON_USE (ctime_r, "ctime_r can overrun buffers in some cases - "
                  "better use strftime (or even sprintf) instead");
+#  endif
 # endif
 
 #endif

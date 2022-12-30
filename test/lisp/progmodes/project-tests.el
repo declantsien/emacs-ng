@@ -29,21 +29,9 @@
 
 (require 'cl-lib)
 (require 'ert)
+(require 'ert-x) ; ert-with-temp-directory
 (require 'grep)
 (require 'xref)
-
-(defmacro project-tests--with-temporary-directory (var &rest body)
-  "Create a new temporary directory.
-Bind VAR to the name of the directory, and evaluate BODY.  Delete
-the directory after BODY exits."
-  (declare (debug (symbolp body)) (indent 1))
-  (cl-check-type var symbol)
-  (let ((directory (make-symbol "directory")))
-    `(let ((,directory (make-temp-file "project-tests-" :directory)))
-       (unwind-protect
-           (let ((,var ,directory))
-             ,@body)
-         (delete-directory ,directory :recursive)))))
 
 (ert-deftest project/quoted-directory ()
   "Check that `project-files' and `project-find-regexp' deal with
@@ -51,7 +39,7 @@ quoted directory names (Bug#47799)."
   (skip-unless (executable-find find-program))
   (skip-unless (executable-find "xargs"))
   (skip-unless (executable-find "grep"))
-  (project-tests--with-temporary-directory directory
+  (ert-with-temp-directory directory
     (let ((default-directory directory)
           (project-current-inhibit-prompt t)
           (project-find-functions nil)
@@ -95,7 +83,7 @@ quoted directory names (Bug#47799)."
 returned by `project-ignores' if the root directory is a
 directory name (Bug#48471)."
   (skip-unless (executable-find find-program))
-  (project-tests--with-temporary-directory dir
+  (ert-with-temp-directory dir
     (make-empty-file (expand-file-name "some-file" dir))
     (make-empty-file (expand-file-name "ignored-file" dir))
     (let* ((project (make-project-tests--trivial
@@ -111,7 +99,7 @@ directory name (Bug#48471)."
   "Check that `project-files' does not ignore all files.
 When `project-ignores' includes a name matching project dir."
   (skip-unless (executable-find find-program))
-  (project-tests--with-temporary-directory dir
+  (ert-with-temp-directory dir
     (make-empty-file (expand-file-name "some-file" dir))
     (let* ((project (make-project-tests--trivial
                      :root (file-name-as-directory dir)
@@ -121,5 +109,34 @@ When `project-ignores' includes a name matching project dir."
       (should (equal files
                      (list
                       (expand-file-name "some-file" dir)))))))
+
+(defvar project-tests--this-file (or (bound-and-true-p byte-compile-current-file)
+                                     (and load-in-progress load-file-name)
+                                     buffer-file-name))
+
+(ert-deftest project-vc-recognizes-git ()
+  "Check that Git repository is detected."
+  (skip-unless (eq (vc-responsible-backend default-directory) 'Git))
+  (let* ((vc-handled-backends '(Git))
+         (dir (file-name-directory project-tests--this-file))
+         (_ (vc-file-clearprops dir))
+         (project-vc-extra-root-markers nil)
+         (project (project-current nil dir)))
+    (should-not (null project))
+    (should (string-match-p
+             "\\`test/lisp/progmodes/project-tests\\.elc?"
+             (file-relative-name
+              project-tests--this-file
+              (project-root project))))))
+
+(ert-deftest project-vc-extra-root-markers-supports-wildcards ()
+  "Check that one can add wildcard entries."
+  (skip-unless (eq (vc-responsible-backend default-directory) 'Git))
+  (let* ((dir (file-name-directory project-tests--this-file))
+         (_ (vc-file-clearprops dir))
+         (project-vc-extra-root-markers '("files-x-tests.*"))
+         (project (project-current nil dir)))
+    (should-not (null project))
+    (should (string-match-p "/test/lisp/\\'" (project-root project)))))
 
 ;;; project-tests.el ends here

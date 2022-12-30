@@ -27,7 +27,7 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include <mingw_time.h>
 
 /* MinGW-w64 gcc does not automotically define a macro for
-   differentiating it fom MinGW gcc. We need to test the presence of
+   differentiating it from MinGW gcc. We need to test the presence of
    __MINGW64_VERSION_MAJOR in _mingw.h: */
 #ifdef __MINGW32__
 # include <_mingw.h>
@@ -295,6 +295,7 @@ extern int sys_unlink (const char *);
 #undef umask
 #define umask   sys_umask
 extern int sys_umask (int);
+#define clock   sys_clock
 
 /* Subprocess calls that are emulated.  */
 #define spawnve sys_spawnve

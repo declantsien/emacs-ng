@@ -577,7 +577,7 @@ Return register which holds a value of the expression."
     (ccl-check-register expr cmd)))
 
 (defun ccl-compile-branch-blocks (code rrr blocks)
-  "Compile BLOCKs of BRANCH statement.  CODE is 'branch or 'read-branch.
+  "Compile BLOCKs of BRANCH statement.  CODE is `branch' or `read-branch'.
 REG is a register which holds a value of EXPRESSION part.  BLOCKs
 is a list of CCL-BLOCKs."
   (let ((branches (length blocks))
@@ -1553,7 +1553,7 @@ MAP :=
 MAP-IDs := MAP-ID ...
 MAP-SET := MAP-IDs | (MAP-IDs) MAP-SET
 MAP-ID := integer"
-  (declare (doc-string 3))
+  (declare (doc-string 3) (indent defun))
   `(let ((prog ,(unwind-protect
 		    (progn
 		      ;; To make ,(charset-id CHARSET) works well.

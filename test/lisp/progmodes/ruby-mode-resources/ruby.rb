@@ -177,11 +177,11 @@ qux :+,
 b = $:
 c = ??
 
-# Example from http://www.ruby-doc.org/docs/ProgrammingRuby/html/language.html
+# Example from https://ruby-doc.com/docs/ProgrammingRuby/
 d = 4 + 5 +      # no '\' needed
     6 + 7
 
-# Example from http://www.ruby-doc.org/docs/ProgrammingRuby/html/language.html
+# Example from https://www.ruby-doc.org/docs/ProgrammingRuby/
 e = 8 + 9   \
     + 10         # '\' needed
 
@@ -483,3 +483,20 @@ foo bar, {
 2 = 3
 :foo= if true
 {:abc=>4} # not indented, and '=' is not highlighted
+
+# Pattern matching
+case translation
+in ['th', orig_text, 'en', trans_text]
+  puts "English translation: #{orig_text} => #{trans_text}"
+in {'th' => orig_text, 'ja' => trans_text}
+  puts "Japanese translation: #{orig_text} => #{trans_text}"
+end
+
+# Tokenizing "**" and "|" separately.
+def resolve(**args)
+  members = proc do |**args|
+    p(**args)
+  end
+
+  member.call(**args)
+end

@@ -100,14 +100,6 @@ update the dependent variables."
 	   (ls-lisp-set-options)))
   :group 'ls-lisp)
 
-;; Only made an obsolete alias in 23.3.  Before that, the initial
-;; value was set according to:
-;;  (or (memq ls-lisp-emulation '(MS-Windows MacOS))
-;;      (and (boundp 'ls-lisp-dired-ignore-case) ls-lisp-dired-ignore-case))
-;; Which isn't the right thing to do.
-(define-obsolete-variable-alias 'ls-lisp-dired-ignore-case
-  'ls-lisp-ignore-case "21.1")
-
 (defcustom ls-lisp-ignore-case
   (memq ls-lisp-emulation '(MS-Windows MacOS))
   "Non-nil causes ls-lisp alphabetic sorting to ignore case."
@@ -337,18 +329,7 @@ are also supported; unsupported long options are silently ignored."
 		 (ls-lisp-insert-directory
 		  file switches (ls-lisp-time-index switches)
 		  nil full-directory-p))
-	     (signal (car err) (cdr err)))))
-	;; Try to insert the amount of free space.
-	(save-excursion
-	  (goto-char (point-min))
-	  ;; First find the line to put it on.
-	  (when (re-search-forward "^total" nil t)
-	    (let ((available (get-free-disk-space ".")))
-	      (when available
-		;; Replace "total" with "total used", to avoid confusion.
-		(replace-match "total used in directory")
-		(end-of-line)
-		(insert " available " available)))))))))
+	     (signal (car err) (cdr err)))))))))
 (advice-add 'insert-directory :around #'ls-lisp--insert-directory)
 
 (defun ls-lisp-insert-directory
@@ -632,14 +613,22 @@ in some standard C libraries does."
 		 (sub2 (substring s2 ni2 e2))
 		 ;; "Fraction" is a numerical sequence with leading zeros.
 		 (fr1 (string-match "\\`0+" sub1))
-		 (fr2 (string-match "\\`0+" sub2)))
+		 (efr1 (match-end 0))
+		 (fr2 (string-match "\\`0+" sub2))
+		 (efr2 (match-end 0)))
 	    (cond
-	     ((and fr1 fr2)	; two fractions, the shortest wins
-	      (setq val (- val (- (length sub1) (length sub2)))))
+             ;; Two fractions: the longer one is less than the other,
+             ;; but only if the "common prefix" is all-zeroes,
+             ;; otherwise fall back on numerical comparison.
+	     ((and fr1 fr2)
+	      (if (or (and (< efr1 (- e1 ni1)) (< efr2 (- e2 ni2))
+			   (not (eq (aref sub1 efr1) (aref sub2 efr2))))
+		      (= efr1 (- e1 ni1)) (=  efr2 (- e2 ni2)))
+		  (setq val (- val (- (length sub1) (length sub2))))))
 	     (fr1		; a fraction is always less than an integral
-	      (setq val (- ni1)))
+	      (setq val (- 0 ni1 1)))   ; make sure val is non-zero
 	     (fr2
-	      (setq val ni2)))
+	      (setq val (1+ ni2))))     ; make sure val is non-zero
 	    (if (zerop val)	; fall back on numerical comparison
 		(setq val (- (string-to-number sub1)
 			     (string-to-number sub2))))
@@ -795,7 +784,7 @@ SWITCHES and TIME-INDEX give the full switch list and time data."
 		;; In GNU ls, -h affects the size in blocks, displayed
 		;; by -s, as well.
 		(if (memq ?h switches)
-		    (format "%6s "
+		    (format "%7s "
 			    (file-size-human-readable
 			     ;; We use 1K as "block size", although
 			     ;; most Windows volumes use 4KB to 8KB
@@ -892,7 +881,7 @@ All ls time options, namely c, t and u, are handled."
 		  ls-lisp-filesize-f-fmt
 		ls-lisp-filesize-d-fmt)
 	      file-size)
-    (format " %6s" (file-size-human-readable file-size))))
+    (format " %7s" (file-size-human-readable file-size))))
 
 (defun ls-lisp-unload-function ()
   "Unload ls-lisp library."
@@ -902,7 +891,7 @@ All ls time options, namely c, t and u, are handled."
   nil)
 
 (defun ls-lisp--sanitize-switches (switches)
-  "Convert long options of GNU 'ls' to their short form.
+  "Convert long options of GNU \"ls\" to their short form.
 Conversion is done only for flags supported by ls-lisp.
 Long options not supported by ls-lisp are removed.
 Supported options are: A a B C c F G g h i n R r S s t U u v X.

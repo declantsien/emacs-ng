@@ -269,7 +269,7 @@ QUAIL-KEYMAP is a cons that satisfies `quail-map-p'; TO-PREPEND is a
 string."
   (when (consp quail-keymap) (setq quail-keymap (cdr quail-keymap)))
   (if (or (integerp quail-keymap)
-	  (and (fboundp 'characterp) (characterp quail-keymap)))
+          (characterp quail-keymap))
       (setq quail-keymap (list (string quail-keymap)))
     (if (stringp quail-keymap)
 	(setq quail-keymap (list quail-keymap))
@@ -278,10 +278,10 @@ string."
   (list
    (apply #'vector
 	  (mapcar
-	   #'(lambda (entry)
-               (cl-assert (char-or-string-p entry) t)
-               (format "%s%s" to-prepend
-                       (if (integerp entry) (string entry) entry)))
+           (lambda (entry)
+             (cl-assert (char-or-string-p entry) t)
+             (format "%s%s" to-prepend
+                     (if (integerp entry) (string entry) entry)))
 	   quail-keymap))))
 
 (defun ipa-x-sampa-underscore-implosive (input-string length)

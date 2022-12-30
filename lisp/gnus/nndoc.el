@@ -23,7 +23,7 @@
 
 ;;; Commentary:
 
-;; For Outlook mail boxes format, see http://mbx2mbox.sourceforge.net/
+;; For Outlook mail boxes format, see https://mbx2mbox.sourceforge.net/
 
 ;;; Code:
 
@@ -218,6 +218,7 @@ from the document.")
 
 (defconst nndoc-version "nndoc 1.0"
   "nndoc version.")
+(make-obsolete-variable 'nndoc-version 'emacs-version "29.1")
 
 
 

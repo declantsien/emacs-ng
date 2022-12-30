@@ -131,7 +131,7 @@ Names should be as they appear in loaddefs.el.")
 ;; Don't create a file `abbrev-file-name'.
 (setq save-abbrevs nil)
 
-;; Avoid compile logs from adviced functions.
+;; Avoid compile logs from advised functions.
 (eval-after-load "bytecomp"
   '(setq ad-default-compilation-action 'never))
 
@@ -156,7 +156,7 @@ Names should be as they appear in loaddefs.el.")
   "Set by `cus-test-apropos' to a list of options with :get property.")
 
 (defvar cus-test-vars-with-changed-state nil
-  "Set by `cus-test-apropos' to a list of options with state 'changed.")
+  "Set by `cus-test-apropos' to a list of options with state \\='changed.")
 
 (defvar cus-test-deps-errors nil
   "List of require/load problems found by `cus-test-deps'.")
@@ -272,7 +272,7 @@ currently defined groups."
 	(if group
 	    (memq symbol groups)
 	  (or
-	   ;; (user-variable-p symbol)
+           ;; (custom-variable-p symbol)
 	   (get symbol 'standard-value)
 	   ;; (get symbol 'saved-value)
 	   (get symbol 'custom-type)))

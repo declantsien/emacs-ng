@@ -96,11 +96,17 @@ arriving, or after."
   :options '(eshell-show-maximum-output)
   :group 'eshell-prompt)
 
-(defvar eshell-prompt-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-c C-n") #'eshell-next-prompt)
-    (define-key map (kbd "C-c C-p") #'eshell-previous-prompt)
-    map))
+(defvar-keymap eshell-prompt-mode-map
+  "C-c C-n" #'eshell-next-prompt
+  "C-c C-p" #'eshell-previous-prompt)
+
+(defvar-keymap eshell-prompt-repeat-map
+  :doc "Keymap to repeat eshell-prompt key sequences.  Used in `repeat-mode'."
+  "C-n" #'eshell-next-prompt
+  "C-p" #'eshell-previous-prompt)
+
+(put #'eshell-next-prompt 'repeat-map 'eshell-prompt-repeat-map)
+(put #'eshell-previous-prompt 'repeat-map 'eshell-prompt-repeat-map)
 
 ;;; Functions:
 
