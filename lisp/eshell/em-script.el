@@ -90,8 +90,7 @@ This includes when running `eshell-command'."
   "Execute a series of Eshell commands in FILE, passing ARGS.
 Comments begin with `#'."
   (let ((orig (point))
-	(here (point-max))
-	(inhibit-point-motion-hooks t))
+	(here (point-max)))
     (goto-char (point-max))
     (with-silent-modifications
       ;; FIXME: Why not use a temporary buffer and avoid this
@@ -113,27 +112,13 @@ Comments begin with `#'."
 
 (defun eshell/source (&rest args)
   "Source a file in a subshell environment."
-  (eshell-eval-using-options
-   "source" args
-   '((?h "help" nil nil "show this usage screen")
-     :show-usage
-     :usage "FILE [ARGS]
-Invoke the Eshell commands in FILE in a subshell, binding ARGS to $1,
-$2, etc.")
-   (eshell-source-file (car args) (cdr args) t)))
+  (eshell-source-file (car args) (cdr args) t))
 
 (put 'eshell/source 'eshell-no-numeric-conversions t)
 
 (defun eshell/. (&rest args)
   "Source a file in the current environment."
-  (eshell-eval-using-options
-   "." args
-   '((?h "help" nil nil "show this usage screen")
-     :show-usage
-     :usage "FILE [ARGS]
-Invoke the Eshell commands in FILE within the current shell
-environment, binding ARGS to $1, $2, etc.")
-   (eshell-source-file (car args) (cdr args))))
+  (eshell-source-file (car args) (cdr args)))
 
 (put 'eshell/. 'eshell-no-numeric-conversions t)
 

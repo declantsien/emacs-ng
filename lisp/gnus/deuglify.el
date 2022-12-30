@@ -223,6 +223,7 @@
 
 (defconst gnus-outlook-deuglify-version "1.5 Gnus version"
   "Version of gnus-outlook-deuglify.")
+(make-obsolete-variable 'gnus-outlook-deuglify-version 'emacs-version "29.1")
 
 ;;; User Customizable Variables:
 
@@ -439,6 +440,7 @@ If NODISPLAY is non-nil, don't redisplay the article buffer."
     (unless nodisplay (gnus-outlook-display-article-buffer))
     attrib-start))
 
+;;;###autoload
 (defun gnus-article-outlook-rearrange-citation (&optional nodisplay)
   "Repair broken citations.
 If NODISPLAY is non-nil, don't redisplay the article buffer."

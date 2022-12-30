@@ -5,8 +5,8 @@ use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::mem::size_of;
-use std::path::Path;
 use std::path::PathBuf;
+use std::path::Path;
 
 #[cfg(feature = "wide-emacs-int")]
 const WIDE_EMACS_INT: bool = true;
@@ -24,12 +24,13 @@ const CFLAGS: &str = "@C_SWITCH_MACHINE@ @C_SWITCH_SYSTEM@ @C_SWITCH_X_SITE@ \
   @GNUSTEP_CFLAGS@ @CFLAGS_SOUND@ @RSVG_CFLAGS@ @IMAGEMAGICK_CFLAGS@ \
   @PNG_CFLAGS@ @LIBXML2_CFLAGS@ @LIBGCCJIT_CFLAGS@ @DBUS_CFLAGS@ \
   @XRANDR_CFLAGS@ @XINERAMA_CFLAGS@ @XFIXES_CFLAGS@ @XDBE_CFLAGS@ \
-  @WEBKIT_CFLAGS@ @LCMS2_CFLAGS@ \
+  @XINPUT_CFLAGS@ @WEBP_CFLAGS@ @WEBKIT_CFLAGS@ @LCMS2_CFLAGS@ \
   @SETTINGS_CFLAGS@ @FREETYPE_CFLAGS@ @FONTCONFIG_CFLAGS@ \
   @HARFBUZZ_CFLAGS@ @LIBOTF_CFLAGS@ @M17N_FLT_CFLAGS@ \
-  @LIBSYSTEMD_CFLAGS@ @JSON_CFLAGS@ \
+  @LIBSYSTEMD_CFLAGS@ @JSON_CFLAGS@ @XSYNC_CFLAGS@ @TREE_SITTER_CFLAGS@ \
   @LIBGNUTLS_CFLAGS@ @NOTIFY_CFLAGS@ @CAIRO_CFLAGS@ \
-  @WERROR_CFLAGS@ @REMACSLIB_CFLAGS@";
+  @WERROR_CFLAGS@ @HAIKU_CFLAGS@ @XCOMPOSITE_CFLAGS@ @XSHAPE_CFLAGS@ \
+  @REMACSLIB_CFLAGS@";
 
 fn integer_max_constant(len: usize) -> &'static str {
     match len {
@@ -203,9 +204,7 @@ fn generate_globals() {
 }
 
 fn generate_bindings() {
-    let out_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
-        .join("src")
-        .join("bindings.rs");
+    let out_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("src").join("bindings.rs");
 
     let mut builder = bindgen::Builder::default()
         .rust_target(bindgen::RustTarget::Nightly)
@@ -232,7 +231,8 @@ fn generate_bindings() {
     builder = builder.clang_args(processed_args);
     if cfg!(target_os = "windows") {
         builder = builder.clang_arg("-I../nt/inc");
-        builder = builder.clang_arg("-Ic:\\Program Files\\LLVM\\lib\\clang\\6.0.0\\include");
+        builder =
+            builder.clang_arg("-Ic:\\Program Files\\LLVM\\lib\\clang\\6.0.0\\include");
     }
 
     builder = builder
@@ -244,7 +244,7 @@ fn generate_bindings() {
         .ctypes_prefix("::libc")
         .no_copy("wr_output")
         // .blocklist_file("gtk/gtk.h")
-        // we define these ourselves, for various reasons
+    // we define these ourselves, for various reasons
         .blacklist_item("Lisp_Object")
         .blacklist_item("emacs_globals")
         .blacklist_item("Q.*") // symbols like Qnil and so on
@@ -252,16 +252,16 @@ fn generate_bindings() {
         .blacklist_item("VALMASK")
         .blacklist_item("PSEUDOVECTOR_FLAG")
         .blacklist_item("Fmapc")
-        // these two are found by bindgen on mac, but not linux
+    // these two are found by bindgen on mac, but not linux
         .blacklist_item("EMACS_INT_MAX")
         .blacklist_item("VAL_MAX")
-        // this is wallpaper for a bug in bindgen, we don't lose much by it
-        // https://github.com/servo/rust-bindgen/issues/687
+    // this is wallpaper for a bug in bindgen, we don't lose much by it
+    // https://github.com/servo/rust-bindgen/issues/687
         .blacklist_item("BOOL_VECTOR_BITS_PER_CHAR")
-        // this is wallpaper for a function argument that shadows a static of the same name
-        // https://github.com/servo/rust-bindgen/issues/804
+    // this is wallpaper for a function argument that shadows a static of the same name
+    // https://github.com/servo/rust-bindgen/issues/804
         .blacklist_item("face_change")
-        // these never return, and bindgen doesn't yet detect that, so we will do them manually
+    // these never return, and bindgen doesn't yet detect that, so we will do them manually
         .blacklist_item("error")
         .blacklist_item("circular_list")
         .blacklist_item("wrong_type_argument")
@@ -271,23 +271,23 @@ fn generate_bindings() {
         .blacklist_item("memory_full")
         .blacklist_item("wrong_choice")
         .blacklist_item("wrong_range")
-        // these are defined in data.rs
-        // .blacklist_item("Lisp_Fwd")
-        // .blacklist_item("Lisp_.*fwd")
-        // these are defined in remacs_lib
+    // these are defined in data.rs
+    // .blacklist_item("Lisp_Fwd")
+    // .blacklist_item("Lisp_.*fwd")
+    // these are defined in remacs_lib
         .blacklist_item("timespec")
         .blacklist_item("fd_set")
         .blacklist_item("pselect")
         .blacklist_item("sigset_t")
         .blacklist_item("timex")
         .blacklist_item("clock_adjtime")
-        // by default we want C enums to be converted into a Rust module with constants in it
+    // by default we want C enums to be converted into a Rust module with constants in it
         .default_enum_style(bindgen::EnumVariation::ModuleConsts)
-        // enums with only one variant are better as simple constants
+    // enums with only one variant are better as simple constants
         .constified_enum("EMACS_INT_WIDTH")
         .constified_enum("BOOL_VECTOR_BITS_PER_CHAR")
         .constified_enum("BITS_PER_BITS_WORD")
-        // TODO(db48x): verify that these enums meet Rust's requirements (primarily that they have no duplicate variants)
+    // TODO(db48x): verify that these enums meet Rust's requirements (primarily that they have no duplicate variants)
         .rustified_enum("Lisp_Misc_Type")
         .rustified_enum("Lisp_Type")
         .rustified_enum("case_action")

@@ -104,6 +104,12 @@ dynlib_open (const char *dll_fname)
   return (dynlib_handle_ptr) hdll;
 }
 
+dynlib_handle_ptr
+dynlib_open_for_eln (const char *dll_fname)
+{
+  return dynlib_open (dll_fname);
+}
+
 void *
 dynlib_sym (dynlib_handle_ptr h, const char *sym)
 {
@@ -270,8 +276,16 @@ dynlib_close (dynlib_handle_ptr h)
 dynlib_handle_ptr
 dynlib_open (const char *path)
 {
+  return dlopen (path, RTLD_LAZY | RTLD_GLOBAL);
+}
+
+# ifdef HAVE_NATIVE_COMP
+dynlib_handle_ptr
+dynlib_open_for_eln (const char *path)
+{
   return dlopen (path, RTLD_LAZY);
 }
+# endif
 
 void *
 dynlib_sym (dynlib_handle_ptr h, const char *sym)
@@ -301,11 +315,13 @@ dynlib_error (void)
   return dlerror ();
 }
 
+# ifdef HAVE_NATIVE_COMP
 int
 dynlib_close (dynlib_handle_ptr h)
 {
   return dlclose (h) == 0;
 }
+# endif
 
 #else
 

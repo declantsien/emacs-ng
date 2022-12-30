@@ -155,7 +155,7 @@
 
 	* epa.el (epa-decrypt-region): Detect encoding if
 	coding-system-for-read is not specified.
-	<http://sourceforge.jp/ticket/browse.php?group_id=2267&tid=17018>
+	<https://sourceforge.jp/ticket/browse.php?group_id=2267&tid=17018>
 	(epa-verify-region): Ditto.
 
 2009-06-04  Stefan Monnier  <monnier@iro.umontreal.ca>
@@ -540,7 +540,7 @@
 
 	* epa-file.el (epa-file-decode-and-insert):
 	Use string-to-multibyte instead of set-buffer-multibyte.
-	<http://sourceforge.jp/ticket/browse.php?group_id=2267&tid=15259>
+	<https://sourceforge.jp/ticket/browse.php?group_id=2267&tid=15259>
 
 2009-04-18  Yann Hodique  <yann.hodique@gmail.com>  (tiny change)
 
@@ -6103,7 +6103,7 @@
 	* international/quail.el (quail-show-guidance): Don't create
 	a guidance-frame if current buffer is not a minibuffer, since even if
 	selected-window is mini-p, the buffer will never be displayed in it, so
-	it wil be usable for guidance.
+	it will be usable for guidance.
 
 2008-10-28  Stefan Monnier  <monnier@iro.umontreal.ca>
 
@@ -20218,7 +20218,7 @@
 2008-02-12  Stefan Monnier  <monnier@iro.umontreal.ca>
 
 	* doc-view.el (doc-view-display): Change file arg to buffer arg, so it
-	works also for buffers w/o buffer-file-name.  Update callers.
+	works also for buffers without buffer-file-name.  Update callers.
 	(doc-view-clone-buffer-hook): New fun.
 	(doc-view-mode): Use it for indirect clones.  Mark the overlays with
 	the `doc-view' property so they can be recognized.

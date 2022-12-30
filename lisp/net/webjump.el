@@ -61,6 +61,13 @@
 
 ;;; Code:
 
+;; TODO:
+;; - Add a menu bar and tool bar for this library.
+;; - Add commands to create/delete link from the hotlist.
+;; - Add something like a bookmark folder in modern browsers.
+;;    - Add a command that can open/follow all links in a folder.
+;; - Add tags for Web sites in the hotlist.
+
 ;;-------------------------------------------------------- Package Dependencies
 
 (require 'browse-url)
@@ -71,6 +78,14 @@
   "Programmable Web hotlist."
   :prefix "webjump-"
   :group 'browse-url)
+
+(defcustom webjump-use-internal-browser nil
+  "Whether or not to force the use of an internal browser.
+If non-nil, WebJump will always use an internal browser (such as
+EWW or xwidget-webkit) to open web pages, as opposed to an
+external browser like IceCat."
+  :version "29.1"
+  :type 'boolean)
 
 (defconst webjump-sample-sites
   '(
@@ -248,18 +263,32 @@ Please submit bug reports and other feedback to the author, Neil W. Van Dyke
 		webjump-sites t))
 	 (name (car item))
 	 (expr (cdr item)))
-    (browse-url (webjump-url-fix
-		 (cond ((not expr) "")
-		       ((stringp expr) expr)
-		       ((vectorp expr) (webjump-builtin expr name))
-		       ((listp expr) (eval expr t))
-		       ((symbolp expr)
-			(if (fboundp expr)
-			    (funcall expr name)
-			  (error "WebJump URL function \"%s\" undefined"
-				 expr)))
-		       (t (error "WebJump URL expression for \"%s\" invalid"
-				 name)))))))
+    (if webjump-use-internal-browser
+        (browse-url-with-browser-kind
+         'internal (webjump-url-fix
+                    (cond ((not expr) "")
+                          ((stringp expr) expr)
+                          ((vectorp expr) (webjump-builtin expr name))
+                          ((listp expr) (eval expr t))
+                          ((symbolp expr)
+                           (if (fboundp expr)
+                               (funcall expr name)
+                             (error "WebJump URL function \"%s\" undefined"
+                                    expr)))
+                          (t (error "WebJump URL expression for \"%s\" invalid"
+                                    name)))))
+      (browse-url (webjump-url-fix
+                   (cond ((not expr) "")
+                         ((stringp expr) expr)
+                         ((vectorp expr) (webjump-builtin expr name))
+                         ((listp expr) (eval expr t))
+                         ((symbolp expr)
+                          (if (fboundp expr)
+                              (funcall expr name)
+                            (error "WebJump URL function \"%s\" undefined"
+                                   expr)))
+                         (t (error "WebJump URL expression for \"%s\" invalid"
+                                   name))))))))
 
 (defun webjump-builtin (expr name)
   (if (< (length expr) 1)

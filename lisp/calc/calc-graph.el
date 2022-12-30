@@ -969,7 +969,8 @@ This \"dumb\" driver will be present in Gnuplot 3.0."
 	  (define-key calc-dumb-map "\C-c\C-c" 'exit-recursive-edit)))
     (use-local-map calc-dumb-map)
     (setq truncate-lines t)
-    (message "Type `q' or `C-c C-c' to return to Calc")
+    (message (substitute-command-keys
+              "Type \\`q' or \\`C-c C-c' to return to Calc"))
     (recursive-edit)
     (bury-buffer "*Gnuplot Trail*")))
 
@@ -1413,7 +1414,7 @@ This \"dumb\" driver will be present in Gnuplot 3.0."
 
 (defun calc-gnuplot-command (&rest args)
   "Send ARGS to Gnuplot.
-Returns nil if Gnuplot signalled an error."
+Returns nil if Gnuplot signaled an error."
   (calc-graph-init)
   (let ((cmd (concat (mapconcat 'identity args " ") "\n")))
     (or (calc-graph-w32-p)

@@ -174,9 +174,6 @@
 All the bindings are done here instead of globally to try and be
 nice to the world.")
 
-(define-obsolete-variable-alias 'crisp-mode-modeline-string
-  'crisp-mode-mode-line-string "24.3")
-
 (defcustom crisp-mode-mode-line-string " *CRiSP*"
   "String to display in the mode line when CRiSP emulation mode is enabled."
   :type 'string)
@@ -231,27 +228,13 @@ does not load the scroll-all package."
 
 ;; The cut and paste routines are different between XEmacs and Emacs
 ;; so we need to set up aliases for the functions.
-
-(defalias 'crisp-set-clipboard
-  (if (fboundp 'clipboard-kill-ring-save)
-      'clipboard-kill-ring-save
-    'copy-primary-selection))
-
-(defalias 'crisp-kill-region
-  (if (fboundp 'clipboard-kill-region)
-      'clipboard-kill-region
-    'kill-primary-selection))
-
-(defalias 'crisp-yank-clipboard
-  (if (fboundp 'clipboard-yank)
-      'clipboard-yank
-    'yank-clipboard-selection))
+(defalias 'crisp-set-clipboard 'clipboard-kill-ring-save)
+(defalias 'crisp-kill-region 'clipboard-kill-region)
+(defalias 'crisp-yank-clipboard 'clipboard-yank)
 
 (defun crisp-region-active ()
   "Compatibility function to test for an active region."
-  (if (featurep 'xemacs)
-      zmacs-region-active-p
-    mark-active))
+  mark-active)
 
 (defun crisp-version (&optional arg)
   "Version number of the CRiSP emulator package.

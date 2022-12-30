@@ -33,9 +33,6 @@
 ;; GNU MDK from `https://savannah.gnu.org/projects/mdk/' and
 ;; `https://ftp.gnu.org/pub/gnu/mdk'.
 ;;
-;; To use this mode, place the following in your init file:
-;; `(load-file "/PATH-TO-FILE/mixal-mode.el")'.
-;;
 ;; When you load a file with the extension .mixal the mode will be started
 ;; automatically.  If you want to start the mode manually, use `M-x mixal-mode'.
 ;; Font locking will work, the behavior of tabs is the same as Emacs's
@@ -78,16 +75,13 @@
 ;;; Code:
 (defvar compile-command)
 
-;;; Key map
-(defvar mixal-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map "\C-c\C-c" 'compile)
-    (define-key map "\C-c\C-r" 'mixal-run)
-    (define-key map "\C-c\C-d" 'mixal-debug)
-    (define-key map "\C-h\C-o" 'mixal-describe-operation-code)
-    map)
-  "Keymap for `mixal-mode'.")
-;; (makunbound 'mixal-mode-map)
+;;; Keymap
+(defvar-keymap mixal-mode-map
+  :doc "Keymap for `mixal-mode'."
+  "C-c C-c" #'compile
+  "C-c C-r" #'mixal-run
+  "C-c C-d" #'mixal-debug
+  "C-h C-o" #'mixal-describe-operation-code)
 
 ;;; Syntax table
 (defvar mixal-mode-syntax-table

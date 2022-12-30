@@ -61,4 +61,17 @@
   ;; Only allowed in unrestricted.
   (should-not (puny-highly-restrictive-domain-p "I♥NY.org")))
 
+(ert-deftest puny-normalize ()
+  (should (equal (puny-encode-string (string-glyph-compose "Bä.com"))
+                 "xn--b.com-gra"))
+  (should (equal (puny-encode-string "Bä.com")
+                 "xn--b.com-gra"))
+  (should (equal (puny-encode-string "Bä.com") "xn--b.com-gra")))
+
+;;; TODO!
+;; puny-resources/IdnaTestV2.txt has a bunch of tests, and they should
+;; be implemented.  However, the puny encoding does not fully
+;; implement https://www.unicode.org/reports/tr46/#Conformance yet, so
+;; it'll fail.
+
 ;;; puny-tests.el ends here

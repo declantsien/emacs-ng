@@ -2,7 +2,7 @@
 name = "lisp-util"
 version = "0.1.0"
 description = "Utility code for lisp_fn."
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 libc = "0.2.95"

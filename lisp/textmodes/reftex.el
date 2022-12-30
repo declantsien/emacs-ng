@@ -2053,7 +2053,8 @@ IGNORE-WORDS List of words which should be removed from the string."
          (newname (concat "Fontify-me-" oldname)))
     (unwind-protect
         (progn
-          ;; Rename buffer temporarily to start w/o space (because of font-lock)
+          ;; Rename buffer temporarily to start without space (because
+          ;; of font-lock)
           (rename-buffer newname t)
           ;; Good: we have the indirection functions
           (set (make-local-variable 'font-lock-fontify-region-function)
@@ -2257,8 +2258,7 @@ IGNORE-WORDS List of words which should be removed from the string."
    ("Customize"
     ["Browse RefTeX Group" reftex-customize t]
     "--"
-    ["Build Full Customize Menu" reftex-create-customize-menu
-     (fboundp 'customize-menu-create)])
+    ["Build Full Customize Menu" reftex-create-customize-menu])
    ("Documentation"
     ["Info" reftex-info t]
     ["Commentary" reftex-show-commentary t])))

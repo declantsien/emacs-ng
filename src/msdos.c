@@ -1794,7 +1794,6 @@ internal_terminal_init (void)
 	}
 
       Vinitial_window_system = Qpc;
-      Vwindow_system_version = make_fixnum (28); /* RE Emacs version */
       tty->terminal->type = output_msdos_raw;
 
       /* If Emacs was dumped on DOS/V machine, forget the stale VRAM
@@ -2725,7 +2724,8 @@ dos_rawgetc (void)
 		event.x = make_fixnum (x);
 		event.y = make_fixnum (y);
 		event.frame_or_window = selected_frame;
-		event.arg = Qnil;
+		event.arg = tty_handle_tab_bar_click (SELECTED_FRAME (),
+						      x, y, press, &event);
 		event.timestamp = event_timestamp ();
 		kbd_buffer_store_event (&event);
 	      }
