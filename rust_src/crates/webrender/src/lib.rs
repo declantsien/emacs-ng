@@ -24,6 +24,7 @@ mod font_db;
 mod fringe;
 mod future;
 mod image;
+mod poll;
 mod texture;
 mod util;
 mod wrterm;

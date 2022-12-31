@@ -33,8 +33,6 @@ use webrender_surfman::WebrenderSurfman;
 
 use emacs::bindings::{inhibit_window_system, thread_select};
 
-use crate::future::tokio_select_fds;
-
 pub type GUIEvent = Event<'static, i32>;
 
 #[allow(dead_code)]
@@ -247,13 +245,26 @@ pub extern "C" fn wr_select1(
 
     // use tokio to mimic the pselect because it has cross platform supporting.
     let tokio_runtime = TOKIO_RUNTIME.lock().unwrap();
-    let handle = tokio_runtime.spawn(async move {
-        tokio::select! {
-            nfds = tokio_select_fds(nfds, &read_fds, &write_fds, &timeout) => {
-                let _ = event_loop_proxy.send_event(nfds);
+    // let handle = tokio_runtime.spawn(async move {
+    //     tokio::select! {
+    //         nfds = crate::future::tokio_select_fds(nfds, &read_fds, &write_fds, &timeout) => {
+    //             let _ = event_loop_proxy.send_event(nfds);
+    //         }
+    //     }
+    // });
+    // let handle = tokio_runtime.spawn_blocking(move || {
+        match crate::poll::tokio_select_fds(nfds, &read_fds, &write_fds, &timeout) {
+            Ok(nfds) => {
+                if nfds > 0 {
+                    let _ = event_loop_proxy.send_event(nfds);
+                }
             }
-        }
-    });
+            Err(err) => {
+                // let _ = event_loop_proxy.send_event(-1);
+                // log::error!("poll fds err: {err:?}");
+            }
+        };
+    // });
 
     let nfds_result = RefCell::new(0);
 
@@ -299,7 +310,7 @@ pub extern "C" fn wr_select1(
         };
     });
 
-    handle.abort();
+    // handle.abort();
 
     return nfds_result.into_inner();
 }
