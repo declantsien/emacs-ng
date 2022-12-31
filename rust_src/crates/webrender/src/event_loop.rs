@@ -1,3 +1,5 @@
+use errno::{errno, set_errno, Errno};
+use nix::sys::signal::{self, Signal};
 use std::{cell::RefCell, ptr, sync::Mutex, time::Instant};
 
 #[cfg(target_os = "macos")]
@@ -185,6 +187,7 @@ pub static TOKIO_RUNTIME: Lazy<Mutex<Runtime>> = Lazy::new(|| {
 
 pub static EVENT_BUFFER: Lazy<Mutex<Vec<GUIEvent>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct FdSet(pub *mut fd_set);
 
 unsafe impl Send for FdSet {}
@@ -198,6 +201,13 @@ impl FdSet {
     }
 }
 
+impl Drop for FdSet {
+    fn drop(&mut self) {
+        self.clear()
+    }
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Timespec(pub *mut timespec);
 
 unsafe impl Send for Timespec {}
@@ -235,33 +245,13 @@ pub extern "C" fn wr_select1(
     let write_fds = FdSet(writefds);
     let timeout = Timespec(timeout);
 
-    let (select_stop_sender, mut select_stop_receiver) = tokio::sync::mpsc::unbounded_channel();
-
     // use tokio to mimic the pselect because it has cross platform supporting.
     let tokio_runtime = TOKIO_RUNTIME.lock().unwrap();
-    tokio_runtime.spawn(async move {
+    let handle = tokio_runtime.spawn(async move {
         tokio::select! {
-
             nfds = tokio_select_fds(nfds, &read_fds, &write_fds, &timeout) => {
                 let _ = event_loop_proxy.send_event(nfds);
             }
-
-            // time out
-            _ = tokio::time::sleep(timeout2) => {
-                read_fds.clear();
-                write_fds.clear();
-
-                let _ = event_loop_proxy.send_event(0);
-            }
-
-            // received stop command from winit event_loop
-            _ = select_stop_receiver.recv() => {
-                read_fds.clear();
-                write_fds.clear();
-
-                let _ = event_loop_proxy.send_event(1);
-            }
-
         }
     });
 
@@ -269,7 +259,8 @@ pub extern "C" fn wr_select1(
 
     // We mush run winit in main thread, because the macOS platfrom limitation.
     event_loop.el.run_return(|e, _, control_flow| {
-        *control_flow = ControlFlow::Wait;
+        let deadline = Instant::now() + timeout2;
+        control_flow.set_wait_until(deadline);
 
         match e {
             Event::WindowEvent { ref event, .. } => match event {
@@ -285,21 +276,30 @@ pub extern "C" fn wr_select1(
                     EVENT_BUFFER.lock().unwrap().push(e.to_static().unwrap());
 
                     // notify emacs's code that a keyboard event arrived.
-                    unsafe { libc::raise(libc::SIGIO) };
+                    match signal::raise(Signal::SIGIO) {
+                        Ok(_) => {}
+                        Err(err) => log::error!("sigio err: {err:?}"),
+                    };
 
-                    // stop tokio select
-                    let _ = select_stop_sender.send(());
+                    /* Pretend that `select' is interrupted by a signal.  */
+                    set_errno(Errno(libc::EINTR));
+                    debug_assert_eq!(nix::errno::errno(), libc::EINTR);
+
+                    nfds_result.replace(-1);
+                    control_flow.set_exit();
                 }
                 _ => {}
             },
 
             Event::UserEvent(nfds) => {
                 nfds_result.replace(nfds);
-                *control_flow = ControlFlow::Exit;
+                control_flow.set_exit();
             }
             _ => {}
         };
     });
+
+    handle.abort();
 
     return nfds_result.into_inner();
 }

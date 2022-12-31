@@ -3,6 +3,7 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
+use tokio::time::Duration;
 
 use std::{os::unix::prelude::AsRawFd, ptr};
 
@@ -63,7 +64,7 @@ fn fd_set_to_async_fds(nfds: i32, fds: &FdSet, interest: Interest) -> Vec<AsyncF
             if libc::FD_ISSET(fd, fds.0) {
                 let async_fd_result = AsyncFd::with_interest(fd, interest);
                 if async_fd_result.is_err() {
-                    println!("AsyncFd err: {:?}", async_fd_result.unwrap_err());
+                    log::error!("AsyncFd err: {:?}", async_fd_result.err());
                     continue;
                 }
 
@@ -87,11 +88,12 @@ fn async_fds_to_fd_set(fds: Vec<i32>, fd_set: &FdSet) {
     }
 }
 
+#[tracing::instrument]
 pub async fn tokio_select_fds(
     nfds: i32,
     readfds: &FdSet,
     writefds: &FdSet,
-    _timeout: &Timespec,
+    timespec: &Timespec,
 ) -> i32 {
     let read_fds = fd_set_to_async_fds(nfds, readfds, Interest::READABLE);
     let write_fds = fd_set_to_async_fds(nfds, writefds, Interest::WRITABLE);
@@ -107,14 +109,34 @@ pub async fn tokio_select_fds(
     }
 
     let read_fds_count = read_fds.len();
-
-    let readliness = batch_select(fd_futures).await;
-
     let mut readable_result = Vec::new();
     let mut writable_result = Vec::new();
+    let timeout =
+        unsafe { Duration::new((*timespec.0).tv_sec as u64, (*timespec.0).tv_nsec as u32) };
+
+    if fd_futures.is_empty() {
+        log::debug!("empty!");
+        async_fds_to_fd_set(readable_result, readfds);
+        async_fds_to_fd_set(writable_result, writefds);
+        return 0;
+    }
+
+    let result = tokio::select! {
+        _ = tokio::time::sleep(timeout) => Err("timeout"),
+        readliness = batch_select(fd_futures) => Ok(readliness),
+    };
+
+    let readliness = match result {
+        Ok(value) => value,
+        Err(err) => {
+            log::error!("batch_select: {err:?}");
+            Vec::new()
+        }
+    };
 
     for (result, index) in readliness {
         if result.is_err() {
+            log::error!("readliness: {:?}", result.err());
             continue;
         }
 
