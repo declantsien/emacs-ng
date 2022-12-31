@@ -35,7 +35,7 @@ lsp_json = { version = "0.1.0", path = "rust_src/crates/lsp_json" }
 git = { version = "0.1.0", path = "rust_src/crates/git", optional = true }
 ng_module = { version = "0.1.0", path = "rust_src/crates/ng_module", optional = true }
 js = { version = "0.1.0", path = "rust_src/crates/js", optional = true }
-webrender = { version = "0.1.0", path = "rust_src/crates/webrender", optional = true }
+wrterm = { version = "0.1.0", path = "rust_src/crates/webrender", optional = true }
 clippy = { version = "*", optional = true }
 
 [build-dependencies]
@@ -64,6 +64,7 @@ window-system-w32 = []
 # Build with git2rs support
 libgit = ["git", "ng-bindgen/libgit"]
 # Use the webrender window system
+webrender = ["dep:wrterm"]
 window-system-webrender = ["ng-bindgen/window-system-webrender", "webrender"]
 # Treat warnings as a build error on Travis.
 strict = []
