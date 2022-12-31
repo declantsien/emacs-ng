@@ -1,6 +1,4 @@
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
-#[macro_use]
-extern crate emacs;
 
 use emacs::bindings::{main1, terminate_due_to_signal, will_dump_p};
 
