@@ -327,6 +327,9 @@ fn generate_bindings() {
 fn main() {
     println!("cargo:rerun-if-changed=Cargo.toml");
     println!("cargo:rerun-if-changed=build.rs");
+    for varname in ["SRC_HASH"].iter() {
+        println!("cargo:rerun-if-env-changed={}", varname);
+    }
 
     generate_definitions();
     generate_globals();

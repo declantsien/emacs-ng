@@ -886,10 +886,6 @@ fn wr_create_terminal(mut dpyinfo: DisplayInfoRef) -> TerminalRef {
 }
 
 pub fn wr_term_init(display_name: LispObject) -> DisplayInfoRef {
-    // install global collector configured based on RUST_LOG env var.
-    #[cfg(debug_assertions)]
-    tracing_subscriber::fmt::init();
-
     log::info!("Emacs Webrender term init");
 
     let dpyinfo = Box::new(DisplayInfo::new());
