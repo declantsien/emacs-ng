@@ -263,9 +263,11 @@ pub extern "C" fn wr_select1(
                 }
                 _ => {}
             },
-
             Event::UserEvent(nfds) => {
                 nfds_result.replace(nfds);
+                control_flow.set_exit();
+            }
+            Event::RedrawEventsCleared => {
                 control_flow.set_exit();
             }
             _ => {}
@@ -274,6 +276,9 @@ pub extern "C" fn wr_select1(
     let ret = nfds_result.into_inner();
     if ret == 0 {
         let timespec = unsafe { make_timespec(0, 0) };
+        // Add some delay here avoding high cpu usage on macOS
+        #[cfg(target_os = "macos")]
+        spin_sleep::sleep(Duration::from_millis(16));
         let nfds =
             unsafe { libc::pselect(nfds, readfds, writefds, _exceptfds, &timespec, _sigmask) };
         log::trace!("pselect: {nfds:?}");
