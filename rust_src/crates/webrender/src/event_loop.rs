@@ -263,11 +263,13 @@ pub extern "C" fn wr_select1(
                 }
                 _ => {}
             },
-
             Event::UserEvent(nfds) => {
                 nfds_result.replace(nfds);
                 control_flow.set_exit();
-            }
+            },
+	    Event::RedrawEventsCleared => {
+                control_flow.set_exit();
+            },
             _ => {}
         };
     });
