@@ -2246,7 +2246,8 @@ dependencies = [
 [[package]]
 name = "mio"
 version = "0.8.5"
-source = "git+https://github.com/tokio-rs/mio.git?rev=533c040fd2a2484123d23878c22bdb0acc7436af#533c040fd2a2484123d23878c22bdb0acc7436af"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5d732bc30207a6423068df043e3d02e0735b155ad7ce1a6f76fe2baa5b158de"
 dependencies = [
  "libc",
  "log",
@@ -3510,6 +3511,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
+name = "spin_sleep"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cafa7900db085f4354dbc7025e25d7a839a14360ea13b5fc4fd717f2d3b23134"
+dependencies = [
+ "once_cell",
+ "winapi",
+]
+
+[[package]]
 name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4734,6 +4745,7 @@ dependencies = [
  "ng-bindgen",
  "nix 0.26.1",
  "once_cell",
+ "spin_sleep",
  "surfman",
  "ttf-parser 0.17.1",
  "webrender",
