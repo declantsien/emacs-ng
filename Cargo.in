@@ -1,6 +1,6 @@
 [workspace]
 members = ["rust_src/remacs-lib", "etc/colors", "rust_src/crates/*"]
-exclude = ["rust_src/ng-bindgen", "lib-src/hashdir"]
+exclude = ["rust_src/ng-bindgen"]
 
 # Allow unwinding in functions called from C. See
 # https://www.reddit.com/r/rust/comments/565q1f/wrote_a_blogpost_from_my_experiences_the_arduous/d8h053m/

@@ -327,9 +327,9 @@ fn generate_bindings() {
 fn main() {
     println!("cargo:rerun-if-changed=Cargo.toml");
     println!("cargo:rerun-if-changed=build.rs");
-    for varname in ["SRC_HASH"].iter() {
-        println!("cargo:rerun-if-env-changed={}", varname);
-    }
+    println!("cargo:rerun-if-changed=../../../src/globals.h");
+    println!("cargo:rerun-if-changed=../../wrapper.h");
+    // TODO watch files included in wrapper.h
 
     generate_definitions();
     generate_globals();
