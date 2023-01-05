@@ -1944,6 +1944,85 @@ Major mode for editing BibTeX style files.
 (register-definition-prefixes "bibtex-style" '("bibtex-style-"))
 
 
+;;; Generated autoloads from use-package/bind-key.el
+
+(push (purecopy '(bind-key 2 4 1)) package--builtin-versions)
+(autoload 'bind-key "bind-key" "\
+Bind KEY-NAME to COMMAND in KEYMAP (`global-map' if not passed).
+
+KEY-NAME may be a vector, in which case it is passed straight to
+`define-key'.  Or it may be a string to be interpreted as
+spelled-out keystrokes, e.g., \"C-c C-z\".  See the documentation
+of `edmacro-mode' for details.
+
+COMMAND must be an interactive function or lambda form.
+
+KEYMAP, if present, should be a keymap variable or symbol.
+For example:
+
+  (bind-key \"M-h\" #\\='some-interactive-function my-mode-map)
+
+  (bind-key \"M-h\" #\\='some-interactive-function \\='my-mode-map)
+
+If PREDICATE is non-nil, it is a form evaluated to determine when
+a key should be bound. It must return non-nil in such cases.
+Emacs can evaluate this form at any time that it does redisplay
+or operates on menu data structures, so you should write it so it
+can safely be called at any time.
+
+(fn KEY-NAME COMMAND &optional KEYMAP PREDICATE)" nil t)
+(autoload 'unbind-key "bind-key" "\
+Unbind the given KEY-NAME, within the KEYMAP (if specified).
+See `bind-key' for more details.
+
+(fn KEY-NAME &optional KEYMAP)" nil t)
+(autoload 'bind-key* "bind-key" "\
+Similar to `bind-key', but overrides any mode-specific bindings.
+
+(fn KEY-NAME COMMAND &optional PREDICATE)" nil t)
+(autoload 'bind-keys "bind-key" "\
+Bind multiple keys at once.
+
+Accepts keyword arguments:
+:map MAP               - a keymap into which the keybindings should be
+                         added
+:prefix KEY            - prefix key for these bindings
+:prefix-map MAP        - name of the prefix map that should be created
+                         for these bindings
+:prefix-docstring STR  - docstring for the prefix-map variable
+:menu-name NAME        - optional menu string for prefix map
+:repeat-docstring STR  - docstring for the repeat-map variable
+:repeat-map MAP        - name of the repeat map that should be created
+                         for these bindings. If specified, the
+                         `repeat-map' property of each command bound
+                         (within the scope of the `:repeat-map' keyword)
+                         is set to this map.
+:exit BINDINGS         - Within the scope of `:repeat-map' will bind the
+                         key in the repeat map, but will not set the
+                         `repeat-map' property of the bound command.
+:continue BINDINGS     - Within the scope of `:repeat-map' forces the
+                         same behavior as if no special keyword had
+                         been used (that is, the command is bound, and
+                         it's `repeat-map' property set)
+:filter FORM           - optional form to determine when bindings apply
+
+The rest of the arguments are conses of keybinding string and a
+function symbol (unquoted).
+
+(fn &rest ARGS)" nil t)
+(autoload 'bind-keys* "bind-key" "\
+Bind multiple keys at once, in `override-global-map'.
+Accepts the same keyword arguments as `bind-keys' (which see).
+
+This binds keys in such a way that bindings are not overridden by
+other modes.  See `override-global-mode'.
+
+(fn &rest ARGS)" nil t)
+(autoload 'describe-personal-keybindings "bind-key" "\
+Display all the personal keybindings defined by `bind-key'." t)
+(register-definition-prefixes "bind-key" '("bind-key" "compare-keybindings" "get-binding-description" "override-global-m" "personal-keybindings"))
+
+
 ;;; Generated autoloads from emacs-lisp/bindat.el
 
 (register-definition-prefixes "bindat" '("bindat-"))
@@ -2841,8 +2920,10 @@ and corresponding effects.
 
 ;;; Generated autoloads from progmodes/c-ts-mode.el
 
-(autoload 'c-ts-mode--base-mode "c-ts-mode" "\
+(autoload 'c-ts-base-mode "c-ts-mode" "\
 Major mode for editing C, powered by tree-sitter.
+
+\\{c-ts-mode-map}
 
 (fn)" t)
 (autoload 'c-ts-mode "c-ts-mode" "\
@@ -2853,7 +2934,7 @@ Major mode for editing C, powered by tree-sitter.
 Major mode for editing C++, powered by tree-sitter.
 
 (fn)" t)
-(register-definition-prefixes "c-ts-mode" '("c-ts-"))
+(register-definition-prefixes "c-ts-mode" '("c-ts-mode-"))
 
 
 ;;; Generated autoloads from calendar/cal-bahai.el
@@ -4546,6 +4627,16 @@ For use inside Lisp programs, see also `c-macro-expansion'.
 
 (fn START END SUBST)" t)
 (register-definition-prefixes "cmacexp" '("c-macro-"))
+
+
+;;; Generated autoloads from progmodes/cmake-ts-mode.el
+
+(add-to-list 'auto-mode-alist '("\\(?:CMakeLists\\.txt\\|\\.cmake\\)\\'" . cmake-ts-mode))
+(autoload 'cmake-ts-mode "cmake-ts-mode" "\
+Major mode for editing CMake files, powered by tree-sitter.
+
+(fn)" t)
+(register-definition-prefixes "cmake-ts-mode" '("cmake-ts-mode-"))
 
 
 ;;; Generated autoloads from cmuscheme.el
@@ -7897,6 +7988,16 @@ it is disabled.
 (register-definition-prefixes "doc-view" '("doc-view-"))
 
 
+;;; Generated autoloads from progmodes/dockerfile-ts-mode.el
+
+(add-to-list 'auto-mode-alist '("\\(?:Dockerfile\\(?:\\..*\\)?\\|\\.[Dd]ockerfile\\)\\'" . dockerfile-ts-mode))
+(autoload 'dockerfile-ts-mode "dockerfile-ts-mode" "\
+Major mode for editing Dockerfiles, powered by tree-sitter.
+
+(fn)" t)
+(register-definition-prefixes "dockerfile-ts-mode" '("dockerfile-ts-mode--"))
+
+
 ;;; Generated autoloads from play/doctor.el
 
 (autoload 'doctor "doctor" "\
@@ -8096,7 +8197,6 @@ Valid keywords and arguments are:
              `nodigits' to suppress digits as prefix arguments.
 
 (fn BS &optional NAME M ARGS)")
-(make-obsolete 'easy-mmode-define-keymap 'define-keymap "29.1")
 (autoload 'easy-mmode-defmap "easy-mmode" "\
 Define a constant M whose value is the result of `easy-mmode-define-keymap'.
 The M, BS, and ARGS arguments are as per that function.  DOC is
@@ -8107,7 +8207,6 @@ This macro is deprecated; use `defvar-keymap' instead.
 (fn M BS DOC &rest ARGS)" nil t)
 (function-put 'easy-mmode-defmap 'doc-string-elt 3)
 (function-put 'easy-mmode-defmap 'lisp-indent-function 1)
-(make-obsolete 'easy-mmode-defmap 'defvar-keymap "29.1")
 (autoload 'easy-mmode-defsyntax "easy-mmode" "\
 Define variable ST as a syntax-table.
 CSS contains a list of syntax specifications of the form (CHAR . SYNTAX).
@@ -8572,9 +8671,9 @@ it is disabled.
 
 (defvar edebug-all-defs nil "\
 If non-nil, evaluating defining forms instruments for Edebug.
-This applies to `eval-defun', `eval-region', `eval-buffer', and
-`eval-current-buffer'.  `eval-region' is also called by
-`eval-last-sexp', and `eval-print-last-sexp'.
+This applies to `eval-defun', `eval-region' and `eval-buffer'.
+`eval-region' is also called by `eval-last-sexp', and
+`eval-print-last-sexp'.
 
 You can use the command `edebug-all-defs' to toggle the value of this
 variable.  You may wish to make it local to each buffer with
@@ -9035,7 +9134,7 @@ Turn on EDT Emulation." t)
 
 ;;; Generated autoloads from progmodes/eglot.el
 
-(push (purecopy '(eglot 1 9)) package--builtin-versions)
+(push (purecopy '(eglot 1 10)) package--builtin-versions)
 (autoload 'eglot "eglot" "\
 Start LSP server in support of PROJECT's buffers under MANAGED-MAJOR-MODE.
 
@@ -9293,10 +9392,11 @@ it is disabled.
 (autoload 'elide-head "elide-head" "\
 Hide header material in buffer according to `elide-head-headers-to-hide'.
 
-The header is made invisible with an overlay.  With a prefix arg, show
-an elided material again.
+The header is made invisible with an overlay.  With a prefix
+argument ARG, show an elided material again.
 
-This is suitable as an entry on `find-file-hook' or appropriate mode hooks.
+This is suitable as an entry on `find-file-hook' or appropriate
+mode hooks.
 
 (fn &optional ARG)" t)
 (make-obsolete 'elide-head 'elide-head-mode "29.1")
@@ -10017,9 +10117,7 @@ then the server and full-name will be set to those values,
 whereas `erc-compute-port' and `erc-compute-nick' will be invoked
 for the values of the other parameters.
 
-When present, ID should be an opaque object used to identify the
-connection unequivocally.  This is rarely needed and not available
-interactively.
+See `erc-tls' for the meaning of ID.
 
 (fn &key (SERVER (erc-compute-server)) (PORT (erc-compute-port)) (NICK (erc-compute-nick)) (USER (erc-compute-user)) PASSWORD (FULL-NAME (erc-compute-full-name)) ID)" t)
 (defalias 'erc-select #'erc)
@@ -10034,6 +10132,7 @@ Non-interactively, it takes the keyword arguments
    (server (erc-compute-server))
    (port   (erc-compute-port))
    (nick   (erc-compute-nick))
+   (user   (erc-compute-user))
    password
    (full-name (erc-compute-full-name))
    client-certificate
@@ -10062,11 +10161,11 @@ Example usage:
              \\='(\"/home/bandali/my-cert.key\"
                \"/home/bandali/my-cert.crt\"))
 
-When present, ID should be an opaque object for identifying the
-connection unequivocally.  (In most cases, this would be a string or a
-symbol composed of letters from the Latin alphabet.)  This option is
-generally unneeded, however.  See info node `(erc) Connecting' for use
-cases.  Not available interactively.
+When present, ID should be a symbol or a string to use for naming
+the server buffer and identifying the connection unequivocally.
+See info node `(erc) Network Identifier' for details.  Like USER
+and CLIENT-CERTIFICATE, this parameter cannot be specified
+interactively.
 
 (fn &key (SERVER (erc-compute-server)) (PORT (erc-compute-port \\='ircs-u)) (NICK (erc-compute-nick)) (USER (erc-compute-user)) PASSWORD (FULL-NAME (erc-compute-full-name)) CLIENT-CERTIFICATE ID)" t)
 (autoload 'erc-handle-irc-url "erc" "\
@@ -11275,6 +11374,12 @@ This is used only in conjunction with `expand-add-abbrevs'." t)
 ;;; Generated autoloads from cedet/srecode/expandproto.el
 
 (register-definition-prefixes "srecode/expandproto" '("srecode-"))
+
+
+;;; Generated autoloads from external-completion.el
+
+(push (purecopy '(external-completion 0 1)) package--builtin-versions)
+(register-definition-prefixes "external-completion" '("external-completion-"))
 
 
 ;;; Generated autoloads from cedet/srecode/extract.el
@@ -14234,6 +14339,21 @@ Add the window configuration CONF to `gnus-buffer-configuration'.
 ;;; Generated autoloads from net/gnutls.el
 
 (register-definition-prefixes "gnutls" '("gnutls-" "open-gnutls-stream"))
+
+
+;;; Generated autoloads from progmodes/go-ts-mode.el
+
+(add-to-list 'auto-mode-alist '("\\.go\\'" . go-ts-mode))
+(autoload 'go-ts-mode "go-ts-mode" "\
+Major mode for editing Go, powered by tree-sitter.
+
+(fn)" t)
+(add-to-list 'auto-mode-alist '("/go\\.mod\\'" . go-mod-ts-mode))
+(autoload 'go-mod-ts-mode "go-ts-mode" "\
+Major mode for editing go.mod files, powered by tree-sitter.
+
+(fn)" t)
+(register-definition-prefixes "go-ts-mode" '("go-"))
 
 
 ;;; Generated autoloads from play/gomoku.el
@@ -18517,7 +18637,7 @@ Major mode for editing JSON, powered by tree-sitter.
 
 ;;; Generated autoloads from jsonrpc.el
 
-(push (purecopy '(jsonrpc 1 0 15)) package--builtin-versions)
+(push (purecopy '(jsonrpc 1 0 16)) package--builtin-versions)
 (register-definition-prefixes "jsonrpc" '("jsonrpc-"))
 
 
@@ -23373,15 +23493,15 @@ uses `package-vc-heuristic-alist' to guess the backend.
 Note that by default, a VC package will be prioritized over a
 regular package, but it will not remove a VC package.
 
-(fn PACKAGE &optional NAME REV BACKEND)" t)
+(fn PACKAGE &optional REV BACKEND)" t)
 (autoload 'package-vc-checkout "package-vc" "\
 Clone the sources for PKG-DESC into DIRECTORY and visit that directory.
 Unlike `package-vc-install', this does not yet set up the package
-for use with Emacs; use `package-vc-link-directory' for setting
-the package up after this function finishes.
-Optional argument REV means to clone a specific version of the
-package; it defaults to the last version available from the
-package's repository.  If REV has the special value
+for use with Emacs; use `package-vc-install-from-checkout' for
+setting the package up after this function finishes.  Optional
+argument REV means to clone a specific version of the package; it
+defaults to the last version available from the package's
+repository.  If REV has the special value
 `:last-release' (interactively, the prefix argument), that stands
 for the last released version of the package.
 
@@ -24970,7 +25090,7 @@ Open profile FILENAME.
 
 ;;; Generated autoloads from progmodes/project.el
 
-(push (purecopy '(project 0 9 0)) package--builtin-versions)
+(push (purecopy '(project 0 9 3)) package--builtin-versions)
 (autoload 'project-current "project" "\
 Return the project instance in DIRECTORY, defaulting to `default-directory'.
 
@@ -27228,6 +27348,16 @@ it is disabled.
 (register-definition-prefixes "ruler-mode" '("ruler-"))
 
 
+;;; Generated autoloads from progmodes/rust-ts-mode.el
+
+(add-to-list 'auto-mode-alist '("\\.rs\\'" . rust-ts-mode))
+(autoload 'rust-ts-mode "rust-ts-mode" "\
+Major mode for editing Rust, powered by tree-sitter.
+
+(fn)" t)
+(register-definition-prefixes "rust-ts-mode" '("rust-ts-mode-"))
+
+
 ;;; Generated autoloads from emacs-lisp/rx.el
 
 (autoload 'rx-to-string "rx" "\
@@ -29453,7 +29583,8 @@ is specified in the connection settings.
 Run PRODUCT interpreter as an inferior process.
 
 If buffer `*SQL*' exists but no process is running, make a new process.
-If buffer exists and a process is running, just switch to buffer `*SQL*'.
+If buffer exists and a process is running, just make sure buffer `*SQL*'
+is displayed.
 
 To specify the SQL product, prefix the call with
 \\[universal-argument].  To set the buffer name as well, prefix
@@ -30096,7 +30227,10 @@ Return the width of STRING in pixels.
 (fn STRING)")
 (autoload 'string-glyph-split "subr-x" "\
 Split STRING into a list of strings representing separate glyphs.
-This takes into account combining characters and grapheme clusters.
+This takes into account combining characters and grapheme clusters:
+if compositions are enabled, each sequence of characters composed
+on display into a single grapheme cluster is treated as a single
+indivisible unit.
 
 (fn STRING)")
 (autoload 'add-display-text-property "subr-x" "\
@@ -32278,6 +32412,16 @@ Mode for displaying and reprioritizing top priority Todo.
 (register-definition-prefixes "todo-mode" '("todo-"))
 
 
+;;; Generated autoloads from textmodes/toml-ts-mode.el
+
+(add-to-list 'auto-mode-alist '("\\.toml\\'" . toml-ts-mode))
+(autoload 'toml-ts-mode "toml-ts-mode" "\
+Major mode for editing TOML, powered by tree-sitter.
+
+(fn)" t)
+(register-definition-prefixes "toml-ts-mode" '("toml-ts-mode-"))
+
+
 ;;; Generated autoloads from tool-bar.el
 
 (autoload 'toggle-tool-bar-mode-from-frame "tool-bar" "\
@@ -32550,7 +32694,7 @@ Add archive file name handler to `file-name-handler-alist'." (when (and tramp-ar
 
 ;;; Generated autoloads from net/trampver.el
 
-(push (purecopy '(tramp 2 6 0 -1)) package--builtin-versions)
+(push (purecopy '(tramp 2 6 0 29 1)) package--builtin-versions)
 (register-definition-prefixes "trampver" '("tramp-"))
 
 
@@ -32875,8 +33019,16 @@ FRAC should be the inverse of the fractional value; for example, a value of
 ;;; Generated autoloads from progmodes/typescript-ts-mode.el
 
 (add-to-list 'auto-mode-alist '("\\.ts\\'" . typescript-ts-mode))
-(add-to-list 'auto-mode-alist '("\\.tsx\\'" . typescript-ts-mode))
+(add-to-list 'auto-mode-alist '("\\.tsx\\'" . tsx-ts-mode))
+(autoload 'typescript-ts-base-mode "typescript-ts-mode" "\
+Major mode for editing TypeScript.
+
+(fn)" t)
 (autoload 'typescript-ts-mode "typescript-ts-mode" "\
+Major mode for editing TypeScript.
+
+(fn)" t)
+(autoload 'tsx-ts-mode "typescript-ts-mode" "\
 Major mode for editing TypeScript.
 
 (fn)" t)
@@ -33604,6 +33756,195 @@ is \"www.fsf.co.uk\".
 ;;; Generated autoloads from url/url-vars.el
 
 (register-definition-prefixes "url-vars" '("url-"))
+
+
+;;; Generated autoloads from use-package/use-package.el
+
+(push (purecopy '(use-package 2 4 4)) package--builtin-versions)
+
+
+;;; Generated autoloads from use-package/use-package-bind-key.el
+
+(autoload 'use-package-autoload-keymap "use-package-bind-key" "\
+Load PACKAGE and bind key sequence invoking this function to KEYMAP-SYMBOL.
+Then simulate pressing the same key sequence a again, so that the
+next key pressed is routed to the newly loaded keymap.
+
+This function supports use-package's :bind-keymap keyword.  It
+works by binding the given key sequence to an invocation of this
+function for a particular keymap.  The keymap is expected to be
+defined by the package.  In this way, loading the package is
+deferred until the prefix key sequence is pressed.
+
+(fn KEYMAP-SYMBOL PACKAGE OVERRIDE)")
+(autoload 'use-package-normalize-binder "use-package-bind-key" "\
+
+
+(fn NAME KEYWORD ARGS)")
+(defalias 'use-package-normalize/:bind 'use-package-normalize-binder)
+(defalias 'use-package-normalize/:bind* 'use-package-normalize-binder)
+(defalias 'use-package-autoloads/:bind 'use-package-autoloads-mode)
+(defalias 'use-package-autoloads/:bind* 'use-package-autoloads-mode)
+(autoload 'use-package-handler/:bind "use-package-bind-key" "\
+
+
+(fn NAME KEYWORD ARGS REST STATE &optional BIND-MACRO)")
+(defalias 'use-package-normalize/:bind-keymap 'use-package-normalize-binder)
+(defalias 'use-package-normalize/:bind-keymap* 'use-package-normalize-binder)
+(autoload 'use-package-handler/:bind-keymap "use-package-bind-key" "\
+
+
+(fn NAME KEYWORD ARGS REST STATE &optional OVERRIDE)")
+(autoload 'use-package-handler/:bind-keymap* "use-package-bind-key" "\
+
+
+(fn NAME KEYWORD ARG REST STATE)")
+(register-definition-prefixes "use-package-bind-key" '("use-package-handler/:bind*"))
+
+
+;;; Generated autoloads from use-package/use-package-core.el
+
+(autoload 'use-package "use-package-core" "\
+Declare an Emacs package by specifying a group of configuration options.
+
+For the full documentation, see Info node `(use-package) top'.
+Usage:
+
+  (use-package package-name
+     [:keyword [option]]...)
+
+:init            Code to run before PACKAGE-NAME has been loaded.
+:config          Code to run after PACKAGE-NAME has been loaded.  Note that
+                 if loading is deferred for any reason, this code does not
+                 execute until the lazy load has occurred.
+:preface         Code to be run before everything except `:disabled'; this
+                 can be used to define functions for use in `:if', or that
+                 should be seen by the byte-compiler.
+
+:mode            Form to be added to `auto-mode-alist'.
+:magic           Form to be added to `magic-mode-alist'.
+:magic-fallback  Form to be added to `magic-fallback-mode-alist'.
+:interpreter     Form to be added to `interpreter-mode-alist'.
+
+:commands        Define autoloads for commands that will be defined by the
+                 package.  This is useful if the package is being lazily
+                 loaded, and you wish to conditionally call functions in your
+                 `:init' block that are defined in the package.
+:autoload        Similar to :commands, but it for no-interactive one.
+:hook            Specify hook(s) to attach this package to.
+
+:bind            Bind keys, and define autoloads for the bound commands.
+:bind*           Bind keys, and define autoloads for the bound commands,
+                 *overriding all minor mode bindings*.
+:bind-keymap     Bind a key prefix to an auto-loaded keymap defined in the
+                 package.  This is like `:bind', but for keymaps.
+:bind-keymap*    Like `:bind-keymap', but overrides all minor mode bindings
+
+:defer           Defer loading of a package -- this is implied when using
+                 `:commands', `:bind', `:bind*', `:mode', `:magic', `:hook',
+                 `:magic-fallback', or `:interpreter'.  This can be an integer,
+                 to force loading after N seconds of idle time, if the package
+                 has not already been loaded.
+:demand          Prevent the automatic deferred loading introduced by constructs
+                 such as `:bind' (see `:defer' for the complete list).
+
+:after           Delay the effect of the use-package declaration
+                 until after the named libraries have loaded.
+                 Before they have been loaded, no other keyword
+                 has any effect at all, and once they have been
+                 loaded it is as if `:after' was not specified.
+
+:if EXPR         Initialize and load only if EXPR evaluates to a non-nil value.
+:disabled        The package is ignored completely if this keyword is present.
+:defines         Declare certain variables to silence the byte-compiler.
+:functions       Declare certain functions to silence the byte-compiler.
+:load-path       Add to the `load-path' before attempting to load the package.
+:diminish        Support for diminish.el (if installed).
+:delight         Support for delight.el (if installed).
+:custom          Call `Custom-set' or `set-default' with each variable
+                 definition without modifying the Emacs `custom-file'.
+                 (compare with `custom-set-variables').
+:custom-face     Call `custom-set-faces' with each face definition.
+:ensure          Loads the package using package.el if necessary.
+:pin             Pin the package to an archive.
+
+(fn NAME &rest ARGS)" nil t)
+(function-put 'use-package 'lisp-indent-function 'defun)
+(register-definition-prefixes "use-package-core" '("use-package-"))
+
+
+;;; Generated autoloads from use-package/use-package-delight.el
+
+(autoload 'use-package-normalize/:delight "use-package-delight" "\
+Normalize arguments to delight.
+
+(fn NAME KEYWORD ARGS)")
+(autoload 'use-package-handler/:delight "use-package-delight" "\
+
+
+(fn NAME KEYWORD ARGS REST STATE)")
+(register-definition-prefixes "use-package-delight" '("use-package-normalize-delight"))
+
+
+;;; Generated autoloads from use-package/use-package-diminish.el
+
+(autoload 'use-package-normalize/:diminish "use-package-diminish" "\
+
+
+(fn NAME KEYWORD ARGS)")
+(autoload 'use-package-handler/:diminish "use-package-diminish" "\
+
+
+(fn NAME KEYWORD ARG REST STATE)")
+(register-definition-prefixes "use-package-diminish" '("use-package-normalize-diminish"))
+
+
+;;; Generated autoloads from use-package/use-package-ensure.el
+
+(autoload 'use-package-normalize/:ensure "use-package-ensure" "\
+
+
+(fn NAME KEYWORD ARGS)")
+(autoload 'use-package-handler/:ensure "use-package-ensure" "\
+
+
+(fn NAME KEYWORD ENSURE REST STATE)")
+(register-definition-prefixes "use-package-ensure" '("use-package-"))
+
+
+;;; Generated autoloads from use-package/use-package-ensure-system-package.el
+
+(push (purecopy '(use-package-ensure-system-package 0 2)) package--builtin-versions)
+(autoload 'use-package-normalize/:ensure-system-package "use-package-ensure-system-package" "\
+Turn ARGS into a list of conses of the form (PACKAGE-NAME . INSTALL-COMMAND).
+
+(fn NAME-SYMBOL KEYWORD ARGS)")
+(autoload 'use-package-handler/:ensure-system-package "use-package-ensure-system-package" "\
+Execute the handler for `:ensure-system-package' keyword in `use-package'.
+
+(fn NAME KEYWORD ARG REST STATE)")
+(register-definition-prefixes "use-package-ensure-system-package" '("use-package-ensure-system-package-"))
+
+
+;;; Generated autoloads from use-package/use-package-jump.el
+
+(autoload 'use-package-jump-to-package-form "use-package-jump" "\
+Attempt to find and jump to the `use-package' form that loaded PACKAGE.
+This will only find the form if that form actually required
+PACKAGE.  If PACKAGE was previously required then this function
+will jump to the file that originally required PACKAGE instead.
+
+(fn PACKAGE)" t)
+(register-definition-prefixes "use-package-jump" '("use-package-find-require"))
+
+
+;;; Generated autoloads from use-package/use-package-lint.el
+
+(autoload 'use-package-lint "use-package-lint" "\
+Check for errors in `use-package' declarations.
+For example, if the module's `:if' condition is met, but even
+with the specified `:load-path' the module cannot be found." t)
+(register-definition-prefixes "use-package-lint" '("use-package-lint-declaration"))
 
 
 ;;; Generated autoloads from userlock.el
@@ -36600,6 +36941,16 @@ a new xwidget-webkit session, otherwise use an existing session.
 
 (fn BOOKMARK)")
 (register-definition-prefixes "xwidget" '("xwidget-"))
+
+
+;;; Generated autoloads from textmodes/yaml-ts-mode.el
+
+(add-to-list 'auto-mode-alist '("\\.ya?ml\\'" . yaml-ts-mode))
+(autoload 'yaml-ts-mode "yaml-ts-mode" "\
+Major mode for editing YAML, powered by tree-sitter.
+
+(fn)" t)
+(register-definition-prefixes "yaml-ts-mode" '("yaml-ts-mode--"))
 
 
 ;;; Generated autoloads from yank-media.el

@@ -1,6 +1,6 @@
 /* Lisp parsing and input streams.
 
-Copyright (C) 1985-1989, 1993-1995, 1997-2022 Free Software Foundation,
+Copyright (C) 1985-1989, 1993-1995, 1997-2023 Free Software Foundation,
 Inc.
 
 This file is part of GNU Emacs.
@@ -5479,11 +5479,16 @@ to the specified file name if a suffix is allowed or required.  */);
 
   DEFVAR_LISP ("dynamic-library-suffixes", Vdynamic_library_suffixes,
 	       doc: /* A list of suffixes for loadable dynamic libraries.  */);
-  Vdynamic_library_suffixes =
-    Fcons (build_pure_c_string (DYNAMIC_LIB_SECONDARY_SUFFIX), Qnil);
-  Vdynamic_library_suffixes =
-    Fcons (build_pure_c_string (DYNAMIC_LIB_SUFFIX),
-	   Vdynamic_library_suffixes);
+
+#ifndef MSDOS
+  Vdynamic_library_suffixes
+    = Fcons (build_pure_c_string (DYNAMIC_LIB_SECONDARY_SUFFIX), Qnil);
+  Vdynamic_library_suffixes
+    = Fcons (build_pure_c_string (DYNAMIC_LIB_SUFFIX),
+	     Vdynamic_library_suffixes);
+#else
+  Vdynamic_library_suffixes = Qnil;
+#endif
 
   DEFVAR_LISP ("load-file-rep-suffixes", Vload_file_rep_suffixes,
 	       doc: /* List of suffixes that indicate representations of \

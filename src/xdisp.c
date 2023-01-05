@@ -1,6 +1,6 @@
 /* Display generation from window structure and buffer text.
 
-Copyright (C) 1985-2022  Free Software Foundation, Inc.
+Copyright (C) 1985-2023 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -6281,13 +6281,16 @@ static ptrdiff_t
 string_buffer_position (Lisp_Object string, ptrdiff_t around_charpos)
 {
   const int MAX_DISTANCE = 1000;
+  ptrdiff_t forward_limit = min (around_charpos + MAX_DISTANCE, ZV);
   ptrdiff_t found = string_buffer_position_lim (string, around_charpos,
-						around_charpos + MAX_DISTANCE,
-						false);
+						forward_limit, false);
 
   if (!found)
-    found = string_buffer_position_lim (string, around_charpos,
-					around_charpos - MAX_DISTANCE, true);
+    {
+      ptrdiff_t backward_limit = max (around_charpos - MAX_DISTANCE, BEGV);
+      found = string_buffer_position_lim (string, around_charpos,
+					  backward_limit, true);
+    }
   return found;
 }
 
@@ -14268,12 +14271,14 @@ redisplay_tab_bar (struct frame *f)
 	frame_default_tab_bar_height = new_height;
     }
 
-  /* If new_height or new_nrows indicate that we need to enlarge the
-     tab-bar window, we can return right away.  */
+  /* If new_height or new_nrows indicate that we need to enlarge or
+     shrink the tab-bar window, we can return right away.  */
   if (new_nrows > f->n_tab_bar_rows
       || (EQ (Vauto_resize_tab_bars, Qgrow_only)
 	  && !f->minimize_tab_bar_window_p
-	  && new_height > WINDOW_PIXEL_HEIGHT (w)))
+	  && new_height > WINDOW_PIXEL_HEIGHT (w))
+      || (! EQ (Vauto_resize_tab_bars, Qgrow_only)
+	  && new_height < WINDOW_PIXEL_HEIGHT (w)))
     {
       if (FRAME_TERMINAL (f)->change_tab_bar_height_hook)
 	FRAME_TERMINAL (f)->change_tab_bar_height_hook (f, new_height);
@@ -16835,6 +16840,13 @@ redisplay_internal (void)
 		/* Only GC scrollbars when we redisplay the whole frame.  */
 		= f->redisplay || !REDISPLAY_SOME_P ();
 	      bool f_redisplay_flag = f->redisplay;
+
+	      /* The X error handler may have deleted that frame
+		 before we went back to retry_frame.  This must come
+		 before any accesses to f->terminal.  */
+	      if (!FRAME_LIVE_P (f))
+		continue;
+
 	      /* Mark all the scroll bars to be removed; we'll redeem
 		 the ones we want when we redisplay their windows.  */
 	      if (gcscrollbars && FRAME_TERMINAL (f)->condemn_scroll_bars_hook)
@@ -16842,7 +16854,6 @@ redisplay_internal (void)
 
 	      if (FRAME_VISIBLE_P (f) && !FRAME_OBSCURED_P (f))
 		{
-
 		  /* Don't allow freeing images and faces for this
 		     frame as long as the frame's update wasn't
 		     completed.  This prevents crashes when some Lisp
@@ -17264,7 +17275,6 @@ mark_window_display_accurate_1 (struct window *w, bool accurate_p)
 
       BUF_UNCHANGED_MODIFIED (b) = BUF_MODIFF (b);
       BUF_OVERLAY_UNCHANGED_MODIFIED (b) = BUF_OVERLAY_MODIFF (b);
-      BUF_CHARS_UNCHANGED_MODIFIED (b) = BUF_CHARS_MODIFF (b);
       BUF_BEG_UNCHANGED (b) = BUF_GPT (b) - BUF_BEG (b);
       BUF_END_UNCHANGED (b) = BUF_Z (b) - BUF_GPT (b);
 
@@ -19430,6 +19440,13 @@ redisplay_window (Lisp_Object window, bool just_this_one_p)
 	    blank_row (w, row, y);
 	  goto finish_scroll_bars;
 	}
+      else if (minibuf_level >= 1)
+	{
+	  /* We could have a message produced by set-minibuffer-message
+	     displayed in the mini-window as an overlay, so resize the
+	     mini-window if needed.  */
+	  resize_mini_window (w, false);
+	}
 
       clear_glyph_matrix (w->desired_matrix);
     }
@@ -19535,7 +19552,7 @@ redisplay_window (Lisp_Object window, bool just_this_one_p)
   /* Check whether the buffer to be displayed contains long lines.  */
   if (!NILP (Vlong_line_threshold)
       && !current_buffer->long_line_optimizations_p
-      && (CHARS_MODIFF - CHARS_UNCHANGED_MODIFIED > 8
+      && (CHARS_MODIFF - UNCHANGED_MODIFIED > 8
 	  || current_buffer->clip_changed))
     {
       ptrdiff_t cur, next, found, max = 0, threshold;

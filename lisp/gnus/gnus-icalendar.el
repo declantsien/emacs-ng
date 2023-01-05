@@ -1,6 +1,6 @@
 ;;; gnus-icalendar.el --- reply to iCalendar meeting requests  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2013-2022 Free Software Foundation, Inc.
+;; Copyright (C) 2013-2023 Free Software Foundation, Inc.
 
 ;; Author: Jan Tatarik <Jan.Tatarik@gmail.com>
 ;; Keywords: mail, icalendar, org
@@ -603,7 +603,7 @@ is searched."
     (when file
       (switch-to-buffer (find-file file))
       (goto-char (org-find-entry-with-id (gnus-icalendar-event:uid event)))
-      (org-show-entry))))
+      (org-fold-show-entry))))
 
 
 (defun gnus-icalendar--update-org-event (event reply-status &optional org-file)

@@ -1,6 +1,6 @@
 ;;; esh-io.el --- I/O management  -*- lexical-binding:t -*-
 
-;; Copyright (C) 1999-2022 Free Software Foundation, Inc.
+;; Copyright (C) 1999-2023 Free Software Foundation, Inc.
 
 ;; Author: John Wiegley <johnw@gnu.org>
 
@@ -342,7 +342,11 @@ If HANDLES is nil, use `eshell-current-handles'."
   (when target
     (let ((handles (or handles eshell-current-handles)))
       (if (and (stringp target)
-               (string= target (null-device)))
+               ;; The literal string "/dev/null" is intentional here.
+               ;; It just provides compatibility so that users can
+               ;; redirect to "/dev/null" no matter the actual value
+               ;; of `null-device'.
+               (string= target "/dev/null"))
           (aset handles index nil)
         (let ((where (eshell-get-target target mode))
               (current (car (aref handles index))))

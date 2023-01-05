@@ -1,6 +1,6 @@
 ;;; sh-script.el --- shell-script editing commands for Emacs  -*- lexical-binding:t -*-
 
-;; Copyright (C) 1993-1997, 1999, 2001-2022 Free Software Foundation,
+;; Copyright (C) 1993-1997, 1999, 2001-2023 Free Software Foundation,
 ;; Inc.
 
 ;; Author: Daniel Pfeiffer <occitan@esperanto.org>
@@ -149,6 +149,8 @@
   (require 'subr-x))
 (require 'executable)
 (require 'treesit)
+
+(declare-function treesit-parser-create "treesit.c")
 
 (autoload 'comint-completion-at-point "comint")
 (autoload 'comint-filename-completion "comint")
@@ -1611,7 +1613,9 @@ with your script for an edit-interpret-debug cycle."
   "Major mode for editing Bash shell scripts.
 This mode automatically falls back to `sh-mode' if the buffer is
 not written in Bash or sh."
+  :syntax-table sh-mode-syntax-table
   (when (treesit-ready-p 'bash)
+    (treesit-parser-create 'bash)
     (setq-local treesit-font-lock-feature-list
                 '(( comment function)
                   ( command declaration-command keyword string)
@@ -1619,6 +1623,7 @@ not written in Bash or sh."
                   ( bracket delimiter misc-punctuation operator)))
     (setq-local treesit-font-lock-settings
                 sh-mode--treesit-settings)
+    (setq-local treesit-defun-type-regexp "function_definition")
     (treesit-major-mode-setup)))
 
 (advice-add 'bash-ts-mode :around #'sh--redirect-bash-ts-mode

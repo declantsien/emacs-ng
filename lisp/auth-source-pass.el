@@ -1,6 +1,6 @@
 ;;; auth-source-pass.el --- Integrate auth-source with password-store -*- lexical-binding: t -*-
 
-;; Copyright (C) 2015, 2017-2022 Free Software Foundation, Inc.
+;; Copyright (C) 2015, 2017-2023 Free Software Foundation, Inc.
 
 ;; Author: Damien Cassou <damien@cassou.me>,
 ;;         Nicolas Petton <nicolas@petton.fr>
@@ -111,12 +111,12 @@ HOSTS can be a string or a list of strings."
 (defun auth-source-pass--match-regexp (s)
   (rx-to-string ; autoloaded
    `(: (or bot "/")
-       (or (: (? (group-n 20 (+ (not (in ?\  ?/ ,s)))) "@")
-              (group-n 10 (+ (not (in ?\  ?/ ?@ ,s))))
-              (? ,s (group-n 30 (+ (not (in ?\  ?/ ,s))))))
-           (: (group-n 11 (+ (not (in ?\  ?/ ?@ ,s))))
-              (? ,s (group-n 31 (+ (not (in ?\  ?/ ,s)))))
-              (? "/" (group-n 21 (+ (not (in ?\  ?/ ,s)))))))
+       (or (: (? (group-n 20 (+ (not (in ?/ ,s)))) "@")     ; user prefix
+              (group-n 10 (+ (not (in ?/ ?@ ,s))))          ; host
+              (? ,s (group-n 30 (+ (not (in ?\s ?/ ,s)))))) ; port
+           (: (group-n 11 (+ (not (in ?/ ?@ ,s))))          ; host
+              (? ,s (group-n 31 (+ (not (in ?\s ?/ ,s)))))  ; port
+              (? "/" (group-n 21 (+ (not (in ?/ ,s)))))))   ; user suffix
        eot)
    'no-group))
 

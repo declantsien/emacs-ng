@@ -1,6 +1,6 @@
 @c -*- mode: texinfo; coding: utf-8 -*-
 @c This is part of the GNU Emacs Lisp Reference Manual.
-@c Copyright (C) 1990--1994, 1998--2022 Free Software Foundation, Inc.
+@c Copyright (C) 1990--1994, 1998--2023 Free Software Foundation, Inc.
 @c See the file elisp.texi for copying conditions.
 @node Keymaps
 @chapter Keymaps
@@ -841,7 +841,7 @@ keymaps:
           (@var{find-in-any} emulation-mode-map-alists)
           (@var{find-in-any} minor-mode-overriding-map-alist)
           (@var{find-in-any} minor-mode-map-alist)
-          (if (get-text-property (point) 'local-map)
+          (if (get-char-property (point) 'local-map)
               (@var{find-in} (get-char-property (point) 'local-map))
             (@var{find-in} (current-local-map)))))
     (@var{find-in} (current-global-map)))

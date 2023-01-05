@@ -1,6 +1,6 @@
 ;;; cus-edit.el --- tools for customizing Emacs and Lisp packages -*- lexical-binding:t -*-
 
-;; Copyright (C) 1996-2022 Free Software Foundation, Inc.
+;; Copyright (C) 1996-2023 Free Software Foundation, Inc.
 
 ;; Author: Per Abrahamsen <abraham@dina.kvl.dk>
 ;; Maintainer: emacs-devel@gnu.org
@@ -1073,7 +1073,7 @@ plain variables.  This means that `setopt' will execute any
   ;; Check that the type is correct.
   (when-let ((type (get variable 'custom-type)))
     (unless (widget-apply (widget-convert type) :match value)
-      (user-error "Value `%S' does not match type %s" value type)))
+      (warn "Value `%S' does not match type %s" value type)))
   (put variable 'custom-check-value (list value))
   (funcall (or (get variable 'custom-set) #'set-default) variable value))
 

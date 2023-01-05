@@ -1,6 +1,6 @@
 ;;; erc-scenarios-misc.el --- Misc scenarios for ERC -*- lexical-binding: t -*-
 
-;; Copyright (C) 2022 Free Software Foundation, Inc.
+;; Copyright (C) 2022-2023 Free Software Foundation, Inc.
 
 ;; This file is part of GNU Emacs.
 
@@ -98,11 +98,10 @@
                                 :nick "tester"
                                 :full-name "tester")
         (should (string= (buffer-name) (format "127.0.0.1:%d" port)))
-        (let ((err (should-error (sleep-for 1))))
-          (should (string-match-p "Failed to determine" (cadr err))))
         (funcall expect 1 "Failed to determine")
         (funcall expect 1 "Failed to determine")
-        (should-not erc-network)
+        (funcall expect 1 "Connection failed")
+        (should (string-prefix-p "Unknown" (erc-network-name)))
         (should (string= erc-server-announced-name "irc.foonet.org"))))))
 
 ;; Targets that are host/server masks like $*, $$*, and #* are routed

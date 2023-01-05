@@ -1,6 +1,6 @@
 ;;; ido.el --- interactively do things with buffers and files -*- lexical-binding: t -*-
 
-;; Copyright (C) 1996-2022 Free Software Foundation, Inc.
+;; Copyright (C) 1996-2023 Free Software Foundation, Inc.
 
 ;; Author: Kim F. Storm <storm@cua.dk>
 ;; Based on: iswitchb by Stephen Eglen <stephen@cns.ed.ac.uk>
@@ -2435,7 +2435,7 @@ If cursor is not at the end of the user input, move to end of input."
                                 filename))
 	      (ido-record-command method dirname)
 	      (ido-record-work-directory dirname)
-	      (make-directory-internal dirname)
+	      (make-directory dirname)
 	      (funcall method dirname))
 	     (t
 	      ;; put make-directory command on history

@@ -1,6 +1,6 @@
 /* Generate a Secure Computing filter definition file.
 
-Copyright (C) 2020-2022 Free Software Foundation, Inc.
+Copyright (C) 2020-2023 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -342,6 +342,8 @@ main (int argc, char **argv)
   RULE (SCMP_ACT_ALLOW, SCMP_SYS (eventfd2));
   RULE (SCMP_ACT_ALLOW, SCMP_SYS (wait4));
   RULE (SCMP_ACT_ALLOW, SCMP_SYS (poll));
+  RULE (SCMP_ACT_ALLOW, SCMP_SYS (pidfd_open),
+	SCMP_A1_32 (SCMP_CMP_EQ, 0));
 
   /* Don't allow creating sockets (network access would be extremely
      dangerous), but also don't crash.  */

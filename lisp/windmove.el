@@ -1,6 +1,6 @@
 ;;; windmove.el --- directional window-selection routines  -*- lexical-binding:t -*-
 
-;; Copyright (C) 1998-2022 Free Software Foundation, Inc.
+;; Copyright (C) 1998-2023 Free Software Foundation, Inc.
 
 ;; Author: Hovav Shacham <hovav@cs.stanford.edu>
 ;; Created: 17 October 1998
@@ -776,7 +776,8 @@ Default value of MODIFIERS is `shift-super'."
 (defconst windmove--default-keybindings-type
   `(choice (const :tag "Don't bind" nil)
            (cons :tag "Bind using"
-                 (key-sequence :tag "Prefix")
+                 (choice (key-sequence :tag "Prefix")
+                         (const :tag "No Prefix" nil))
                  (set :tag "Modifier"
                       :greedy t
                       ;; See `(elisp) Keyboard Events'

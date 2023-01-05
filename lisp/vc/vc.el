@@ -1,6 +1,6 @@
 ;;; vc.el --- drive a version-control system from within Emacs  -*- lexical-binding:t -*-
 
-;; Copyright (C) 1992-1998, 2000-2022 Free Software Foundation, Inc.
+;; Copyright (C) 1992-1998, 2000-2023 Free Software Foundation, Inc.
 
 ;; Author: FSF (see below for full credits)
 ;; Maintainer: emacs-devel@gnu.org
@@ -1135,7 +1135,7 @@ BEWARE: this function may change the current buffer."
       (vc-dir-deduce-fileset state-model-only-files))
      ((derived-mode-p 'dired-mode)
       (dired-vc-deduce-fileset state-model-only-files not-state-changing))
-     ((derived-mode-p 'diff-mode)
+     ((and (derived-mode-p 'diff-mode) (not buffer-file-name))
       (diff-vc-deduce-fileset))
      ((setq backend (vc-backend buffer-file-name))
       (if state-model-only-files

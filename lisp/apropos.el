@@ -1,6 +1,6 @@
 ;;; apropos.el --- apropos commands for users and programmers  -*- lexical-binding: t -*-
 
-;; Copyright (C) 1989-2022 Free Software Foundation, Inc.
+;; Copyright (C) 1989-2023 Free Software Foundation, Inc.
 
 ;; Author: Joe Wells <jbw@bigbird.bu.edu>
 ;;	Daniel Pfeiffer <occitan@esperanto.org> (rewrite)
@@ -496,7 +496,7 @@ Intended as a value for `revert-buffer-function'."
               outline-level (lambda () 1)
               outline-minor-mode-cycle t
               outline-minor-mode-highlight t
-              outline-minor-mode-use-buttons t))
+              outline-minor-mode-use-buttons 'insert))
 
 (defvar apropos-multi-type t
   "If non-nil, this apropos query concerns multiple types.

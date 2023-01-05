@@ -1,6 +1,6 @@
 ;;; tabulated-list.el --- generic major mode for tabulated lists -*- lexical-binding: t -*-
 
-;; Copyright (C) 2011-2022 Free Software Foundation, Inc.
+;; Copyright (C) 2011-2023 Free Software Foundation, Inc.
 
 ;; Author: Chong Yidong <cyd@stupidchicken.com>
 ;; Keywords: extensions, lisp
@@ -261,8 +261,6 @@ Populated by `tabulated-list-init-header'.")
 
 (define-obsolete-function-alias 'tabulated-list-line-number-width
   'header-line-indent--line-number-width "29.1")
-(define-obsolete-function-alias 'tabulated-list-watch-line-number-width
-  'header-line-indent--watch-line-number-width "29.1")
 (define-obsolete-function-alias 'tabulated-list-watch-line-number-width
   'header-line-indent--watch-line-number-width "29.1")
 (define-obsolete-function-alias 'tabulated-list-window-scroll-function

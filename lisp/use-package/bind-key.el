@@ -1,6 +1,6 @@
 ;;; bind-key.el --- A simple way to manage personal keybindings  -*- lexical-binding: t; -*-
 
-;; Copyright (c) 2012-2022 Free Software Foundation, Inc.
+;; Copyright (c) 2012-2023 Free Software Foundation, Inc.
 
 ;; Author: John Wiegley <johnw@newartisans.com>
 ;; Maintainer: John Wiegley <johnw@newartisans.com>
@@ -282,7 +282,7 @@ Accepts keyword arguments:
                          key in the repeat map, but will not set the
                          `repeat-map' property of the bound command.
 :continue BINDINGS     - Within the scope of `:repeat-map' forces the
-                         same behaviour as if no special keyword had
+                         same behavior as if no special keyword had
                          been used (that is, the command is bound, and
                          it's `repeat-map' property set)
 :filter FORM           - optional form to determine when bindings apply
@@ -429,7 +429,7 @@ Accepts keyword arguments:
                          key in the repeat map, but will not set the
                          `repeat-map' property of the bound command.
 :continue BINDINGS     - Within the scope of `:repeat-map' forces the
-                         same behaviour as if no special keyword had
+                         same behavior as if no special keyword had
                          been used (that is, the command is bound, and
                          it's `repeat-map' property set)
 :filter FORM           - optional form to determine when bindings apply
@@ -542,13 +542,13 @@ other modes.  See `override-global-mode'."
                  (format
                   (format "%%-%ds%%-%ds%%s\n" (car bind-key-column-widths)
                           (cdr bind-key-column-widths))
-                  key-name (format "`%s\'" command-desc)
+                  key-name (format "`%s'" command-desc)
                   (if (string= command-desc at-present-desc)
                       (if (or (null was-command)
                               (string= command-desc was-command-desc))
                           ""
-                        (format "was `%s\'" was-command-desc))
-                    (format "[now: `%s\']" at-present)))))
+                        (format "was `%s'" was-command-desc))
+                    (format "[now: `%s']" at-present)))))
             (princ (if (string-match "[ \t]+\n" line)
                        (replace-match "\n" t t line)
                      line))))

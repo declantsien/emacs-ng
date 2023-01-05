@@ -10,7 +10,7 @@
 @copying
 This manual is for Eglot, the Emacs LSP client.
 
-Copyright @copyright{} 2022 Free Software Foundation, Inc.
+Copyright @copyright{} 2022--2023 Free Software Foundation, Inc.
 
 @quotation
 Permission is granted to copy, distribute and/or modify this document
@@ -954,6 +954,13 @@ example:
 Note that you can still configure the excluded Emacs features manually
 to use Eglot in your @code{eglot-managed-mode-hook} or via some other
 mechanism.
+
+@vindex eglot-report-progress
+@cindex progress
+@item eglot-report-progress
+Set this variable to true if you'd like progress notifications coming
+from the LSP server to be handled as Emacs's progress reporting
+facilities.
 
 @vindex eglot-workspace-configuration
 @cindex server workspace configuration

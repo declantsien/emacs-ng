@@ -1,6 +1,6 @@
 ;;; flymake.el --- A universal on-the-fly syntax checker  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2003-2022 Free Software Foundation, Inc.
+;; Copyright (C) 2003-2023 Free Software Foundation, Inc.
 
 ;; Author: Pavel Kobyakov <pk_at_work@yahoo.com>
 ;; Maintainer: João Távora <joaotavora@gmail.com>
@@ -54,9 +54,8 @@
 ;; (question mark) if no backends were even configured.
 ;;
 ;; For programmers interested in writing a new Flymake backend, the
-;; docstring of `flymake-diagnostic-functions', the Flymake manual,
-;; and the code of existing backends are probably a good starting
-;; point.
+;; docstring of `flymake-diagnostic-functions', the Flymake manual, and the
+;; code of existing backends are probably good starting points.
 ;;
 ;; The user wishing to customize the appearance of error types should
 ;; set properties on the symbols associated with each diagnostic type.

@@ -1,6 +1,6 @@
 ;;; tramp.el --- Transparent Remote Access, Multiple Protocol  -*- lexical-binding:t -*-
 
-;; Copyright (C) 1998-2022 Free Software Foundation, Inc.
+;; Copyright (C) 1998-2023 Free Software Foundation, Inc.
 
 ;; Author: Kai Großjohann <kai.grossjohann@gmx.net>
 ;;         Michael Albinus <michael.albinus@gmx.de>
@@ -2605,12 +2605,14 @@ Must be handled by the callers."
 	      file-selinux-context file-symlink-p file-truename
 	      file-writable-p find-backup-file-name get-file-buffer
 	      insert-directory insert-file-contents load
-	      make-directory make-directory-internal set-file-acl
-	      set-file-modes set-file-selinux-context set-file-times
+	      make-directory set-file-acl set-file-modes
+	      set-file-selinux-context set-file-times
 	      substitute-in-file-name unhandled-file-name-directory
 	      vc-registered
 	      ;; Emacs 27+ only.
 	      file-system-info
+	      ;; Emacs 28- only.
+	      make-directory-internal
 	      ;; Emacs 28+ only.
 	      file-locked-p lock-file make-lock-file-name unlock-file
 	      ;; Emacs 29+ only.
@@ -4692,7 +4694,8 @@ Do not set it manually, it is used buffer-local in `tramp-get-lock-pid'.")
 	      (or
 	       ;; The host name is used for the remote shell command.
 	       (member
-		'("%h") (tramp-get-method-parameter item 'tramp-login-args))
+		"%h" (tramp-compat-flatten-tree
+		      (tramp-get-method-parameter item 'tramp-login-args)))
 	       ;; The host name must match previous hop.
 	       (string-match-p previous-host host))
 	    (setq tramp-default-proxies-alist saved-tdpa)

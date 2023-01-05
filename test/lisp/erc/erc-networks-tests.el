@@ -1,6 +1,6 @@
 ;;; erc-networks-tests.el --- Tests for erc-networks.  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2020-2022 Free Software Foundation, Inc.
+;; Copyright (C) 2020-2023 Free Software Foundation, Inc.
 
 ;; This file is part of GNU Emacs.
 ;;
@@ -194,6 +194,36 @@
     (kill-buffer "bob@barnet")
     (should (equal (erc-networks-tests--bufnames "bob") '("bob")))
     (should (eq bob-foonet (get-buffer "bob"))))
+
+  (erc-networks-tests--clean-bufs))
+
+;; A non-ERC buffer exists named "bob", and we're killing one of two
+;; ERC target buffers named "bob@<netid>".  The surviving buffer
+;; retains its suffix.
+
+(ert-deftest erc-networks-rename-surviving-target-buffer--query-non-target ()
+  (should (memq #'erc-networks-rename-surviving-target-buffer
+                erc-kill-buffer-hook))
+
+  (let ((existing (get-buffer-create "bob"))
+        (bob-foonet (get-buffer-create "bob@foonet")))
+
+    (with-current-buffer bob-foonet
+      (erc-mode)
+      (setq erc-networks--id (make-erc-networks--id-qualifying
+                              :parts [foonet "bob"] :len 1)
+            erc--target (erc--target-from-string "bob")))
+
+    (with-current-buffer (get-buffer-create "bob@barnet")
+      (erc-mode)
+      (setq erc-networks--id (make-erc-networks--id-qualifying
+                              :parts [barnet "bob"] :len 1)
+            erc--target (erc--target-from-string "bob")))
+
+    (kill-buffer "bob@barnet")
+    (should (buffer-live-p existing))
+    (should (buffer-live-p bob-foonet))
+    (kill-buffer existing))
 
   (erc-networks-tests--clean-bufs))
 
@@ -1171,6 +1201,8 @@
     (let (erc-server-announced-name
           (erc--isupport-params (make-hash-table))
           erc-network
+          erc-quit-hook
+          (erc-server-process (erc-networks-tests--create-live-proc))
           calls)
       (erc-mode)
 
@@ -1183,10 +1215,7 @@
 
         (ert-info ("Signals when table empty and NETWORK param unset")
           (setq erc-server-announced-name "irc.fake.gnu.org")
-          (let ((err (should-error (erc-networks--set-name
-                                    nil (make-erc-response)))))
-            (should (string-match-p "failed" (cadr err)))
-            (should (eq (car err) 'error)))
+          (should (eq 'error (erc-networks--set-name nil (make-erc-response))))
           (should (string-match-p (rx "*** Failed") (car (pop calls)))))))
 
     (erc-networks-tests--clean-bufs)))

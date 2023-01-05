@@ -1,6 +1,6 @@
 ;;; tramp-gvfs.el --- Tramp access functions for GVFS daemon  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2009-2022 Free Software Foundation, Inc.
+;; Copyright (C) 2009-2023 Free Software Foundation, Inc.
 
 ;; Author: Michael Albinus <michael.albinus@gmx.de>
 ;; Keywords: comm, processes
@@ -690,7 +690,7 @@ It has been changed in GVFS 1.14.")
     ("gvfs-set-attribute" . "set"))
   "List of cons cells, mapping \"gvfs-<command>\" to \"gio <command>\".")
 
-;; <http://www.pygtk.org/docs/pygobject/gio-constants.html>
+;; <https://www.pygtk.org/docs/pygobject/gio-constants.html>
 (eval-and-compile
   (defconst tramp-gvfs-file-attributes
     '("name"

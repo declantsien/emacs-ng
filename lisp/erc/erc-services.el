@@ -1,6 +1,6 @@
 ;;; erc-services.el --- Identify to NickServ  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2002-2004, 2006-2022 Free Software Foundation, Inc.
+;; Copyright (C) 2002-2004, 2006-2023 Free Software Foundation, Inc.
 
 ;; Maintainer: Amin Bandali <bandali@gnu.org>, F. Jason Park <jp@neverwas.me>
 ;; URL: https://www.emacswiki.org/emacs/ErcNickserv
@@ -180,7 +180,7 @@ Called with a subset of keyword parameters known to
 `auth-source-search' and relevant to authenticating to nickname
 services.  In return, ERC expects a string to send as the
 password, or nil, to fall through to the next method, such as
-prompting.  See info node `(erc) Connecting' for details."
+prompting.  See info node `(erc) auth-source' for details."
   :package-version '(ERC . "5.4.1") ; FIXME update when publishing to ELPA
   :type '(choice (const erc-auth-source-search)
                  (const nil)

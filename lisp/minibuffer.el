@@ -1,6 +1,6 @@
 ;;; minibuffer.el --- Minibuffer and completion functions -*- lexical-binding: t -*-
 
-;; Copyright (C) 2008-2022 Free Software Foundation, Inc.
+;; Copyright (C) 2008-2023 Free Software Foundation, Inc.
 
 ;; Author: Stefan Monnier <monnier@iro.umontreal.ca>
 ;; Package: emacs
@@ -1326,9 +1326,9 @@ pair of a group title string and a list of group candidate strings."
   :version "28.1")
 
 (defface completions-group-separator
-  '((t :inherit shadow :underline t))
+  '((t :inherit shadow :strike-through t))
   "Face used for the separator lines between the candidate groups."
-  :version "29.1")
+  :version "28.1")
 
 (defun completion--cycle-threshold (metadata)
   (let* ((cat (completion-metadata-get metadata 'category))
@@ -1474,7 +1474,10 @@ when the buffer's text is already an exact match."
               (if (and (eq this-command last-command) completion-auto-help)
                   (minibuffer-completion-help beg end))
               (completion--done completion 'exact
-                                (unless expect-exact
+                                (unless (or expect-exact
+                                            (and completion-auto-select
+                                                 (eq this-command last-command)
+                                                 completion-auto-help))
                                   "Complete, but not unique"))))
 
             (minibuffer--bitset completed t exact))))))))

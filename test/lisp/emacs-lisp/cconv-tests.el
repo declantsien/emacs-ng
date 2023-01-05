@@ -1,6 +1,6 @@
 ;;; cconv-tests.el --- Tests for cconv.el  -*- lexical-binding: t -*-
 
-;; Copyright (C) 2018-2022 Free Software Foundation, Inc.
+;; Copyright (C) 2018-2023 Free Software Foundation, Inc.
 
 ;; This file is part of GNU Emacs.
 
@@ -60,7 +60,7 @@
                    "cl-defun documentation"))
   (should (eq (cconv-tests-cl-defun) 'cl-defun-result)))
 
-;; FIXME: The byte-complier croaks on this.  See Bug#28557.
+;; FIXME: The byte-compiler croaks on this.  See Bug#28557.
 ;; (defmacro cconv-tests-defmacro ()
 ;;   (:documentation (concat "defmacro" " documentation"))
 ;;   '(quote defmacro-result))
@@ -70,7 +70,7 @@
 ;;                    "defmacro documentation"))
 ;;   (should (eq (cconv-tests-defmacro) 'defmacro-result)))
 
-;; FIXME: The byte-complier croaks on this.  See Bug#28557.
+;; FIXME: The byte-compiler croaks on this.  See Bug#28557.
 ;; (cl-defmacro cconv-tests-cl-defmacro ()
 ;;   (:documentation (concat "cl-defmacro" " documentation"))
 ;;   '(quote cl-defmacro-result))

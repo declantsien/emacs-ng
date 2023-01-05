@@ -1,6 +1,6 @@
 ;;; erc-tests.el --- Tests for erc.  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2020-2022 Free Software Foundation, Inc.
+;; Copyright (C) 2020-2023 Free Software Foundation, Inc.
 
 ;; Author: Lars Ingebrigtsen <larsi@gnus.org>
 
@@ -428,18 +428,21 @@
 
     (ert-info ("ascii")
       (puthash 'CASEMAPPING  '("ascii") erc--isupport-params)
+      (should (equal (erc-downcase "ABC 123 ΔΞΩΣ") "abc 123 ΔΞΩΣ"))
       (should (equal (erc-downcase "Bob[m]`") "bob[m]`"))
       (should (equal (erc-downcase "Tilde~") "tilde~" ))
       (should (equal (erc-downcase "\\O/") "\\o/" )))
 
     (ert-info ("rfc1459")
       (puthash 'CASEMAPPING  '("rfc1459") erc--isupport-params)
+      (should (equal (erc-downcase "ABC 123 ΔΞΩΣ") "abc 123 ΔΞΩΣ"))
       (should (equal (erc-downcase "Bob[m]`") "bob{m}`" ))
       (should (equal (erc-downcase "Tilde~") "tilde^" ))
       (should (equal (erc-downcase "\\O/") "|o/" )))
 
     (ert-info ("rfc1459-strict")
       (puthash 'CASEMAPPING  '("rfc1459-strict") erc--isupport-params)
+      (should (equal (erc-downcase "ABC 123 ΔΞΩΣ") "abc 123 ΔΞΩΣ"))
       (should (equal (erc-downcase "Bob[m]`") "bob{m}`"))
       (should (equal (erc-downcase "Tilde~") "tilde~" ))
       (should (equal (erc-downcase "\\O/") "|o/" )))))
@@ -998,11 +1001,11 @@
 
 (ert-deftest erc-select-read-args ()
 
-  (ert-info ("Defaults to TLS")
+  (ert-info ("Does not default to TLS")
     (should (equal (ert-simulate-keys "\r\r\r\r"
                      (erc-select-read-args))
                    (list :server "irc.libera.chat"
-                         :port 6697
+                         :port 6667
                          :nick (user-login-name)
                          :password nil))))
 
@@ -1033,7 +1036,7 @@
                          :password nil))))
 
   (ert-info ("Address includes nick and password")
-    (should (equal (ert-simulate-keys "nick:sesame@localhost:6667\r"
+    (should (equal (ert-simulate-keys "nick:sesame@localhost:6667\r\r"
                      (erc-select-read-args))
                    (list :server "localhost"
                          :port 6667
@@ -1328,7 +1331,7 @@ Some docstring"
 
                       (defun erc-mname-enable (&optional ,arg-en)
                         "Enable ERC mname mode.
-With ARG, do so in all buffers for the current connection."
+When called interactively, do so in all buffers for the current connection."
                         (interactive "p")
                         (when (derived-mode-p 'erc-mode)
                           (if ,arg-en
@@ -1340,7 +1343,7 @@ With ARG, do so in all buffers for the current connection."
 
                       (defun erc-mname-disable (&optional ,arg-dis)
                         "Disable ERC mname mode.
-With ARG, do so in all buffers for the current connection."
+When called interactively, do so in all buffers for the current connection."
                         (interactive "p")
                         (when (derived-mode-p 'erc-mode)
                           (if ,arg-dis

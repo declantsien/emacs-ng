@@ -4,7 +4,7 @@ dnl	autoconf
 dnl in the directory containing this script.
 dnl If you changed any AC_DEFINES, also run autoheader.
 dnl
-dnl Copyright (C) 1994-1996, 1999-2022 Free Software Foundation, Inc.
+dnl Copyright (C) 1994-1996, 1999-2023 Free Software Foundation, Inc.
 dnl
 dnl  This file is part of GNU Emacs.
 dnl
@@ -3299,6 +3299,7 @@ AC_SUBST([JSON_OBJ])
 
 HAVE_TREE_SITTER=no
 TREE_SITTER_OBJ=
+NEED_DYNLIB=no
 
 if test "${with_tree_sitter}" != "no"; then
    dnl Tree-sitter 0.20.2 added support to change the malloc it uses
@@ -3324,6 +3325,7 @@ if test "${with_tree_sitter}" != "no"; then
       LIBS=$OLD_LIBS
       if test "$ac_cv_func_ts_set_allocator" = yes; then
         AC_DEFINE(HAVE_TREE_SITTER, 1, [Define if using tree-sitter.])
+	NEED_DYNLIB=yes
       else
         AC_MSG_ERROR([Tree-sitter library exists but its version is too old]);
         TREE_SITTER_CFLAGS=
@@ -4233,7 +4235,6 @@ AC_SUBST(DYNAMIC_LIB_SECONDARY_SUFFIX)
 LIBMODULES=
 HAVE_MODULES=no
 MODULES_OBJ=
-NEED_DYNLIB=no
 MODULES_SUFFIX="${DYNAMIC_LIB_SUFFIX}"
 MODULES_SECONDARY_SUFFIX="${DYNAMIC_LIB_SECONDARY_SUFFIX}"
 
@@ -5332,6 +5333,7 @@ AC_CACHE_CHECK([whether signals can be handled on alternate stack],
 	       [emacs_cv_alternate_stack],
   [AC_COMPILE_IFELSE(
      [AC_LANG_PROGRAM([[#include <signal.h>
+			#include <stdlib.h>
 		      ]],
 		      [[stack_t ss;
 			struct sigaction sa;
@@ -6221,7 +6223,7 @@ fi
 
 version=$PACKAGE_VERSION
 
-copyright="Copyright (C) 2022 Free Software Foundation, Inc."
+copyright="Copyright (C) 2023 Free Software Foundation, Inc."
 AC_DEFINE_UNQUOTED([COPYRIGHT], ["$copyright"],
   [Short copyright string for this version of Emacs.])
 AC_SUBST([copyright])
