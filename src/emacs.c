@@ -953,8 +953,12 @@ load_pdump (int argc, char **argv)
   /* On MS-Windows, PATH_EXEC normally starts with a literal
      "%emacs_dir%", so it will never work without some tweaking.  */
   path_exec = w32_relocate (path_exec);
-#elif defined (HAVE_NS)
+#elif defined (NS_SELF_CONTAINED)
+#ifdef HAVE_NS
   path_exec = ns_relocate (path_exec);
+#elif defined (USE_WEBRENDER) && defined (DARWIN_OS)
+  path_exec = app_bundle_relocate (path_exec);
+#endif
 #endif
 
   /* Look for "emacs-FINGERPRINT.pdmp" in PATH_EXEC.  We hardcode
@@ -1226,7 +1230,7 @@ maybe_load_seccomp (int argc, char **argv)
 #endif  /* SECCOMP_USABLE */
 
 int
-main (int argc, char **argv)
+main1 (int argc, char **argv)
 {
   /* Variable near the bottom of the stack, and aligned appropriately
      for pointers.  */
@@ -1977,10 +1981,10 @@ Using an Emacs configured with --with-x-toolkit=lucid does not have this problem
   init_module_assertions (module_assertions);
 #endif
 
-#ifdef HAVE_NS
+#if defined(HAVE_NS) || defined(USE_WEBRENDER)
   if (!noninteractive)
     {
-#ifdef NS_IMPL_COCOA
+#if defined(NS_IMPL_COCOA) || defined(WEBRENDER_IMPL_COCOA)
       /* Started from GUI? */
       bool go_home = (!ch_to_dir && !inhibit_window_system
 		      && !isatty (STDIN_FILENO));
@@ -2375,6 +2379,12 @@ Using an Emacs configured with --with-x-toolkit=lucid does not have this problem
 #endif
       syms_of_fontset ();
 #endif /* HAVE_HAIKU */
+
+#ifdef USE_WEBRENDER
+      syms_of_wrterm ();
+      /* syms_of_wrfns (); */
+      syms_of_fontset ();
+#endif /* USE_WEBRENDER */
 
       syms_of_gnutls ();
 
@@ -3214,8 +3224,10 @@ decode_env_path (const char *evarname, const char *defalt, bool empty)
 {
   const char *path, *p;
   Lisp_Object lpath, element, tem;
+#ifdef HAVE_NS
 #ifdef NS_SELF_CONTAINED
   void *autorelease = NULL;
+#endif
 #endif
   /* Default is to use "." for empty path elements.
      But if argument EMPTY is true, use nil instead.  */
@@ -3244,9 +3256,14 @@ decode_env_path (const char *evarname, const char *defalt, bool empty)
   if (!path)
     {
 #ifdef NS_SELF_CONTAINED
+#ifdef HAVE_NS
       /* ns_relocate needs a valid autorelease pool around it.  */
       autorelease = ns_alloc_autorelease_pool ();
       path = ns_relocate (defalt);
+#elif defined (USE_WEBRENDER)
+      path = app_bundle_relocate (defalt);
+#endif
+
 #else
       path = defalt;
 #endif
@@ -3348,10 +3365,11 @@ decode_env_path (const char *evarname, const char *defalt, bool empty)
       else
 	break;
     }
-
+#ifdef HAVE_NS
 #ifdef NS_SELF_CONTAINED
   if (autorelease)
     ns_release_autorelease_pool (autorelease);
+#endif
 #endif
   return Fnreverse (lpath);
 }

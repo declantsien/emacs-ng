@@ -1,0 +1,63 @@
+site_name: Emacs NG - A new approach to Emacs
+site_description: A new approach to Emacs - Including TypeScript, Threading, Async I/O, and WebRender.
+site_url: https://emacs-ng.github.io/emacs-ng
+
+repo_name: emacs-ng/emacs-ng
+repo_url: https://github.com/emacs-ng/emacs-ng
+
+nav:
+  - Home:
+    - Overview: README.md
+    - Setup:
+      - Build from source: build/building.md
+      - Build with Docker: build/docker.md
+      - Release .deb package: build/release.md
+      - Nix Build / Develop: build/nix-develop.md
+    - Package management: package-management.md
+  - Deno/Javascript:
+    - Using Deno: js/using-deno.md
+    - Getting started: js/getting-started.md
+    - Basic features: js/main-features.md
+    - Advanced features: js/adv-features.md
+    - Architecture: js/architecture.md
+  - Webrender: webrender.md
+  - Dynamic modules: ng-module.md
+  - FAQ: faq.md
+  - Native Hackers Handbook:
+    - Getting started: handbook/getting-started.md
+    - Build: handbook/build.md
+    - Tests: handbook/tests.md
+    - lisp-fn: handbook/lisp-fn.md
+    - Types: handbook/types.md
+
+theme:
+  name: material
+  logo: images/logo.png
+  favicon: images/logo.png
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.tabs
+
+extra:
+  social:
+    - icon: fontawesome/brands/github-alt
+      link: https://github.com/emacs-ng/emacs-ng
+
+extra_css:
+  - stylesheets/layout.css
+
+markdown_extensions:
+  - pymdownx.superfences
+  - codehilite
+  - meta
+  - toc:
+      permalink: '#'
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+
+plugins:
+  - search
+  - awesome-pages
+  - git-revision-date-localized

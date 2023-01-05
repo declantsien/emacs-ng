@@ -6369,6 +6369,10 @@ garbage_collect (void)
 
   eassert(mark_stack_empty_p ());
 
+#ifdef USE_JAVASCRIPT
+  Fjs__sweep();
+#endif
+
   /* Record this function, so it appears on the profiler's backtraces.  */
   record_in_backtrace (QAutomatic_GC, 0, 0);
 

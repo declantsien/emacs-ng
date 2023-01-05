@@ -26,6 +26,20 @@ dnl Note this is parsed by (at least) make-dist and lisp/cedet/ede/emacs.el.
 AC_INIT([GNU Emacs], [30.0.50], [bug-gnu-emacs@gnu.org], [],
   [https://www.gnu.org/software/emacs/])
 
+
+AC_CHECK_PROGS([RUSTC], [rustc])
+test -z "$RUSTC" &&
+   AC_MSG_ERROR([Rust is required])
+
+case `($RUSTC --version) 2>/dev/null` in
+  *nightly* ) ;;
+  *) AC_MSG_ERROR([Rust Nightly Channel is required]);;
+esac
+
+AC_CHECK_PROGS([CARGO], [cargo])
+test -z "$CARGO" &&
+      AC_MSG_ERROR([CARGO is required])
+
 dnl Set emacs_config_options to the options of 'configure', quoted for the shell,
 dnl and then quoted again for a C string.  Separate options with spaces.
 dnl Add some environment variables, if they were passed via the environment
@@ -460,6 +474,7 @@ OPTION_DEFAULT_ON([lcms2],[don't compile with Little CMS support])
 OPTION_DEFAULT_ON([libsystemd],[don't compile with libsystemd support])
 OPTION_DEFAULT_ON([cairo],[don't compile with Cairo drawing])
 OPTION_DEFAULT_ON([xml2],[don't compile with XML parsing support])
+OPTION_DEFAULT_OFF([libgit],[enable libgit2 and git2rs (experimental)])
 OPTION_DEFAULT_OFF([imagemagick],[compile with ImageMagick image support])
 OPTION_DEFAULT_ON([native-image-api], [don't use native image APIs (GDI+ on Windows)])
 OPTION_DEFAULT_IFAVAILABLE([json], [compile with native JSON support])
@@ -520,6 +535,20 @@ otherwise for the first of 'inotify', 'kqueue' or 'gfile' that is usable.])
 
 OPTION_DEFAULT_OFF([xwidgets],
   [enable use of xwidgets in Emacs buffers (requires gtk3 or macOS Cocoa)])
+
+OPTION_DEFAULT_OFF([webrender],
+  [enable use of webrender(written in Rust) as GUI backend on
+multiple platforms(Linux, Windows and MacOS) (experimental)])
+
+## Based on Deno 1.9.1
+## Update the above when upgrading Deno
+OPTION_DEFAULT_OFF([javascript],
+  [enable use of JavaScript, TypeScript, and Deno within the emacs runtime(Linux, MacOs)])
+
+## For the times when you want to build Emacs but don't have
+## a suitable makeinfo, and can live without the manuals.
+dnl https://lists.gnu.org/r/emacs-devel/2008-04/msg01844.html
+OPTION_DEFAULT_ON([makeinfo],[don't require makeinfo for building manuals])
 
 OPTION_DEFAULT_OFF([be-app],
   [enable use of Haiku's Application Kit as a window system])
@@ -614,6 +643,7 @@ do
 done
 IFS="$ac_save_IFS"
 
+CARGO_CHECKING_FEATURES=""
 if test x$ac_enable_checking != x ; then
   AC_DEFINE([ENABLE_CHECKING], [1],
 [Define to 1 if expensive run-time data type and consistency checks are enabled.])
@@ -644,7 +674,9 @@ fi
 if test x$ac_glyphs_debug != x ; then
   AC_DEFINE([GLYPH_DEBUG], [1],
 [Define this to enable glyphs debugging code.])
+  CARGO_CHECKING_FEATURES="${CARGO_CHECKING_FEATURES}\"glyph-debug\", "
 fi
+AC_SUBST(CARGO_CHECKING_FEATURES)
 
 dnl The name of this option is unfortunate.  It predates, and has no
 dnl relation to, the "sampling-based elisp profiler" added in 24.3.
@@ -1041,6 +1073,17 @@ if test "$enable_check_lisp_object_type" = yes; then
     [Define to enable compile-time checks for the Lisp_Object data type.])
 fi
 
+# clang is unduly picky about some things.
+AC_CACHE_CHECK([whether the compiler is clang], [emacs_cv_clang],
+  [AC_COMPILE_IFELSE(
+     [AC_LANG_PROGRAM([[
+	  #ifndef __clang__
+	    error "not clang";
+	  #endif
+        ]])],
+     [emacs_cv_clang=yes],
+     [emacs_cv_clang=no])])
+
 WERROR_CFLAGS=
 # When compiling with GCC, prefer -isystem to -I when including system
 # include files, to avoid generating useless diagnostics for the files.
@@ -1264,6 +1307,29 @@ if test "$enable_silent_rules" = no; then
 else
   AM_DEFAULT_VERBOSITY=0
 fi
+
+AC_ARG_ENABLE(rust-debug,
+[AS_HELP_STRING([--enable-rust-debug],
+[build rust-src in debug mode
+Useful for debugging rust component of emacs-ng.])],
+[ac_enable_rust_debug="${enableval}"],[])
+
+AC_ARG_ENABLE(webrender-self-contained,
+[AS_HELP_STRING([--disable-webrender-self-contained],
+                [disable self contained Webrender build under NeXTstep])],
+   EN_NS_SELF_CONTAINED=$enableval,
+   EN_NS_SELF_CONTAINED=yes)
+
+AC_ARG_ENABLE(webrender-capture,
+[AS_HELP_STRING([--enable-webrender-capture],
+		[enable WebRender capture infrastructure.])],
+[ac_enable_webrender_capture="${enableval}"],[])
+
+AC_ARG_ENABLE(webrender-x11,
+[AS_HELP_STRING([--enable-webrender-x11],
+		[enable WebRender X11 support.])],
+[ac_enable_webrender_x11="${enableval}"],[])
+
 AC_SUBST([AM_DEFAULT_VERBOSITY])
 AC_CONFIG_FILES([src/verbose.mk])
 
@@ -1945,10 +2011,15 @@ AC_SUBST([AUTO_DEPEND])
 
 window_system=none
 
+if test "${with_webrender}" = "yes"; then
+  no_x=yes
+  with_ns=no
+  window_system=webrender
+fi
+
 if test "${with_pgtk}" = "yes"; then
   window_system=pgtk
 fi
-
 
 AC_PATH_X
 if test "$no_x" != yes && test "${with_pgtk}" != "yes"; then
@@ -2007,6 +2078,11 @@ else
 fi
 
 NATIVE_IMAGE_API=no
+
+HAVE_JAVASCRIPT=no
+if test "${with_javascript}" != no; then
+  HAVE_JAVASCRIPT=yes
+fi
 
 test "${with_ns}" = maybe && test "${opsys}" != darwin && with_ns=no
 HAVE_NS=no
@@ -2428,6 +2504,9 @@ dnl use the toolkit if we have gtk, or X11R5 or newer.
   ;;
   w32 )
     term_header=w32term.h
+  ;;
+  webrender )
+    term_header=wrterm.h
   ;;
   pgtk )
     term_header=pgtkterm.h
@@ -4850,6 +4929,12 @@ fi
 AC_SUBST([LIBXML2_LIBS])
 AC_SUBST([LIBXML2_CFLAGS])
 
+### Use libgit2 and git2rs
+if test "${with_libgit}" = "yes"; then
+  HAVE_LIBGIT=yes
+  AC_DEFINE(HAVE_LIBGIT, 1, [Define to 1 if you want to use libgit2 and git2rs.])
+fi
+
 BLESSMAIL_TARGET=
 LIBS_MAIL=
 if test ! "$with_mailutils"; then
@@ -6192,10 +6277,75 @@ fi
 if test "${HAVE_HARFBUZZ}" = "yes" ; then
   FONT_OBJ="$FONT_OBJ hbfont.o"
 fi
-AC_SUBST([FONT_OBJ])
 AC_SUBST([XMENU_OBJ])
 AC_SUBST([XOBJ])
 AC_SUBST([FONT_OBJ])
+
+WEBRENDER_OBJ=
+WEBRENDER_LIBS=
+WEBRENDER_IMPL_COCOA=no
+if test "${window_system}" = "webrender" ; then
+
+  AC_DEFINE(USE_WEBRENDER, 1,
+	    [Define to 1 if you want to use the webrender.])
+
+  AC_DEFINE(HAVE_NATIVE_IMAGE_API, 1, [Define to use native OS APIs for images.])
+            NATIVE_IMAGE_API="yes (webrender)"
+
+  WEBRENDER_OBJ="wrterm.o"
+
+  if test "${opsys}" = gnu-linux; then
+    EMACS_CHECK_MODULES([FREETYPE], [freetype2])
+    test "$HAVE_FREETYPE" = "no" && AC_MSG_ERROR(webrender requires libfreetype)
+
+    EMACS_CHECK_MODULES([FONTCONFIG], [fontconfig >= 2.2.0])
+    test "$HAVE_FONTCONFIG" = "no" && AC_MSG_ERROR(webrender requires libfontconfig)
+
+    EMACS_CHECK_MODULES([XCB], [xcb >= 1.0.0])
+    test "$HAVE_XCB" = "no" && AC_MSG_ERROR(WebRender Unix build requires libxcb)
+
+    WEBRENDER_LIBS="$WEBRENDER_LIBS -lxcb -lxcb-xfixes -lxcb-shape -lxcb-render"
+
+    if test x$ac_enable_webrender_x11 != x; then
+      WEBRENDER_LIBS="-lX11 -lX11-xcb $WEBRENDER_LIBS"
+    fi
+  fi
+
+  if test "${opsys}" = darwin; then
+     WEBRENDER_IMPL_COCOA=yes
+  fi
+
+  if test "${EN_NS_SELF_CONTAINED}" = yes && test "${opsys}" = darwin; then
+     AC_DEFINE(NS_SELF_CONTAINED, 1, [Build an Webrender NS bundled app])
+     ns_self_contained=yes
+     ns_appdir=`pwd`/nextstep/Emacs.app
+     ns_appbindir=${ns_appdir}/Contents/MacOS
+     ns_applibexecdir=${ns_appdir}/Contents/MacOS/libexec
+     ns_applibdir=${ns_appdir}/Contents/Frameworks
+     ns_appresdir=${ns_appdir}/Contents/Resources
+     OTHER_FILES=ns-app
+     ns_appsrc=Cocoa/Emacs.base
+     prefix=${ns_appresdir}
+     exec_prefix=${ns_appbindir}
+     dnl This one isn't really used, only archlibdir is.
+     libexecdir="\${ns_applibexecdir}"
+     archlibdir="\${ns_applibexecdir}"
+     etcdocdir="\${ns_appresdir}/etc"
+     etcdir="\${ns_appresdir}/etc"
+     dnl FIXME maybe set datarootdir instead.
+     dnl That would also get applications, icons, man.
+     infodir="\${ns_appresdir}/info"
+     mandir="\${ns_appresdir}/man"
+     lispdir="\${ns_appresdir}/lisp"
+     lispdirrel="\${ns_appresdir}/lisp"
+     test "$locallisppathset" = no && locallisppath="\${ns_appresdir}/site-lisp"
+     INSTALL_ARCH_INDEP_EXTRA=
+  fi
+
+fi
+AC_SUBST(WEBRENDER_OBJ)
+AC_SUBST(WEBRENDER_LIBS)
+AC_SUBST(WEBRENDER_IMPL_COCOA)
 
 WIDGET_OBJ=
 MOTIF_LIBW=
@@ -6376,6 +6526,71 @@ gl_INIT
 CFLAGS=$SAVE_CFLAGS
 LIBS=$SAVE_LIBS
 
+# Add Rust variables, libs and utilities
+
+RUSTFLAGS=$RUSTFLAGS
+
+AC_SUBST(RUSTFLAGS)
+
+CARGO="cargo"
+CARGO_BUILD="$CARGO build"
+CARGO_CLEAN="$CARGO clean"
+CARGO_TEST="$CARGO test"
+CARGO_CLIPPY="$CARGO clippy"
+CARGO_RUN="$CARGO run"
+CARGO_DOC="$CARGO doc --all --open --document-private-items"
+
+AC_SUBST(CARGO_BUILD)
+AC_SUBST(CARGO_CLEAN)
+AC_SUBST(CARGO_CLIPPY)
+AC_SUBST(CARGO_RUN)
+AC_SUBST(CARGO_DOC)
+
+if test x$ac_enable_rust_debug != x ; then
+CARGO_FLAGS="$CARGO_FLAGS"
+else
+CARGO_FLAGS="$CARGO_FLAGS --release"
+fi
+AC_SUBST(CARGO_FLAGS)
+
+case "${opsys}" in
+  darwin) RUST_DEPS="-ldl -lm -lresolv -lstdc++"
+        REMACSLIB_NAME="libremacs_lib.a"
+        EMACSNGLIB_NAME="libemacsng.a"
+        REMACSLIB_CFLAGS="-pthread -DEMACS_EXTERN_INLINE" ;;
+  gnu*) RUST_DEPS="-ldl -lm -lrt -lstdc++"
+        REMACSLIB_NAME="libremacs_lib.a"
+        EMACSNGLIB_NAME="libemacsng.a"
+        REMACSLIB_CFLAGS="-pthread -DEMACS_EXTERN_INLINE" ;;
+esac
+
+if test "${HAVE_W32}" = "yes"; then
+    REMACSLIB_NAME="remacs_lib.lib"
+    EMACSNGLIB_NAME="libemacsng.lib"
+    RUST_DEPS="$RUST_DEPS -lws2_32 -luserenv"
+
+    # Windows fails linking in the 'cargo test' stage, skip for now.
+    CARGO_TEST="true"
+fi
+
+LIB_REMACS="$RUST_DEPS"
+
+LDFLAGS_REMACS="-L../$srcdir/target/\${CARGO_BUILD_DIR}"
+
+# On macOS, rand crate needs '_SecRandomCopyBytes' symbol in Security framework.
+if test "${opsys}" = "darwin"; then
+LDFLAGS_REMACS="$LDFLAGS_REMACS -framework Security"
+fi
+
+LDFLAGS="$LDFLAGS $LDFLAGS_REMACS"
+
+AC_SUBST(LIB_REMACS)
+AC_SUBST(RUST_DEPS)
+AC_SUBST(REMACSLIB_CFLAGS)
+AC_SUBST(REMACSLIB_NAME)
+AC_SUBST(EMACSNGLIB_NAME)
+AC_SUBST(CARGO_TEST)
+
 # timer_getoverrun needs the same library as timer_settime
 OLD_LIBS=$LIBS
 LIBS="$LIB_TIMER_TIME $LIBS"
@@ -6394,7 +6609,11 @@ case "$opsys" in
   cygwin) LD_SWITCH_SYSTEM_TEMACS="-Wl,-stack,0x00800000" ;;
 
   darwin)
-   if test "$HAVE_NS" = "yes"; then
+   if test "${with_webrender}" = "yes"; then
+     libs_nsgui="-framework AppKit -framework IOKit -framework Carbon \
+                 -framework IOSurface -framework QuartzCore -framework OpenGL \
+		 -framework Metal"
+   elif test "$HAVE_NS" = "yes"; then
      libs_nsgui="-framework AppKit"
      if test "$NS_IMPL_COCOA" = "yes"; then
         libs_nsgui="$libs_nsgui -framework IOKit -framework Carbon \
@@ -6406,6 +6625,12 @@ case "$opsys" in
    else
      libs_nsgui=
    fi
+
+   if test "$HAVE_JAVASCRIPT" = "yes"; then
+      # Deno webgpu has Metal requirement
+      libs_nsgui="$libs_nsgui -framework Metal"
+   fi
+
    LD_SWITCH_SYSTEM_TEMACS=$libs_nsgui
    ## The -headerpad option tells ld (see man page) to leave room at the
    ## end of the header for adding load commands.  Needed for dumping.
@@ -6575,6 +6800,7 @@ Configured for '${canonical}'.
   Should Emacs use mmap(2) for buffer allocation?         $use_mmap_for_buffers
   What window system should Emacs use?                    ${window_system}
   What toolkit should Emacs use?                          ${USE_X_TOOLKIT}
+  What libraries will lib-remacs link against?            ${RUST_DEPS}
   Where do we find X Windows header files?                ${x_includes:-$emacs_standard_dirs}
   Where do we find X Windows libraries?                   ${x_libraries:-$emacs_standard_dirs}"])
 
@@ -6664,6 +6890,8 @@ AS_ECHO(["  Does Emacs use -lXaw3d?                                 ${HAVE_XAW3D
   Does Emacs support legacy unexec dumping?               ${with_unexec}
   Which dumping strategy does Emacs use?                  ${with_dumping}
   Does Emacs have native lisp compiler?                   ${HAVE_NATIVE_COMP}
+  Does Emacs use webrender?                               ${with_webrender}
+  Does Emacs include JavaScript?                          ${with_javascript}
   Does Emacs use version 2 of the X Input Extension?      ${HAVE_XINPUT2}
   Does Emacs generate a smaller-size Japanese dictionary? ${with_small_ja_dic}
 "])
@@ -6677,7 +6905,7 @@ fi
 
 echo
 
-if test "$HAVE_NS" = "yes"; then
+if test "$HAVE_NS" = "yes" || test "${window_system}" = "webrender"; then
    echo
    AS_ECHO(["Run '${MAKE-make}' to build Emacs, then run 'src/emacs' to test it.
 Run '${MAKE-make} install' in order to build an application bundle.
@@ -6779,13 +7007,60 @@ dnl the use of force in the 'epaths-force' rule in Makefile.in.
 AC_CONFIG_COMMANDS([src/epaths.h], [
 if test "${opsys}" = "mingw32"; then
   ${MAKE-make} MAKEFILE_NAME=do-not-make-Makefile epaths-force-w32
-elif test "$HAVE_NS" = "yes" && test "$EN_NS_SELF_CONTAINED" = "yes"; then
+elif (test "$HAVE_NS" = "yes" || \
+     (test "${window_system}" = "webrender" && test "${opsys}" = darwin)) && \
+      test "$EN_NS_SELF_CONTAINED" = "yes"; then
   ${MAKE-make} MAKEFILE_NAME=do-not-make-Makefile epaths-force-ns-self-contained
 else
   ${MAKE-make} MAKEFILE_NAME=do-not-make-Makefile epaths-force
 fi || AC_MSG_ERROR(['src/epaths.h' could not be made.])
 ], [GCC="$GCC" CPPFLAGS="$CPPFLAGS" opsys="$opsys" HAVE_NS="$HAVE_NS"
-    EN_NS_SELF_CONTAINED="$EN_NS_SELF_CONTAINED"])
+    window_system="$window_system" EN_NS_SELF_CONTAINED="$EN_NS_SELF_CONTAINED"])
+
+CARGO_DEFAULT_FEATURES=""
+WEBRENDER_DEFAULT_FEATURES=""
+if test "$HAVE_LIBXML2" = "yes"; then
+    CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"use-xml2\", "
+fi
+if test "$window_system" != "none"; then
+    CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system\", "
+fi
+case "$window_system" in
+    x11)
+        CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-x11\", "
+    ;;
+    nextstep)
+	CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-nextstep\", "
+    ;;
+    w32)
+        CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-w32\", "
+    ;;
+    webrender)
+        CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-webrender\", "
+	if test x$ac_enable_webrender_capture != x ; then
+	   WEBRENDER_DEFAULT_FEATURES="\"capture\", ${WEBRENDER_DEFAULT_FEATURES}"
+	fi
+	if test x$ac_enable_webrender_x11 != x ; then
+	   WEBRENDER_DEFAULT_FEATURES="\"x11\", ${WEBRENDER_DEFAULT_FEATURES}"
+	fi
+    ;;
+esac
+if test "$HAVE_LIBGIT" = "yes"; then
+   CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"libgit\", "
+fi
+if test "$HAVE_JAVASCRIPT" = "yes"; then
+  AC_DEFINE(USE_JAVASCRIPT, 1, [Define to 1 if you want to use deno/javascript.])
+  CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"javascript\", "
+fi
+if test "${HAVE_MODULES}" = "yes"; then
+  CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"ng-module\", "
+fi
+AC_SUBST(CARGO_DEFAULT_FEATURES)
+AC_SUBST(WEBRENDER_DEFAULT_FEATURES)
+AC_CONFIG_FILES([Cargo.toml:Cargo.in])
+webrender_src=$srcdir/rust_src/crates/webrender
+AC_CONFIG_FILES([$webrender_src/Cargo.toml:$webrender_src/Cargo.in])
+AC_CONFIG_FILES([$srcdir/rust_src/crates/emacs/build.rs])
 
 dnl NB we have to cheat and use the ac_... version because abs_top_srcdir
 dnl is not yet set, sigh.  Or we could use ../$srcdir/src/.gdbinit,

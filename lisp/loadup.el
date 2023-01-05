@@ -282,7 +282,7 @@
 (load "emacs-lisp/tabulated-list")
 (load "buff-menu")
 
-(if (fboundp 'x-create-frame)
+(if (or (fboundp 'x-create-frame) (fboundp 'wr-create-frame))
     (progn
       (load "fringe")
       ;; Needed by `imagemagick-register-types'
@@ -343,6 +343,13 @@
       (load "pgtk-dnd")
       (load "term/common-win")
       (load "term/pgtk-win")))
+
+(if (featurep 'wr)
+    (progn
+      ;; (load "x-dnd")
+      (load "term/common-win")
+      (load "term/wr-win")))
+
 (if (fboundp 'x-create-frame)
     ;; Do it after loading term/foo-win.el since the value of the
     ;; mouse-wheel-*-event vars depends on those files being loaded or not.

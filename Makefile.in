@@ -87,6 +87,13 @@ AWK = @AWK@
 
 EXEEXT=@EXEEXT@
 
+RUSTFLAGS=@RUSTFLAGS@
+CARGO_BUILD=@CARGO_BUILD@
+CARGO_CLEAN=@CARGO_CLEAN@
+CARGO_CLIPPY=@CARGO_CLIPPY@
+CARGO_TEST=@CARGO_TEST@
+CARGO_FLAGS=@CARGO_FLAGS@
+
 ### These help us choose version- and architecture-specific directories
 ### to install files in.
 
@@ -222,6 +229,10 @@ icondir=$(datarootdir)/icons
 
 # The source directory for the icon files.
 iconsrcdir=$(srcdir)/etc/images/icons
+
+# Root of rust src tree (where Cargo.toml is located).
+rust_srcdir=$(srcdir)/rust_src
+cargo_manifest=$(top_srcdir)/Cargo.toml
 
 # Where to install the gsettings schema file.
 gsettingsschemadir = $(datadir)/glib-2.0/schemas
@@ -1007,6 +1018,7 @@ clean: $(clean_dirs:=_clean) clean-gsettings-schemas
 	-rm -f ./*.tmp etc/*.tmp*
 	-rm -rf info-dir.*
 	-rm -rf native-lisp
+	-$(CARGO_CLEAN) --manifest-path ${cargo_manifest}
 
 ### 'bootclean'
 ###      Delete all files that need to be remade for a clean bootstrap.
@@ -1096,9 +1108,16 @@ CHECK_TARGETS = check check-maybe check-expensive check-all
 $(CHECK_TARGETS): all
 	$(MAKE) -C test $@
 
+clippy:
+	$(MAKE) -C src $@
+
+rustdoc:
+	$(MAKE) -C src $@
+
+.PHONY: clippy
+
 test/%:
 	$(MAKE) -C test $*
-
 
 dist:
 	cd ${srcdir}; ./make-dist
@@ -1321,6 +1340,11 @@ check-declare:
 	fi
 	$(MAKE) -C lisp $@
 	$(MAKE) -C test $@
+
+.PHONY: rustfmt
+
+rustfmt:
+	(cd rust_src && cargo fmt --all)
 
 .PHONY: gitmerge
 

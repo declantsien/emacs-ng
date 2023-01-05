@@ -6560,6 +6560,14 @@ init_display_interactive (void)
     }
 #endif
 
+#ifdef USE_WEBRENDER
+  if (!inhibit_window_system)
+    {
+      Vinitial_window_system = Qwr;
+      return;
+    }
+#endif /* USE_WEBRENDER */
+
   /* If no window system has been specified, try to use the terminal.  */
   if (! isatty (STDIN_FILENO))
     fatal ("standard input is not a tty");

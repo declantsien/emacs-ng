@@ -76,12 +76,17 @@ struct font_info
   /* Font metrics cache.  */
   struct font_metrics **metrics;
   short metrics_nrows;
-#else
+#endif /*USE_CAIRO*/
+
+#ifdef HAVE_XFT
   /* These are used by the XFT backend.  */
   Display *display;
   XftFont *xftfont;
   unsigned x_display_id;
 #endif
+
+#ifdef USE_WEBRENDER
+#endif /*USE_WEBRENDER*/
 };
 
 #if defined USE_CAIRO && defined HAVE_X_WINDOWS

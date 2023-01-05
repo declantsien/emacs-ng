@@ -585,7 +585,7 @@ x_free_gc (struct frame *f, Emacs_GC *gc)
 {
   xfree (gc);
 }
-#endif  /* HAVE_NS */
+#endif  /* HAVE_NS || HAVE_HAIKU */
 
 #ifdef HAVE_PGTK
 /* PGTK emulation of GCs */
@@ -606,6 +606,26 @@ x_free_gc (struct frame *f, Emacs_GC *gc)
   xfree (gc);
 }
 #endif  /* HAVE_NS */
+
+#ifdef USE_WEBRENDER
+/* webrender emulation of GCs */
+
+static GC
+x_create_gc (struct frame *f,
+	     unsigned long mask,
+	     Emacs_GC *xgcv)
+{
+  GC gc = malloc (sizeof *gc);
+  *gc = *xgcv;
+  return gc;
+}
+
+static void
+x_free_gc (struct frame *f, GC gc)
+{
+  free (gc);
+}
+#endif  /* USE_WEBRENDER */
 
 /***********************************************************************
 			   Frames and faces

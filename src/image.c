@@ -175,6 +175,23 @@ typedef struct haiku_bitmap_record Bitmap_Record;
 
 #endif
 
+#ifdef USE_WEBRENDER
+typedef struct wr_bitmap_record Bitmap_Record;
+
+#define GET_PIXEL(ximg, x, y) wr_get_pixel(ximg, x, y)
+#define PUT_PIXEL(ximg, x, y, pixel) wr_put_pixel(ximg, x, y, pixel)
+#define NO_PIXMAP 0
+
+#define PIX_MASK_RETAIN	0
+#define PIX_MASK_DRAW	1
+
+void image_sync_to_pixmaps (struct frame *, struct image *);
+
+void image_pixmap_draw_cross(struct frame *, Emacs_Pixmap, int, int, unsigned int,
+  unsigned int, unsigned long);
+
+#endif /* USE_WEBRENDER */
+
 static void image_disable_image (struct frame *, struct image *);
 static void image_edge_detection (struct frame *, struct image *, Lisp_Object,
                                   Lisp_Object);
@@ -629,6 +646,7 @@ image_create_bitmap_from_file (struct frame *f, Lisp_Object file)
 {
 #if defined (HAVE_NTGUI)
   return -1;  /* W32_TODO : bitmap support */
+#elif defined (USE_WEBRENDER)
 #else
   Display_Info *dpyinfo = FRAME_DISPLAY_INFO (f);
 #endif
@@ -830,6 +848,10 @@ image_create_bitmap_from_file (struct frame *f, Lisp_Object file)
 
   xfree (contents);
   return id;
+#endif
+
+#if defined (USE_WEBRENDER)
+  return -1;
 #endif
 }
 
@@ -2530,6 +2552,7 @@ compute_image_size (double width, double height,
 
 typedef double matrix3x3[3][3];
 
+# if !defined USE_WEBRENDER
 static void
 matrix3x3_mult (matrix3x3 a, matrix3x3 b, matrix3x3 result)
 {
@@ -2542,6 +2565,7 @@ matrix3x3_mult (matrix3x3 a, matrix3x3 b, matrix3x3 result)
 	result[i][j] = sum;
       }
 }
+#endif
 
 static void
 compute_image_rotation (struct image *img, double *rotation)
@@ -2619,6 +2643,10 @@ image_set_transform (struct frame *f, struct image *img)
   /* Determine flipping.  */
   flip = !NILP (image_spec_value (img->spec, QCflip, NULL));
 
+#ifdef USE_WEBRENDER
+  return wr_transform_image(f, img, width, height, rotation);
+#endif /* USE_WEBRENDER */
+
 # if defined USE_CAIRO || defined HAVE_XRENDER || defined HAVE_NS || defined HAVE_HAIKU
   /* We want scale up operations to use a nearest neighbor filter to
      show real pixels instead of munging them, but scale down
@@ -2639,6 +2667,7 @@ image_set_transform (struct frame *f, struct image *img)
 
   /* Perform scale transformation.  */
 
+# if !defined USE_WEBRENDER
   matrix3x3 matrix
     = {
 # if defined USE_CAIRO || defined HAVE_XRENDER
@@ -2655,6 +2684,7 @@ image_set_transform (struct frame *f, struct image *img)
 	[0][0] = 1, [1][1] = 1,
 # endif
 	[2][2] = 1 };
+# endif //!defined USE_WEBRENDER
   img->width = width;
   img->height = height;
 
@@ -3490,6 +3520,10 @@ image_create_x_image_and_pixmap_1 (struct frame *f, int width, int height, int d
   *pimg = *pixmap;
   return 1;
 #endif
+
+#if defined (USE_WEBRENDER)
+  return 0;
+#endif
 }
 
 
@@ -3666,6 +3700,8 @@ image_get_x_image (struct frame *f, struct image *img, bool mask_p)
 
   ns_retain_object (pixmap);
   return pixmap;
+#elif defined (USE_WEBRENDER)
+  return NULL;
 #endif
 }
 
@@ -7049,6 +7085,8 @@ image_can_use_native_api (Lisp_Object type)
   return ns_can_use_native_image_api (type);
 # elif defined HAVE_HAIKU
   return haiku_can_use_native_image_api (type);
+# elif defined USE_WEBRENDER
+  return wr_can_use_native_image_api (type);
 # else
   return false;
 # endif
@@ -7125,6 +7163,9 @@ native_image_load (struct frame *f, struct image *img)
 # elif defined HAVE_HAIKU
   return haiku_load_image (f, img, image_file,
 			   image_spec_value (img->spec, QCdata, NULL));
+# elif defined USE_WEBRENDER
+  return wr_load_image (f, img, image_file,
+                        image_spec_value (img->spec, QCdata, NULL));
 # else
   return 0;
 # endif
@@ -11898,7 +11939,7 @@ The list of capabilities can include one or more of the following:
     {
 #ifdef HAVE_NATIVE_TRANSFORMS
 # if defined HAVE_IMAGEMAGICK || defined (USE_CAIRO) || defined (HAVE_NS) \
-  || defined (HAVE_HAIKU)
+  || defined (HAVE_HAIKU) || defined (USE_WEBRENDER)
       return list2 (Qscale, Qrotate90);
 # elif defined (HAVE_X_WINDOWS) && defined (HAVE_XRENDER)
       if (FRAME_DISPLAY_INFO (f)->xrender_supported_p)
