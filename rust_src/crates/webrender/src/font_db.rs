@@ -1,3 +1,5 @@
+#[cfg(all(unix, not(target_os = "macos")))]
+use font_loader::system_fonts;
 use fontdb::{FaceInfo, Family, Query, Stretch, Style, Weight};
 
 use std::str;
@@ -21,7 +23,37 @@ impl FontDB {
     pub fn new() -> FontDB {
         let mut db = fontdb::Database::new();
 
+        #[cfg(not(all(unix, not(target_os = "macos"))))]
         db.load_system_fonts();
+
+        #[cfg(all(unix, not(target_os = "macos")))]
+        {
+            let dirs = system_fonts::get_font_dirs();
+            for dir in &dirs {
+                log::trace!("Load fonts dir: {:?}", dir);
+                db.load_fonts_dir(dir);
+            }
+
+            if let Some(serif) = Self::query_generic("serif") {
+                db.set_serif_family(serif);
+            };
+
+            if let Some(sans_serif) = Self::query_generic("sans serif") {
+                db.set_serif_family(sans_serif);
+            };
+
+            if let Some(monospace) = Self::query_generic("monospace") {
+                db.set_monospace_family(monospace);
+            };
+
+            if let Some(cursive) = Self::query_generic("cursive") {
+                db.set_cursive_family(cursive);
+            };
+
+            if let Some(fantasy) = Self::query_generic("fantasy") {
+                db.set_cursive_family(fantasy);
+            };
+        }
 
         FontDB { db }
     }
@@ -87,5 +119,18 @@ impl FontDB {
                 style: slant,
             }),
         }
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    pub fn query_generic(name: &str) -> Option<String> {
+        let property = system_fonts::FontPropertyBuilder::new()
+            .family(name)
+            .build();
+        if let Some((_, _, family_name)) = system_fonts::get(&property) {
+            log::trace!("Query: {} Name: {}", name, family_name,);
+            return Some(family_name.to_owned());
+        }
+        log::trace!("Query: {} not found", name);
+        None
     }
 }
