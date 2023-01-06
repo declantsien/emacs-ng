@@ -17,8 +17,8 @@ use winit::{
     window::{CursorIcon, Window},
 };
 
-#[cfg(not(any(target_os = "macos", windows)))]
-use winit::platform::unix::WindowBuilderExtUnix;
+#[cfg(all(feature = "wayland", not(any(target_os = "macos", windows))))]
+use winit::platform::wayland::WindowBuilderExtWayland;
 
 use webrender::{self, api::units::*, api::*, RenderApi, Renderer, Transaction};
 

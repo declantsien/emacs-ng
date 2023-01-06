@@ -82,8 +82,21 @@ glyph-debug = []
 ### Patches
 
 # tmp ignore macOS alternative key characters.
-[patch.crates-io]
-winit = { git = "https://github.com/declantsien/winit", rev="d80de2ea150a36d078bd19b6c6ce1cc299304fc5" }
+[patch.crates-io.winit]
+git = "https://github.com/declantsien/winit"
+rev="716cceb53fa04dd47ca16a34ee5df07f72da1a2d"
+
+[patch.crates-io.font-loader]
+git = "https://github.com/declantsien/rust-font-loader.git"
+rev = "ca0f1be2d23f75e13e04cd07ba4111adfeaf2bd9"
 
 [patch.crates-io.fontdb]
 git = "https://github.com/RazrFalcon/fontdb.git"
+
+[patch.crates-io.surfman]
+git ="https://github.com/declantsien/surfman.git"
+rev = "95cb64e98be3111098655ad59d2fd8bd6ac24514"
+
+[patch.crates-io.surfman-chains]
+git = "https://github.com/declantsien/surfman-chains.git"
+rev = "3a244f056147d517ee1ca8a490c89628d1539c90"

@@ -21,7 +21,7 @@ use copypasta::{
 use libc::{c_void, fd_set, pselect, sigset_t, timespec};
 use once_cell::sync::Lazy;
 #[cfg(all(feature = "wayland", not(any(target_os = "macos", windows))))]
-use winit::platform::unix::EventLoopWindowTargetExtUnix;
+use winit::platform::wayland::EventLoopWindowTargetExtWayland;
 use winit::{
     event::{Event, StartCause, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopProxy},
