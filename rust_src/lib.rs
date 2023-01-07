@@ -1,3 +1,4 @@
+#[cfg(debug_assertions)]
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 use emacs::bindings::{main1, terminate_due_to_signal, will_dump_p};
