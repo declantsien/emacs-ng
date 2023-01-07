@@ -1,0 +1,39 @@
+[source.crates-io]
+replace-with = "vendored-sources"
+
+[source."https://github.com/RazrFalcon/fontdb.git"]
+git = "https://github.com/RazrFalcon/fontdb.git"
+replace-with = "vendored-sources"
+
+[source."https://github.com/declantsien/rust-font-loader.git"]
+git = "https://github.com/declantsien/rust-font-loader.git"
+rev = "0a53c767463e13346221ad23fa6dd50cd787cd72"
+replace-with = "vendored-sources"
+
+[source."https://github.com/declantsien/surfman-chains.git"]
+git = "https://github.com/declantsien/surfman-chains.git"
+rev = "3a244f056147d517ee1ca8a490c89628d1539c90"
+replace-with = "vendored-sources"
+
+[source."https://github.com/declantsien/surfman.git"]
+git = "https://github.com/declantsien/surfman.git"
+rev = "95cb64e98be3111098655ad59d2fd8bd6ac24514"
+replace-with = "vendored-sources"
+
+[source."https://github.com/declantsien/webrender_surfman.git"]
+git = "https://github.com/declantsien/webrender_surfman.git"
+rev = "e90a4e8696afe9b5301ad9cdeaf618801e0c2567"
+replace-with = "vendored-sources"
+
+[source."https://github.com/declantsien/winit"]
+git = "https://github.com/declantsien/winit"
+rev = "716cceb53fa04dd47ca16a34ee5df07f72da1a2d"
+replace-with = "vendored-sources"
+
+[source."https://github.com/servo/webrender.git"]
+git = "https://github.com/servo/webrender.git"
+rev = "da3fba3c4751c0bf4098309ecb4329110b062146"
+replace-with = "vendored-sources"
+
+[source.vendored-sources]
+directory = "vendor"
