@@ -7,12 +7,12 @@ use std::{
     time::{Duration, Instant},
 };
 
-#[cfg(target_os = "macos")]
+#[cfg(macos_platform)]
 use copypasta::osx_clipboard::OSXClipboardContext;
-#[cfg(target_os = "windows")]
+#[cfg(windows_platform)]
 use copypasta::windows_clipboard::WindowsClipboardContext;
 use copypasta::ClipboardProvider;
-#[cfg(all(unix, not(target_os = "macos")))]
+#[cfg(free_unix)]
 use copypasta::{
     wayland_clipboard::create_clipboards_from_external,
     x11_clipboard::{Clipboard, X11ClipboardContext},
@@ -20,8 +20,10 @@ use copypasta::{
 
 use libc::{c_void, fd_set, pselect, sigset_t, timespec};
 use once_cell::sync::Lazy;
-#[cfg(all(feature = "wayland", not(any(target_os = "macos", windows))))]
+#[cfg(wayland_platform)]
 use winit::platform::wayland::EventLoopWindowTargetExtWayland;
+#[cfg(x11_platform)]
+use winit::platform::x11::EventLoopWindowTargetExtX11;
 use winit::{
     event::{Event, StartCause, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopProxy},
@@ -141,7 +143,7 @@ impl WrEventLoop {
 }
 
 fn build_clipboard(_event_loop: &EventLoop<i32>) -> Box<dyn ClipboardProvider> {
-    #[cfg(all(unix, not(target_os = "macos")))]
+    #[cfg(free_unix)]
     {
         if _event_loop.is_wayland() {
             let wayland_display = _event_loop
@@ -153,11 +155,11 @@ fn build_clipboard(_event_loop: &EventLoop<i32>) -> Box<dyn ClipboardProvider> {
             Box::new(X11ClipboardContext::<Clipboard>::new().unwrap())
         }
     }
-    #[cfg(target_os = "windows")]
+    #[cfg(windows_platform)]
     {
         return Box::new(WindowsClipboardContext::new().unwrap());
     }
-    #[cfg(target_os = "macos")]
+    #[cfg(macos_platform)]
     {
         return Box::new(OSXClipboardContext::new().unwrap());
     }
@@ -234,8 +236,13 @@ pub extern "C" fn wr_select1(
     let nfds_result = RefCell::new(0);
 
     // We mush run winit in main thread, because the macOS platfrom limitation.
-    event_loop.el.run_return(|e, _, control_flow| {
+    event_loop.el.run_return(|e, _target, control_flow| {
         control_flow.set_wait_until(deadline);
+
+        if let Event::WindowEvent { event, .. } = &e {
+            // Print only Window events to reduce noise
+            log::trace!("{:?}", event);
+        }
 
         match e {
             Event::WindowEvent { ref event, .. } => match event {
@@ -249,16 +256,26 @@ pub extern "C" fn wr_select1(
                 | WindowEvent::MouseWheel { .. }
                 | WindowEvent::CloseRequested => {
                     EVENT_BUFFER.lock().unwrap().push(e.to_static().unwrap());
-
                     // notify emacs's code that a keyboard event arrived.
                     match signal::raise(Signal::SIGIO) {
                         Ok(_) => {}
                         Err(err) => log::error!("sigio err: {err:?}"),
                     };
-                    /* Pretend that `select' is interrupted by a signal.  */
-                    set_errno(Errno(libc::EINTR));
-                    debug_assert_eq!(nix::errno::errno(), libc::EINTR);
-                    nfds_result.replace(-1);
+
+                    let is_x11 = false;
+
+                    #[cfg(x11_platform)]
+                    let is_x11 = _target.is_x11();
+
+                    if is_x11 {
+                        nfds_result.replace(1);
+                    } else {
+                        /* Pretend that `select' is interrupted by a signal.  */
+                        set_errno(Errno(libc::EINTR));
+                        debug_assert_eq!(nix::errno::errno(), libc::EINTR);
+                        nfds_result.replace(-1);
+                    }
+
                     control_flow.set_exit();
                 }
                 _ => {}
@@ -277,7 +294,7 @@ pub extern "C" fn wr_select1(
     if ret == 0 {
         let timespec = unsafe { make_timespec(0, 0) };
         // Add some delay here avoding high cpu usage on macOS
-        #[cfg(target_os = "macos")]
+        #[cfg(macos_platform)]
         spin_sleep::sleep(Duration::from_millis(16));
         let nfds =
             unsafe { libc::pselect(nfds, readfds, writefds, _exceptfds, &timespec, _sigmask) };

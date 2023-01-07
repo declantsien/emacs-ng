@@ -45,6 +45,7 @@ rev = "e90a4e8696afe9b5301ad9cdeaf618801e0c2567"
 
 [build-dependencies]
 ng-bindgen = { path = "../../ng-bindgen" }
+cfg_aliases = "0.1"
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
 font-loader = "0.11"

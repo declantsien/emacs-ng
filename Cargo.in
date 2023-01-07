@@ -95,7 +95,7 @@ git = "https://github.com/RazrFalcon/fontdb.git"
 
 [patch.crates-io.surfman]
 git ="https://github.com/declantsien/surfman.git"
-rev = "95cb64e98be3111098655ad59d2fd8bd6ac24514"
+rev = "ad2bf7faacb5b240a47ce280f72e914d1590712f"
 
 [patch.crates-io.surfman-chains]
 git = "https://github.com/declantsien/surfman-chains.git"
