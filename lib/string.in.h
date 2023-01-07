@@ -1,6 +1,6 @@
 /* A GNU-like <string.h>.
 
-   Copyright (C) 1995-1996, 2001-2022 Free Software Foundation, Inc.
+   Copyright (C) 1995-1996, 2001-2023 Free Software Foundation, Inc.
 
    This file is free software: you can redistribute it and/or modify
    it under the terms of the GNU Lesser General Public License as
@@ -344,6 +344,23 @@ _GL_CXXALIASWARN (memrchr);
 # if HAVE_RAW_DECL_MEMRCHR
 _GL_WARN_ON_USE (memrchr, "memrchr is unportable - "
                  "use gnulib module memrchr for portability");
+# endif
+#endif
+
+/* Overwrite a block of memory.  The compiler will not optimize
+   effects away, even if the block is dead after the call.  */
+#if @GNULIB_MEMSET_EXPLICIT@
+# if ! @HAVE_MEMSET_EXPLICIT@
+_GL_FUNCDECL_SYS (memset_explicit, void *,
+                  (void *__dest, int __c, size_t __n) _GL_ARG_NONNULL ((1)));
+# endif
+_GL_CXXALIAS_SYS (memset_explicit, void *, (void *__dest, int __c, size_t __n));
+_GL_CXXALIASWARN (memset_explicit);
+#elif defined GNULIB_POSIXCHECK
+# undef memset_explicit
+# if HAVE_RAW_DECL_MEMSET_EXPLICIT
+_GL_WARN_ON_USE (memset_explicit, "memset_explicit is unportable - "
+                 "use gnulib module memset_explicit for portability");
 # endif
 #endif
 

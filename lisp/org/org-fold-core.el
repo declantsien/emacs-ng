@@ -1,6 +1,6 @@
 ;;; org-fold-core.el --- Folding buffer text -*- lexical-binding: t; -*-
 ;;
-;; Copyright (C) 2020-2020 Free Software Foundation, Inc.
+;; Copyright (C) 2020-2023 Free Software Foundation, Inc.
 ;;
 ;; Author: Ihor Radchenko <yantar92 at gmail dot com>
 ;; Keywords: folding, invisible text
@@ -145,7 +145,7 @@
 
 ;; All the folding specs can be specified by symbol representing their
 ;; name.  However, this is not always convenient, especially if the
-;; same spec can be used for fold different syntaxical structures.
+;; same spec can be used for fold different syntactical structures.
 ;; Any folding spec can be additionally referenced by a symbol listed
 ;; in the spec's `:alias' folding spec property.  For example, Org
 ;; mode's `org-fold-outline' folding spec can be referenced as any
@@ -189,9 +189,9 @@
 ;; all the processing related to buffer modifications.
 
 ;; The library also provides a way to unfold the text after some
-;; destructive changes breaking syntaxical structure of the buffer.
+;; destructive changes breaking syntactical structure of the buffer.
 ;; For example, Org mode automatically reveals folded drawers when the
-;; drawer becomes syntaxically incorrect:
+;; drawer becomes syntactically incorrect:
 ;; ------- before modification -------
 ;; :DRAWER:<begin fold>
 ;; Some folded text inside drawer
@@ -321,7 +321,7 @@ following symbols:
   functions relying on this package might not be able to unfold the
   edited text.  For example, removed leading stars from a folded
   headline in Org mode will break visibility cycling since Org mode
-  will not be avare that the following folded text belonged to
+  will not be aware that the following folded text belonged to
   headline.
 
 - `ignore-modification-checks': Do not try to detect insertions in the
@@ -497,7 +497,7 @@ hanging around."
   (declare (debug (form body)) (indent 0))
   `(let (buffers dead-properties)
      (if (and (not (buffer-base-buffer))
-              (not (eq (current-buffer) (car org-fold-core--indirect-buffers))))
+              (not (memq (current-buffer) org-fold-core--indirect-buffers)))
          ;; We are in base buffer with `org-fold-core--indirect-buffers' value from
          ;; different buffer.  This can happen, for example, when
          ;; org-capture copies local variables into *Capture* buffer.
@@ -930,6 +930,8 @@ are provided.
 
 If FROM is non-nil and TO is nil, search the folded regions at FROM.
 
+When both FROM and TO are nil, search folded regions in the whole buffer.
+
 When SPECS is non-nil it should be a list of folding specs or a symbol.
 Only return the matching fold types.
 
@@ -946,6 +948,9 @@ WITH-MARKERS must be nil when RELATIVE is non-nil."
   (unless (listp specs) (setq specs (list specs)))
   (let (regions region mk-region)
     (org-with-wide-buffer
+     (when (and (not from) (not to))
+       (setq from (point-min)
+             to (point-max)))
      (when (and from (not to)) (setq to (point-max)))
      (when (and from (< from (point-min))) (setq from (point-min)))
      (when (and to (> to (point-max))) (setq to (point-max)))
@@ -1058,7 +1063,7 @@ means that the buffer should stay alive during the operation,
 because otherwise all these markers will point to nowhere."
   (declare (debug (form body)) (indent 1))
   (org-with-gensyms (regions)
-    `(let* ((,regions ,(org-fold-core-get-regions :with-markers use-markers)))
+    `(let* ((,regions (org-fold-core-get-regions :with-markers ,use-markers)))
        (unwind-protect (progn ,@body)
          (org-fold-core-regions ,regions :override t :clean-markers t)))))
 

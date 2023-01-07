@@ -1,6 +1,6 @@
 ;;; erc-scenarios-base-network-id-samenet.el --- netid-id samenet scenarios -*- lexical-binding: t -*-
 
-;; Copyright (C) 2022 Free Software Foundation, Inc.
+;; Copyright (C) 2022-2023 Free Software Foundation, Inc.
 
 ;; This file is part of GNU Emacs.
 
@@ -39,6 +39,9 @@
        (erc-server-flood-penalty 0.1)
        (erc-server-flood-margin 30)
        erc-serv-buf-a erc-serv-buf-b)
+
+    (when (and id-a (zerop (random 2))) (setq id-a (symbol-name id-a)))
+    (when (and id-b (zerop (random 2))) (setq id-b (symbol-name id-b)))
 
     (ert-info ("Connect to foonet with nick tester")
       (with-current-buffer

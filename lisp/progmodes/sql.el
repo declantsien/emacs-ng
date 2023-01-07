@@ -1,6 +1,6 @@
 ;;; sql.el --- specialized comint.el for SQL interpreters  -*- lexical-binding: t -*-
 
-;; Copyright (C) 1998-2022 Free Software Foundation, Inc.
+;; Copyright (C) 1998-2023 Free Software Foundation, Inc.
 
 ;; Author: Alex Schroeder <alex@gnu.org>
 ;; Maintainer: Michael Mauger <michael@mauger.com>
@@ -4526,7 +4526,8 @@ optionally is saved to the user's init file."
   "Run PRODUCT interpreter as an inferior process.
 
 If buffer `*SQL*' exists but no process is running, make a new process.
-If buffer exists and a process is running, just switch to buffer `*SQL*'.
+If buffer exists and a process is running, just make sure buffer `*SQL*'
+is displayed.
 
 To specify the SQL product, prefix the call with
 \\[universal-argument].  To set the buffer name as well, prefix

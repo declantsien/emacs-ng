@@ -1,6 +1,6 @@
 ;;; byte-opt.el --- the optimization passes of the emacs-lisp byte compiler -*- lexical-binding: t -*-
 
-;; Copyright (C) 1991, 1994, 2000-2022 Free Software Foundation, Inc.
+;; Copyright (C) 1991, 1994, 2000-2023 Free Software Foundation, Inc.
 
 ;; Author: Jamie Zawinski <jwz@lucid.com>
 ;;	Hallvard Furuseth <hbf@ulrik.uio.no>
@@ -410,7 +410,10 @@ for speeding up processing.")
 
       (`(condition-case ,var ,exp . ,clauses)
        `(,fn ,var          ;Not evaluated.
-            ,(byte-optimize-form exp for-effect)
+             ,(byte-optimize-form exp
+                                  (if (assq :success clauses)
+                                      (null var)
+                                    for-effect))
           ,@(mapcar (lambda (clause)
                       (let ((byte-optimize--lexvars
                              (and lexical-binding
@@ -755,7 +758,8 @@ for speeding up processing.")
                  ((eq head 'list) (cdr form))
                  ((memq head
                         ;; FIXME: Replace this list with a function property?
-                        '( length safe-length cons lambda
+                        '( lambda internal-make-closure
+                           length safe-length cons
                            string unibyte-string make-string concat
                            format format-message
                            substring substring-no-properties string-replace
@@ -1297,11 +1301,8 @@ See Info node `(elisp) Integer Basics'."
       (if else
           `(progn ,condition ,@else)
         condition))
-     ;; (if X nil t) -> (not X)
-     ((and (eq then nil) (eq else '(t)))
-      `(not ,condition))
-     ;; (if X t [nil]) -> (not (not X))
-     ((and (eq then t) (or (null else) (eq else '(nil))))
+     ;; (if X t) -> (not (not X))
+     ((and (eq then t) (null else))
       `(not ,(byte-opt--negate condition)))
      ;; (if VAR VAR X...) -> (or VAR (progn X...))
      ((and (symbolp condition) (eq condition then))

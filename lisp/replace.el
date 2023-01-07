@@ -1,6 +1,6 @@
 ;;; replace.el --- replace commands for Emacs -*- lexical-binding: t -*-
 
-;; Copyright (C) 1985-1987, 1992, 1994, 1996-1997, 2000-2022 Free
+;; Copyright (C) 1985-1987, 1992, 1994, 1996-1997, 2000-2023 Free
 ;; Software Foundation, Inc.
 
 ;; Maintainer: emacs-devel@gnu.org
@@ -1039,7 +1039,10 @@ They are deleted _before_ looking for the next match.  Hence, a match
 starting on the same line at which another match ended is ignored.
 
 Return the number of deleted matching lines.  When called interactively,
-also print the number."
+also print the number.
+
+If you want to not just delete the lines, but also add them to
+the kill ring, use the \\[kill-matching-lines] command instead."
   (interactive
    (progn
      (barf-if-buffer-read-only)
@@ -1101,7 +1104,10 @@ Hence, a match starting on the same line at which another match
 ended is ignored.
 
 Return the number of killed matching lines.  When called
-interactively, also print the number."
+interactively, also print the number.
+
+If you merely want to delete the lines, without adding them to
+the kill ring, the \\[delete-matching-lines] command is faster."
   (interactive
    (progn
      (barf-if-buffer-read-only)
@@ -1686,7 +1692,7 @@ contents of the line; it normally shows the line number.  \(For
 multiline matches, the prefix column shows the line number for the
 first line and whitespace for the rest of the lines.\)
 If this face will display the same as the default face, the prefix
-column will not be highlighted speciall."
+column will not be highlighted specially."
   :type 'face
   :group 'matching
   :version "24.4")

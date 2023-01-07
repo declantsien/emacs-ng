@@ -1,6 +1,6 @@
 /* Timestamp functions for Emacs
 
-Copyright (C) 1985-1987, 1989, 1993-2022 Free Software Foundation, Inc.
+Copyright (C) 1985-1987, 1989, 1993-2023 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -39,6 +39,10 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#ifdef WINDOWSNT
+extern clock_t sys_clock (void);
+#endif
 
 #ifdef HAVE_TIMEZONE_T
 # include <sys/param.h>

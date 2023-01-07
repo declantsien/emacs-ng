@@ -1,6 +1,6 @@
 # Files that Git should ignore in the Emacs source directory.
 
-# Copyright 2009-2022 Free Software Foundation, Inc.
+# Copyright 2009-2023 Free Software Foundation, Inc.
 
 # This file is part of GNU Emacs.
 
@@ -343,3 +343,7 @@ lib-src/seccomp-filter-exec.pfc
 # Ignore a directory used by dap-mode.
 .vscode
 /test/gmp.h
+
+# GDB history
+.gdb_history
+_gdb_history

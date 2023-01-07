@@ -1,6 +1,6 @@
 /* Functions for the X Window System.
 
-Copyright (C) 1989, 1992-2022 Free Software Foundation, Inc.
+Copyright (C) 1989, 1992-2023 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -43,7 +43,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #ifdef USE_XCB
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
-#include <xcb/xcb_aux.h>
 #endif
 
 #include "bitmaps/gray.xbm"
@@ -1368,7 +1367,7 @@ x_set_mouse_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
 	 XCreateFontCursor is not a request that waits for a reply,
 	 and as such can return IDs that will not actually be used by
 	 the server.  */
-      x_ignore_errors_for_next_request (FRAME_DISPLAY_INFO (f));
+      x_ignore_errors_for_next_request (FRAME_DISPLAY_INFO (f), 0);
 
       /* Free any successfully created cursors.  */
       for (i = 0; i < mouse_cursor_max; i++)
@@ -1758,19 +1757,17 @@ x_set_tab_bar_lines (struct frame *f, Lisp_Object value, Lisp_Object oldval)
 void
 x_change_tab_bar_height (struct frame *f, int height)
 {
-  int unit, old_height, lines;
-  Lisp_Object fullscreen;
-
-  unit = FRAME_LINE_HEIGHT (f);
-  old_height = FRAME_TAB_BAR_HEIGHT (f);
-  fullscreen = get_frame_param (f, Qfullscreen);
+  int unit = FRAME_LINE_HEIGHT (f);
+  int old_height = FRAME_TAB_BAR_HEIGHT (f);
 
   /* This differs from the tool bar code in that the tab bar height is
      not rounded up.  Otherwise, if redisplay_tab_bar decides to grow
      the tab bar by even 1 pixel, FRAME_TAB_BAR_LINES will be changed,
      leading to the tab bar height being incorrectly set upon the next
      call to x_set_font.  (bug#59285) */
-  lines = height / unit;
+  int lines = height / unit;
+  if (lines == 0 && height != 0)
+    lines = 1;
 
   /* Make sure we redisplay all windows in this frame.  */
   fset_redisplay (f);
@@ -1791,6 +1788,8 @@ x_change_tab_bar_height (struct frame *f, int height)
 
   if (!f->tab_bar_resized)
     {
+      Lisp_Object fullscreen = get_frame_param (f, Qfullscreen);
+
       /* As long as tab_bar_resized is false, effectively try to change
 	 F's native height.  */
       if (NILP (fullscreen) || EQ (fullscreen, Qfullwidth))
@@ -2643,12 +2642,18 @@ append_wm_protocols (struct x_display_info *dpyinfo,
   if (existing)
     XFree (existing);
 
-  if (!found_wm_ping)
-    protos[num_protos++] = dpyinfo->Xatom_net_wm_ping;
+  if (!dpyinfo->untrusted)
+    {
+      /* Untrusted clients cannot use these protocols which require
+	 communicating with the window manager.  */
+
+      if (!found_wm_ping)
+	protos[num_protos++] = dpyinfo->Xatom_net_wm_ping;
 #if !defined HAVE_GTK3 && defined HAVE_XSYNC
-  if (!found_wm_sync_request && dpyinfo->xsync_supported_p)
-    protos[num_protos++] = dpyinfo->Xatom_net_wm_sync_request;
+      if (!found_wm_sync_request && dpyinfo->xsync_supported_p)
+	protos[num_protos++] = dpyinfo->Xatom_net_wm_sync_request;
 #endif
+    }
 
   if (num_protos)
     XChangeProperty (dpyinfo->display,
@@ -4736,6 +4741,7 @@ This function is an internal primitive--use `make-frame' instead.  */)
 #endif /* USE_LUCID && USE_TOOLKIT_SCROLL_BARS */
   f->output_data.x->white_relief.pixel = -1;
   f->output_data.x->black_relief.pixel = -1;
+  f->output_data.x->visibility_state = VisibilityFullyObscured;
 
   fset_icon_name (f, gui_display_get_arg (dpyinfo,
                                           parms,
@@ -5723,13 +5729,13 @@ x_get_net_workarea (struct x_display_info *dpyinfo, XRectangle *rect)
     = xcb_get_property (dpyinfo->xcb_connection, 0,
 			(xcb_window_t) dpyinfo->root_window,
 			(xcb_atom_t) dpyinfo->Xatom_net_current_desktop,
-			XCB_ATOM_CARDINAL, 0, 1);
+			XA_CARDINAL, 0, 1);
 
   workarea_cookie
     = xcb_get_property (dpyinfo->xcb_connection, 0,
 			(xcb_window_t) dpyinfo->root_window,
 			(xcb_atom_t) dpyinfo->Xatom_net_workarea,
-			XCB_ATOM_CARDINAL, 0, UINT32_MAX);
+			XA_CARDINAL, 0, UINT32_MAX);
 
   reply = xcb_get_property_reply (dpyinfo->xcb_connection,
 				  current_desktop_cookie, &error);
@@ -5740,7 +5746,7 @@ x_get_net_workarea (struct x_display_info *dpyinfo, XRectangle *rect)
   else
     {
       if (xcb_get_property_value_length (reply) != 4
-	  || reply->type != XCB_ATOM_CARDINAL || reply->format != 32)
+	  || reply->type != XA_CARDINAL || reply->format != 32)
 	rc = false;
       else
 	current_workspace = *(uint32_t *) xcb_get_property_value (reply);
@@ -5755,7 +5761,7 @@ x_get_net_workarea (struct x_display_info *dpyinfo, XRectangle *rect)
     free (error), rc = false;
   else
     {
-      if (rc && reply->type == XCB_ATOM_CARDINAL && reply->format == 32
+      if (rc && reply->type == XA_CARDINAL && reply->format == 32
 	  && (xcb_get_property_value_length (reply) / sizeof (uint32_t)
 	      >= current_workspace + 4))
 	{
@@ -7079,8 +7085,8 @@ that mouse buttons are being held down, such as immediately after a
   /* Catch errors since interning lots of targets can potentially
      generate a BadAlloc error.  */
   x_catch_errors (FRAME_X_DISPLAY (f));
-  XInternAtoms (FRAME_X_DISPLAY (f), target_names,
-		ntargets, False, target_atoms);
+  x_intern_atoms (FRAME_DISPLAY_INFO (f), target_names,
+		  ntargets, target_atoms);
   x_check_errors (FRAME_X_DISPLAY (f),
 		  "Failed to intern target atoms: %s");
   x_uncatch_errors_after_check ();
@@ -7377,20 +7383,6 @@ If TERMINAL is omitted or nil, that stands for the selected frame's display.  */
   return Qnil;
 }
 
-/* Wait for responses to all X commands issued so far for frame F.  */
-
-void
-x_sync (struct frame *f)
-{
-  block_input ();
-#ifndef USE_XCB
-  XSync (FRAME_X_DISPLAY (f), False);
-#else
-  xcb_aux_sync (FRAME_DISPLAY_INFO (f)->xcb_connection);
-#endif
-  unblock_input ();
-}
-
 
 /***********************************************************************
                            Window properties
@@ -7484,7 +7476,7 @@ silently ignored.  */)
       elsize = element_format == 32 ? sizeof (long) : element_format >> 3;
       data = xnmalloc (nelements, elsize);
 
-      x_fill_property_data (FRAME_X_DISPLAY (f), value, data, nelements,
+      x_fill_property_data (FRAME_DISPLAY_INFO (f), value, data, nelements,
                             element_format);
     }
   else

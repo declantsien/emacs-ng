@@ -1,6 +1,6 @@
 ;;; viper-cmd.el --- Vi command support for Viper  -*- lexical-binding:t -*-
 
-;; Copyright (C) 1997-2022 Free Software Foundation, Inc.
+;; Copyright (C) 1997-2023 Free Software Foundation, Inc.
 
 ;; Author: Michael Kifer <kifer@cs.stonybrook.edu>
 ;; Package: viper
@@ -194,9 +194,9 @@
 			   viper-delete-backward-char
 			   viper-join-lines
 			   viper-delete-char))
-      (memq (viper-event-key last-command-event)
-	    '(up down left right (meta f) (meta b)
-		 (control n) (control p) (control f) (control b)))))
+      (member (viper-event-key last-command-event)
+	      '(up down left right (meta f) (meta b)
+		(control n) (control p) (control f) (control b)))))
 
 (defsubst viper-insert-state-pre-command-sentinel ()
   (or (viper-preserve-cursor-color)

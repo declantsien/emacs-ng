@@ -1,6 +1,6 @@
 ;;; texinfo.el --- major mode for editing Texinfo files  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 1985, 1988-1993, 1996-1997, 2000-2022 Free Software
+;; Copyright (C) 1985, 1988-1993, 1996-1997, 2000-2023 Free Software
 ;; Foundation, Inc.
 
 ;; Author: Robert J. Chassell
@@ -346,6 +346,8 @@ Subexpression 1 is what goes into the corresponding `@end' statement.")
 (defvar-local texinfo--flymake-proc nil)
 (defun texinfo-flymake (report-fn &rest _)
   "Texinfo checking for Flymake.
+
+It uses either \"makeinfo\" or \"texi2any\", in that order.
 
 REPORT-FN is the callback function."
   (let ((executable (or (executable-find "makeinfo")

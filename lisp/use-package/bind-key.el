@@ -1,6 +1,6 @@
 ;;; bind-key.el --- A simple way to manage personal keybindings  -*- lexical-binding: t; -*-
 
-;; Copyright (c) 2012-2022 Free Software Foundation, Inc.
+;; Copyright (c) 2012-2023 Free Software Foundation, Inc.
 
 ;; Author: John Wiegley <johnw@newartisans.com>
 ;; Maintainer: John Wiegley <johnw@newartisans.com>
@@ -282,7 +282,7 @@ Accepts keyword arguments:
                          key in the repeat map, but will not set the
                          `repeat-map' property of the bound command.
 :continue BINDINGS     - Within the scope of `:repeat-map' forces the
-                         same behaviour as if no special keyword had
+                         same behavior as if no special keyword had
                          been used (that is, the command is bound, and
                          it's `repeat-map' property set)
 :filter FORM           - optional form to determine when bindings apply
@@ -429,7 +429,7 @@ Accepts keyword arguments:
                          key in the repeat map, but will not set the
                          `repeat-map' property of the bound command.
 :continue BINDINGS     - Within the scope of `:repeat-map' forces the
-                         same behaviour as if no special keyword had
+                         same behavior as if no special keyword had
                          been used (that is, the command is bound, and
                          it's `repeat-map' property set)
 :filter FORM           - optional form to determine when bindings apply
@@ -447,7 +447,7 @@ This binds keys in such a way that bindings are not overridden by
 other modes.  See `override-global-mode'."
   (macroexp-progn (bind-keys-form args 'override-global-map)))
 
-(defun get-binding-description (elem)
+(defun bind-key--get-binding-description (elem)
   (cond
    ((listp elem)
     (cond
@@ -474,7 +474,7 @@ other modes.  See `override-global-mode'."
    (t
     "#<byte-compiled lambda>")))
 
-(defun compare-keybindings (l r)
+(defun bind-key--compare-keybindings (l r)
   (let* ((regex bind-key-segregation-regexp)
          (lgroup (and (string-match regex (caar l))
                       (match-string 0 (caar l))))
@@ -517,7 +517,7 @@ other modes.  See `override-global-mode'."
                (setq personal-keybindings
                      (sort personal-keybindings
                            (lambda (l r)
-                             (car (compare-keybindings l r))))))
+                             (car (bind-key--compare-keybindings l r))))))
 
         (if (not (eq (cdar last-binding) (cdar binding)))
             (princ (format "\n\n%s: %s\n%s\n\n"
@@ -525,7 +525,7 @@ other modes.  See `override-global-mode'."
                            (make-string (+ 21 (car bind-key-column-widths)
                                            (cdr bind-key-column-widths)) ?-)))
           (if (and last-binding
-                   (cdr (compare-keybindings last-binding binding)))
+                   (cdr (bind-key--compare-keybindings last-binding binding)))
               (princ "\n")))
 
         (let* ((key-name (caar binding))
@@ -534,26 +534,31 @@ other modes.  See `override-global-mode'."
                                        (read-kbd-macro key-name)))
                (command (nth 1 binding))
                (was-command (nth 2 binding))
-               (command-desc (get-binding-description command))
+               (command-desc (bind-key--get-binding-description command))
                (was-command-desc (and was-command
-                                      (get-binding-description was-command)))
-               (at-present-desc (get-binding-description at-present)))
+                                      (bind-key--get-binding-description was-command)))
+               (at-present-desc (bind-key--get-binding-description at-present)))
           (let ((line
                  (format
                   (format "%%-%ds%%-%ds%%s\n" (car bind-key-column-widths)
                           (cdr bind-key-column-widths))
-                  key-name (format "`%s\'" command-desc)
+                  key-name (format "`%s'" command-desc)
                   (if (string= command-desc at-present-desc)
                       (if (or (null was-command)
                               (string= command-desc was-command-desc))
                           ""
-                        (format "was `%s\'" was-command-desc))
-                    (format "[now: `%s\']" at-present)))))
+                        (format "was `%s'" was-command-desc))
+                    (format "[now: `%s']" at-present)))))
             (princ (if (string-match "[ \t]+\n" line)
                        (replace-match "\n" t t line)
                      line))))
 
         (setq last-binding binding)))))
+
+(define-obsolete-function-alias 'get-binding-description
+  'bind-key--get-binding-description "30.1")
+(define-obsolete-function-alias 'compare-keybindings
+  'bind-key--compare-keybindings "30.1")
 
 (provide 'bind-key)
 

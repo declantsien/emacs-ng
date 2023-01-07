@@ -1,6 +1,6 @@
 ;;; em-cmpl.el --- completion using the TAB key  -*- lexical-binding:t -*-
 
-;; Copyright (C) 1999-2022 Free Software Foundation, Inc.
+;; Copyright (C) 1999-2023 Free Software Foundation, Inc.
 
 ;; Author: John Wiegley <johnw@gnu.org>
 
@@ -342,17 +342,23 @@ to writing a completion function."
 	(setq pos (1+ pos))))
     (setq posns (cdr posns))
     (cl-assert (= (length args) (length posns)))
-    (let ((a args)
-	  (i 0)
-	  l)
+    (let ((a args) (i 0) new-start)
       (while a
-	(if (and (consp (car a))
-		 (eq (caar a) 'eshell-operator))
-	    (setq l i))
-	(setq a (cdr a) i (1+ i)))
-      (and l
-	   (setq args (nthcdr (1+ l) args)
-		 posns (nthcdr (1+ l) posns))))
+        ;; Remove any top-level `eshell-splice-args' sigils.  These
+        ;; are meant to be rewritten and can't actually be called.
+        (when (and (consp (car a))
+                   (eq (caar a) 'eshell-splice-args))
+          (setcar a (cadar a)))
+        ;; If there's an unreplaced `eshell-operator' sigil, consider
+        ;; the token after it the new start of our arguments.
+        (when (and (consp (car a))
+                   (eq (caar a) 'eshell-operator))
+          (setq new-start i))
+        (setq a (cdr a)
+              i (1+ i)))
+      (when new-start
+	(setq args (nthcdr (1+ new-start) args)
+	      posns (nthcdr (1+ new-start) posns))))
     (cl-assert (= (length args) (length posns)))
     (when (and args (eq (char-syntax (char-before end)) ? )
 	       (not (eq (char-before (1- end)) ?\\)))

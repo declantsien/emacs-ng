@@ -1,6 +1,6 @@
 ;;; mouse.el --- window system-independent mouse support  -*- lexical-binding: t -*-
 
-;; Copyright (C) 1993-2022 Free Software Foundation, Inc.
+;; Copyright (C) 1993-2023 Free Software Foundation, Inc.
 
 ;; Maintainer: emacs-devel@gnu.org
 ;; Keywords: hardware, mouse
@@ -104,6 +104,15 @@ the normal mouse-1 binding, typically selects the window and sets
 point at the click position."
   :type 'boolean
   :version "22.1")
+
+(defcustom mouse-1-double-click-prefer-symbols nil
+  "If non-nil, double-clicking Mouse-1 attempts to select the symbol at click.
+
+If nil, the default, double-clicking Mouse-1 on a word-constituent
+character will select only the word at click location, which could
+select fewer characters than the symbol at click."
+  :type 'boolean
+  :version "30.1")
 
 (defcustom mouse-drag-and-drop-region-scroll-margin nil
   "If non-nil, the scroll margin inside a window when dragging text.
@@ -1800,10 +1809,17 @@ The region will be defined with mark and point."
 ;; Commands to handle xterm-style multiple clicks.
 (defun mouse-skip-word (dir)
   "Skip over word, over whitespace, or over identical punctuation.
+If `mouse-1-double-click-prefer-symbols' is non-nil, skip over symbol.
 If DIR is positive skip forward; if negative, skip backward."
   (let* ((char (following-char))
-	 (syntax (char-to-string (char-syntax char))))
-    (cond ((string= syntax "w")
+	 (syntax (char-to-string (char-syntax char)))
+         sym)
+    (cond ((and mouse-1-double-click-prefer-symbols
+                (setq sym (bounds-of-thing-at-point 'symbol)))
+           (goto-char (if (< dir 0)
+                          (car sym)
+                        (cdr sym))))
+          ((string= syntax "w")
 	   ;; Here, we can't use skip-syntax-forward/backward because
 	   ;; they don't pay attention to word-separating-categories,
 	   ;; and thus they will skip over a true word boundary.  So,

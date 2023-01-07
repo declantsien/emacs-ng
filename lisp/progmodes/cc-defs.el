@@ -1,6 +1,6 @@
 ;;; cc-defs.el --- compile time definitions for CC Mode -*- lexical-binding: t -*-
 
-;; Copyright (C) 1985, 1987, 1992-2022 Free Software Foundation, Inc.
+;; Copyright (C) 1985, 1987, 1992-2023 Free Software Foundation, Inc.
 
 ;; Authors:    2003- Alan Mackenzie
 ;;             1998- Martin Stjernholm
@@ -1826,7 +1826,7 @@ with value CHAR in the region [FROM to)."
     '(or (looking-at
 	  "\\([;#]\\|\\'\\|\\s(\\|\\s)\\|\\s\"\\|\\s\\\\|\\s$\\|\\s<\\|\\s>\\)"
 	  (let ((prop (c-get-char-property (point) 'syntax-table)))
-	    (eq prop '(14)))))))		; '(14) is generic comment delimiter.
+	    (equal prop '(14))))))) ; '(14) is generic comment delimiter.
 
 
 (defsubst c-intersect-lists (list alist)

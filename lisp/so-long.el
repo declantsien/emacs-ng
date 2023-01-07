@@ -1,6 +1,6 @@
 ;;; so-long.el --- Say farewell to performance problems with minified code.  -*- lexical-binding:t -*-
 ;;
-;; Copyright (C) 2015-2016, 2018-2022 Free Software Foundation, Inc.
+;; Copyright (C) 2015-2016, 2018-2023 Free Software Foundation, Inc.
 
 ;; Author: Phil Sainty <psainty@orcon.net.nz>
 ;; Maintainer: Phil Sainty <psainty@orcon.net.nz>
@@ -986,7 +986,7 @@ See also `so-long-mode-line-info'."
 ;; Modes that go slowly and line lengths excessive
 ;; Font-lock performance becoming oppressive
 ;; All of my CPU tied up with strings
-;; These are a few of my least-favourite things
+;; These are a few of my least-favorite things
 
 (defvar-local so-long-original-values nil
   "Alist holding the buffer's original `major-mode' value, and other data.

@@ -1,6 +1,6 @@
 ;;; ob-core.el --- Working with Code Blocks          -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2009-2022 Free Software Foundation, Inc.
+;; Copyright (C) 2009-2023 Free Software Foundation, Inc.
 
 ;; Authors: Eric Schulte
 ;;	Dan Davison
@@ -2461,10 +2461,19 @@ INFO may provide the values of these header arguments (in the
 		    (insert
 		     (org-trim
 		      (org-list-to-org
+                       ;; We arbitrarily choose to format non-strings
+                       ;; as %S.
 		       (cons 'unordered
 			     (mapcar
 			      (lambda (e)
-				(list (if (stringp e) e (format "%S" e))))
+                                (cond
+                                 ((stringp e) (list e))
+                                 ((listp e)
+                                  (mapcar
+                                   (lambda (x)
+                                     (if (stringp x) x (format "%S" x)))
+                                   e))
+                                 (t (list (format "%S" e)))))
 			      (if (listp result) result
 				(split-string result "\n" t))))
 		       '(:splicep nil :istart "- " :iend "\n")))
@@ -2709,7 +2718,9 @@ specified as an an \"attachment:\" style link."
                 ((and 'attachment (guard in-attach-dir)) "attachment")
                 (_ "file"))
               (if (and request-attachment in-attach-dir)
-                  (file-relative-name result-file-name)
+                  (file-relative-name
+                   result-file-name
+                   (file-name-as-directory attach-dir))
 	        (if (and default-directory
 		         base-file-name same-directory?)
 		    (if (eq org-link-file-path-type 'adaptive)
@@ -3181,8 +3192,8 @@ situations in which is it not appropriate."
          (if (and (memq (string-to-char cell) '(?\( ?`))
                   (not (org-babel-confirm-evaluate
                       ;; See `org-babel-get-src-block-info'.
-                      (list "emacs-lisp" (format "%S" cell)
-                            '((:eval . yes)) nil (format "%S" cell)
+                      (list "emacs-lisp" cell
+                            '((:eval . yes)) nil (format "%s" cell)
                             nil nil))))
              ;; Not allowed.
              (user-error "Evaluation of elisp code %S aborted." cell)

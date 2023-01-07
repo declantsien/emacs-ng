@@ -1,6 +1,6 @@
 ;;; bytecomp.el --- compilation of Lisp code into byte code -*- lexical-binding: t -*-
 
-;; Copyright (C) 1985-1987, 1992, 1994, 1998, 2000-2022 Free Software
+;; Copyright (C) 1985-1987, 1992, 1994, 1998, 2000-2023 Free Software
 ;; Foundation, Inc.
 
 ;; Author: Jamie Zawinski <jwz@lucid.com>
@@ -295,7 +295,8 @@ The information is logged to `byte-compile-log-buffer'."
   '(redefine callargs free-vars unresolved
              obsolete noruntime interactive-only
              make-local mapcar constants suspicious lexical lexical-dynamic
-             docstrings docstrings-non-ascii-quotes not-unused)
+             docstrings docstrings-non-ascii-quotes not-unused
+             empty-body)
   "The list of warning types used when `byte-compile-warnings' is t.")
 (defcustom byte-compile-warnings t
   "List of warnings that the byte-compiler should issue (t for almost all).
@@ -326,6 +327,7 @@ Elements of the list may be:
   docstrings-non-ascii-quotes docstrings that have non-ASCII quotes.
                               This depends on the `docstrings' warning type.
   suspicious  constructs that usually don't do what the coder wanted.
+  empty-body  body argument to a special form or macro is empty.
 
 If the list begins with `not', then the remaining elements specify warnings to
 suppress.  For example, (not mapcar) will suppress warnings about mapcar.
@@ -541,15 +543,19 @@ Return the compile-time value of FORM."
              ;; Later `internal--with-suppressed-warnings' binds it again, this
              ;; time in order to affect warnings emitted during the
              ;; compilation itself.
-             (let ((byte-compile--suppressed-warnings
-                    (append warnings byte-compile--suppressed-warnings)))
-               ;; This function doesn't exist, but is just a placeholder
-               ;; symbol to hook up with the
-               ;; `byte-hunk-handler'/`byte-defop-compiler-1' machinery.
-               `(internal--with-suppressed-warnings
-                 ',warnings
-                 ,(macroexpand-all `(progn ,@body)
-                                   macroexpand-all-environment))))))
+             (if body
+                 (let ((byte-compile--suppressed-warnings
+                        (append warnings byte-compile--suppressed-warnings)))
+                   ;; This function doesn't exist, but is just a placeholder
+                   ;; symbol to hook up with the
+                   ;; `byte-hunk-handler'/`byte-defop-compiler-1' machinery.
+                   `(internal--with-suppressed-warnings
+                     ',warnings
+                     ,(macroexpand-all `(progn ,@body)
+                                       macroexpand-all-environment)))
+               (macroexp-warn-and-return
+                (format-message "`with-suppressed-warnings' with empty body")
+                nil '(empty-body with-suppressed-warnings) t warnings)))))
   "The default macro-environment passed to macroexpand by the compiler.
 Placing a macro here will cause a macro to have different semantics when
 expanded by the compiler as when expanded by the interpreter.")
@@ -3439,7 +3445,7 @@ lambda-expression."
 				     (t "."))))
         (if (eq (car-safe (symbol-function (car form))) 'macro)
             (byte-compile-report-error
-             (format "`%s' defined after use in %S (missing `require' of a library file?)"
+             (format-message "`%s' defined after use in %S (missing `require' of a library file?)"
                      (car form) form)))
         (if (and handler
                  ;; Make sure that function exists.
@@ -4835,6 +4841,11 @@ binding slots have been popped."
 
     (dolist (clause (reverse clauses))
       (let ((condition (nth 1 clause)))
+        (when (and (eq (car-safe condition) 'quote)
+                   (cdr condition) (null (cddr condition)))
+          (byte-compile-warn-x
+           condition "`condition-case' condition should not be quoted: %S"
+           condition))
         (unless (consp condition) (setq condition (list condition)))
         (dolist (c condition)
           (unless (and c (symbolp c))
@@ -5486,6 +5497,83 @@ and corresponding effects."
        (if (member feature '('xemacs 'sxemacs 'emacs))
            (eval form)
          form)))
+
+;; Check for (in)comparable constant values in calls to `eq', `memq' etc.
+
+(defun bytecomp--dodgy-eq-arg-p (x number-ok)
+  "Whether X is a bad argument to `eq' (or `eql' if NUMBER-OK is non-nil)."
+  (pcase x
+    ((or `(quote ,(pred consp)) `(function (lambda . ,_))) t)
+    ((or (pred consp) (pred symbolp)) nil)
+    ((pred integerp)
+     (not (or (<= -536870912 x 536870911) number-ok)))
+    ((pred floatp) (not number-ok))
+    (_ t)))
+
+(defun bytecomp--value-type-description (x)
+  (cond
+    ((proper-list-p x) "list")
+    ((recordp x) "record")
+    (t (symbol-name (type-of x)))))
+
+(defun bytecomp--arg-type-description (x)
+  (pcase x
+    (`(function (lambda . ,_)) "function")
+    (`(quote . ,val) (bytecomp--value-type-description val))
+    (_ (bytecomp--value-type-description x))))
+
+(defun bytecomp--warn-dodgy-eq-arg (form type parenthesis)
+  (macroexp-warn-and-return
+   (format-message "`%s' called with literal %s that may never match (%s)"
+                   (car form) type parenthesis)
+   form (list 'suspicious (car form)) t))
+
+(defun bytecomp--check-eq-args (form &optional a b &rest _ignore)
+  (let* ((number-ok (eq (car form) 'eql))
+         (bad-arg (cond ((bytecomp--dodgy-eq-arg-p a number-ok) 1)
+                        ((bytecomp--dodgy-eq-arg-p b number-ok) 2))))
+    (if bad-arg
+        (bytecomp--warn-dodgy-eq-arg
+         form
+         (bytecomp--arg-type-description (nth bad-arg form))
+         (format "arg %d" bad-arg))
+      form)))
+
+(put 'eq  'compiler-macro #'bytecomp--check-eq-args)
+(put 'eql 'compiler-macro #'bytecomp--check-eq-args)
+
+(defun bytecomp--check-memq-args (form &optional elem list &rest _ignore)
+  (let* ((fn (car form))
+         (number-ok (eq fn 'memql)))
+    (cond
+     ((bytecomp--dodgy-eq-arg-p elem number-ok)
+      (bytecomp--warn-dodgy-eq-arg
+       form (bytecomp--arg-type-description elem) "arg 1"))
+     ((and (consp list) (eq (car list) 'quote)
+           (proper-list-p (cadr list)))
+      (named-let loop ((elts (cadr list)) (i 1))
+        (if elts
+            (let* ((elt (car elts))
+                   (x (cond ((eq fn 'assq) (car-safe elt))
+                            ((eq fn 'rassq) (cdr-safe elt))
+                            (t elt))))
+              (if (or (symbolp x)
+                      (and (integerp x)
+                           (or (<= -536870912 x 536870911) number-ok))
+                      (and (floatp x) number-ok))
+                  (loop (cdr elts) (1+ i))
+                (bytecomp--warn-dodgy-eq-arg
+                 form (bytecomp--value-type-description x)
+                 (format "element %d of arg 2" i))))
+          form)))
+     (t form))))
+
+(put 'memq  'compiler-macro #'bytecomp--check-memq-args)
+(put 'memql 'compiler-macro #'bytecomp--check-memq-args)
+(put 'assq  'compiler-macro #'bytecomp--check-memq-args)
+(put 'rassq 'compiler-macro #'bytecomp--check-memq-args)
+(put 'remq  'compiler-macro #'bytecomp--check-memq-args)
+(put 'delq  'compiler-macro #'bytecomp--check-memq-args)
 
 (provide 'byte-compile)
 (provide 'bytecomp)

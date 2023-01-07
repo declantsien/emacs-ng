@@ -1,6 +1,6 @@
 ;;; bytecomp-tests.el --- Tests for bytecomp.el  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2008-2022 Free Software Foundation, Inc.
+;; Copyright (C) 2008-2023 Free Software Foundation, Inc.
 
 ;; Author: Shigeru Fukaya <shigeru.fukaya@gmail.com>
 ;; Author: Stefan Monnier <monnier@iro.umontreal.ca>
@@ -704,6 +704,59 @@ inner loops respectively."
     (let ((bytecomp-tests--xx 1))
       (set (make-local-variable 'bytecomp-tests--xx) 2)
       bytecomp-tests--xx)
+
+    ;; Check for-effect optimisation of `condition-case' body form.
+    ;; With `condition-case' in for-effect context:
+    (let ((x (bytecomp-test-identity ?A))
+          (r nil))
+      (condition-case e
+          (characterp x)                ; value (:success, var)
+        (error (setq r 'bad))
+        (:success (setq r (list 'good e))))
+      r)
+    (let ((x (bytecomp-test-identity ?B))
+          (r nil))
+      (condition-case nil
+          (characterp x)               ; for-effect (:success, no var)
+        (error (setq r 'bad))
+        (:success (setq r 'good)))
+      r)
+    (let ((x (bytecomp-test-identity ?C))
+          (r nil))
+      (condition-case e
+          (characterp x)               ; for-effect (no :success, var)
+        (error (setq r (list 'bad e))))
+      r)
+    (let ((x (bytecomp-test-identity ?D))
+          (r nil))
+      (condition-case nil
+          (characterp x)               ; for-effect (no :success, no var)
+        (error (setq r 'bad)))
+      r)
+    ;; With `condition-case' in value context:
+    (let ((x (bytecomp-test-identity ?E)))
+      (condition-case e
+          (characterp x)               ; for-effect (:success, var)
+        (error (list 'bad e))
+        (:success (list 'good e))))
+    (let ((x (bytecomp-test-identity ?F)))
+      (condition-case nil
+          (characterp x)               ; for-effect (:success, no var)
+        (error 'bad)
+        (:success 'good)))
+    (let ((x (bytecomp-test-identity ?G)))
+      (condition-case e
+          (characterp x)               ; value (no :success, var)
+        (error (list 'bad e))))
+    (let ((x (bytecomp-test-identity ?H)))
+      (condition-case nil
+          (characterp x)               ; value (no :success, no var)
+        (error 'bad)))
+
+    (condition-case nil
+        (bytecomp-test-identity 3)
+      (error 'bad)
+      (:success))                       ; empty handler
     )
   "List of expressions for cross-testing interpreted and compiled code.")
 
@@ -833,13 +886,19 @@ byte-compiled.  Run with dynamic binding."
     ;; Should not warn that mt--test2 is not known to be defined.
     (should-not (re-search-forward "my--test2" nil t))))
 
-(defmacro bytecomp--with-warning-test (re-warning &rest form)
+(defmacro bytecomp--with-warning-test (re-warning form)
   (declare (indent 1))
   `(with-current-buffer (get-buffer-create "*Compile-Log*")
      (let ((inhibit-read-only t)) (erase-buffer))
-     (byte-compile ,@form)
-     (ert-info ((prin1-to-string (buffer-string)) :prefix "buffer: ")
-       (should (re-search-forward ,(string-replace " " "[ \n]+" re-warning))))))
+     (let ((text-quoting-style 'grave)
+           (macroexp--warned
+            (make-hash-table :test #'equal :weakness 'key))   ; oh dear
+           (form ,form))
+       (ert-info ((prin1-to-string form) :prefix "form: ")
+         (byte-compile form)
+         (ert-info ((prin1-to-string (buffer-string)) :prefix "buffer: ")
+           (should (re-search-forward
+                    (string-replace " " "[ \n]+" ,re-warning))))))))
 
 (ert-deftest bytecomp-warn-wrong-args ()
   (bytecomp--with-warning-test "remq.*3.*2"
@@ -862,6 +921,66 @@ byte-compiled.  Run with dynamic binding."
 (ert-deftest bytecomp-warn-wide-docstring/defvar ()
   (bytecomp--with-warning-test "defvar.*foo.*wider than.*characters"
     `(defvar foo t ,bytecomp-tests--docstring)))
+
+(ert-deftest bytecomp-warn-quoted-condition ()
+  (bytecomp--with-warning-test
+      "Warning: `condition-case' condition should not be quoted: 'arith-error"
+    '(condition-case nil
+         (abc)
+       ('arith-error "ugh")))
+  (bytecomp--with-warning-test
+      "Warning: `ignore-error' condition argument should not be quoted: 'error"
+    '(ignore-error 'error (abc))))
+
+(ert-deftest bytecomp-warn-dodgy-args-eq ()
+  (dolist (fn '(eq eql))
+    (cl-flet ((msg (type arg)
+                (format
+                 "`%s' called with literal %s that may never match (arg %d)"
+                 fn type arg)))
+      (bytecomp--with-warning-test (msg "list" 1)   `(,fn '(a) 'x))
+      (bytecomp--with-warning-test (msg "string" 2) `(,fn 'x "a"))
+      (bytecomp--with-warning-test (msg "vector" 2) `(,fn 'x [a]))
+      (bytecomp--with-warning-test (msg "function" 2) `(,fn 'x (lambda () 1)))
+      (bytecomp--with-warning-test (msg "function" 2) `(,fn 'x #'(lambda () 1)))
+      (unless (eq fn 'eql)
+        (bytecomp--with-warning-test (msg "integer" 2) `(,fn 'x #x10000000000))
+        (bytecomp--with-warning-test (msg "float" 2)   `(,fn 'x 1.0))))))
+
+(ert-deftest bytecomp-warn-dodgy-args-memq ()
+  (dolist (fn '(memq memql remq delq assq rassq))
+    (cl-labels
+        ((msg1 (type)
+           (format
+            "`%s' called with literal %s that may never match (arg 1)"
+            fn type))
+         (msg2 (type)
+           (format
+            "`%s' called with literal %s that may never match (element 2 of arg 2)"
+            fn type))
+         (lst (elt)
+           (cond ((eq fn 'assq)  `((a . 1) (,elt . 2) (c . 3)))
+                 ((eq fn 'rassq) `((1 . a) (2 . ,elt) (3 . c)))
+                 (t              `(a       ,elt       c))))
+         (form2 (elt)
+           `(,fn 'x ',(lst elt))))
+
+    (bytecomp--with-warning-test (msg1 "list")   `(,fn '(a) '(x)))
+    (bytecomp--with-warning-test (msg1 "string") `(,fn "a" '(x)))
+    (bytecomp--with-warning-test (msg1 "vector") `(,fn [a] '(x)))
+    (bytecomp--with-warning-test (msg1 "function") `(,fn (lambda () 1) '(x)))
+    (bytecomp--with-warning-test (msg1 "function") `(,fn #'(lambda () 1) '(x)))
+    (unless (eq fn 'memql)
+      (bytecomp--with-warning-test (msg1 "integer") `(,fn #x10000000000 '(x)))
+      (bytecomp--with-warning-test (msg1 "float")   `(,fn 1.0 '(x))))
+
+    (bytecomp--with-warning-test (msg2 "list")   (form2 '(b)))
+    (bytecomp--with-warning-test (msg2 "list")   (form2 ''b))
+    (bytecomp--with-warning-test (msg2 "string") (form2 "b"))
+    (bytecomp--with-warning-test (msg2 "vector") (form2 [b]))
+    (unless (eq fn 'memql)
+      (bytecomp--with-warning-test (msg2 "integer") (form2 #x10000000000))
+      (bytecomp--with-warning-test (msg2 "float")   (form2 1.0))))))
 
 (defmacro bytecomp--define-warning-file-test (file re-warning &optional reverse)
   `(ert-deftest ,(intern (format "bytecomp/%s" file)) ()
@@ -1314,7 +1433,50 @@ literals (Bug#20852)."
         (set-buffer (get-buffer-create "foo"))
         nil))
    '((suspicious set-buffer))
-   "Warning: Use .with-current-buffer. rather than"))
+   "Warning: Use .with-current-buffer. rather than")
+
+  (test-suppression
+   '(defun zot ()
+      (let ((_ 1))
+        ))
+   '((empty-body let))
+   "Warning: `let' with empty body")
+
+  (test-suppression
+   '(defun zot ()
+      (let* ((_ 1))
+        ))
+   '((empty-body let*))
+   "Warning: `let\\*' with empty body")
+
+  (test-suppression
+   '(defun zot (x)
+      (when x
+        ))
+   '((empty-body when))
+   "Warning: `when' with empty body")
+
+  (test-suppression
+   '(defun zot (x)
+      (unless x
+        ))
+   '((empty-body unless))
+   "Warning: `unless' with empty body")
+
+  (test-suppression
+   '(defun zot (x)
+      (ignore-error arith-error
+        ))
+   '((empty-body ignore-error))
+   "Warning: `ignore-error' with empty body")
+
+  (test-suppression
+   '(defun zot (x)
+      (with-suppressed-warnings ((suspicious eq))
+        ))
+   '((empty-body with-suppressed-warnings))
+   "Warning: `with-suppressed-warnings' with empty body")
+  )
 
 (ert-deftest bytecomp-tests--not-writable-directory ()
   "Test that byte compilation works if the output directory isn't

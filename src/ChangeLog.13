@@ -10579,7 +10579,7 @@
 	(../src/$(OLDXMENU), $(OLDXMENU)): Remove.
 	(temacs$(EXEEXT)): Depend on $(LIBXMENU), not stamp-oldxmenu.
 	($(lwlibdir)/liblw.a, $(oldXMenudir)/libXMenu11.a, FORCE): New targets.
-	(boostrap-clean): No need to remove stamp-oldxmenu.
+	(bootstrap-clean): No need to remove stamp-oldxmenu.
 
 	Fix recently introduced bool vector overrun.
 	This was due to an optimization that went awry.
@@ -17905,7 +17905,7 @@ See ChangeLog.12 for earlier changes.
 ;; coding: utf-8
 ;; End:
 
-  Copyright (C) 2011-2022 Free Software Foundation, Inc.
+  Copyright (C) 2011-2023 Free Software Foundation, Inc.
 
   This file is part of GNU Emacs.
 

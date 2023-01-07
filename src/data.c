@@ -1,5 +1,5 @@
 /* Primitive operations on Lisp data types for GNU Emacs Lisp interpreter.
-   Copyright (C) 1985-1986, 1988, 1993-1995, 1997-2022 Free Software
+   Copyright (C) 1985-1986, 1988, 1993-1995, 1997-2023 Free Software
    Foundation, Inc.
 
 This file is part of GNU Emacs.
@@ -2619,6 +2619,7 @@ bool-vector.  IDX starts at 0.  */)
     }
   else if (RECORDP (array))
     {
+      CHECK_IMPURE (array, XVECTOR (array));
       if (idxval < 0 || idxval >= PVSIZE (array))
 	args_out_of_range (array, idx);
       ASET (array, idxval, newelt);

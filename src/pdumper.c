@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2022 Free Software Foundation, Inc.
+/* Copyright (C) 2018-2023 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -2811,7 +2811,6 @@ dump_buffer (struct dump_context *ctx, const struct buffer *in_buffer)
       DUMP_FIELD_COPY (out, buffer, own_text.end_unchanged);
       DUMP_FIELD_COPY (out, buffer, own_text.unchanged_modified);
       DUMP_FIELD_COPY (out, buffer, own_text.overlay_unchanged_modified);
-      DUMP_FIELD_COPY (out, buffer, own_text.chars_unchanged_modified);
       if (buffer->own_text.intervals)
         dump_field_fixup_later (ctx, out, buffer, &buffer->own_text.intervals);
       dump_field_lv_rawptr (ctx, out, buffer, &buffer->own_text.markers,
@@ -2863,7 +2862,7 @@ dump_buffer (struct dump_context *ctx, const struct buffer *in_buffer)
   DUMP_FIELD_COPY (out, buffer, inhibit_buffer_hooks);
   DUMP_FIELD_COPY (out, buffer, long_line_optimizations_p);
 
-  if (buffer->overlays && buffer->overlays->root != NULL)
+  if (!itree_empty_p (buffer->overlays))
     /* We haven't implemented the code to dump overlays.  */
     emacs_abort ();
   else

@@ -28,7 +28,7 @@ OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-Copyright (C) 1984, 1987-1989, 1993-1995, 1998-2022 Free Software
+Copyright (C) 1984, 1987-1989, 1993-1995, 1998-2023 Free Software
 Foundation, Inc.
 
 This file is not considered part of GNU Emacs.
@@ -7772,7 +7772,7 @@ escape_shell_arg_string (char *str)
 #endif
 
 static void
-do_move_file(const char *src_file, const char *dst_file)
+do_move_file (const char *src_file, const char *dst_file)
 {
   if (rename (src_file, dst_file) == 0)
     return;

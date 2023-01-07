@@ -14,11 +14,23 @@ echo "Building ${lang}"
 
 ### Retrieve sources
 
+org="tree-sitter"
 repo="tree-sitter-${lang}"
 sourcedir="tree-sitter-${lang}/src"
 grammardir="tree-sitter-${lang}"
 
 case "${lang}" in
+    "dockerfile")
+        org="camdencheek"
+        ;;
+    "cmake")
+        org="uyha"
+        ;;
+    "go-mod")
+        # The parser is called "gomod".
+        lang="gomod"
+        org="camdencheek"
+        ;;
     "typescript")
         sourcedir="tree-sitter-typescript/typescript/src"
         grammardir="tree-sitter-typescript/typescript"
@@ -28,9 +40,12 @@ case "${lang}" in
         sourcedir="tree-sitter-typescript/tsx/src"
         grammardir="tree-sitter-typescript/tsx"
         ;;
+    "yaml")
+        org="ikatyang"
+        ;;
 esac
 
-git clone "https://github.com/tree-sitter/${repo}.git" \
+git clone "https://github.com/${org}/${repo}.git" \
     --depth 1 --quiet
 cp "${grammardir}"/grammar.js "${sourcedir}"
 # We have to go into the source directory to compile, because some
@@ -39,7 +54,7 @@ cd "${sourcedir}"
 
 ### Build
 
-cc -c -I. parser.c
+cc -fPIC -c -I. parser.c
 # Compile scanner.c.
 if test -f scanner.c
 then

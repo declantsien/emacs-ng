@@ -1,6 +1,6 @@
 ;;; compile.el --- run compiler as inferior of Emacs, parse error messages  -*- lexical-binding:t -*-
 
-;; Copyright (C) 1985-1987, 1993-1999, 2001-2022 Free Software
+;; Copyright (C) 1985-1987, 1993-1999, 2001-2023 Free Software
 ;; Foundation, Inc.
 
 ;; Authors: Roland McGrath <roland@gnu.org>,
@@ -186,6 +186,7 @@ and a string describing how the process finished.")
                      face compilation-info
                      help-echo "Number of informational messages so far")
     "]"))
+(put 'compilation-mode-line-errors 'risky-local-variable t)
 
 ;; If you make any changes to `compilation-error-regexp-alist-alist',
 ;; be sure to run the ERT test in test/lisp/progmodes/compile-tests.el.

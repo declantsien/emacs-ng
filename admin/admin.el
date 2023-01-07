@@ -1,6 +1,6 @@
 ;;; admin.el --- utilities for Emacs administration  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2001-2022 Free Software Foundation, Inc.
+;; Copyright (C) 2001-2023 Free Software Foundation, Inc.
 
 ;; This file is part of GNU Emacs.
 
@@ -110,7 +110,7 @@ Root must be the root of an Emacs source tree."
 				(submatch (1+ (in "0-9."))))))
   (set-version-in-file root "configure.ac" version
 		       (rx (and "AC_INIT" (1+ (not (in ?,)))
-                                ?, (0+ space) ?\[
+                                ?, (0+ space)
                                 (submatch (1+ (in "0-9."))))))
   (set-version-in-file root "nt/README.W32" version
 		       (rx (and "version" (1+ space)
@@ -843,8 +843,11 @@ $Date: %s $
       (package-install pkg)
       (require pkg nil t))))
 
+(declare-function org-html-export-as-html "ox-html.el")
 (defvar org-html-postamble)
 (defvar org-html-mathjax-template)
+(defvar htmlize-output-type)
+
 (defun make-news-html-file (root version)
   "Convert the NEWS file into an HTML file."
   (interactive (let ((root

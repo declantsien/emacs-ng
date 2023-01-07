@@ -1,6 +1,6 @@
 ;;; cl-lib-tests.el --- tests for emacs-lisp/cl-lib.el  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2013-2022 Free Software Foundation, Inc.
+;; Copyright (C) 2013-2023 Free Software Foundation, Inc.
 
 ;; This file is part of GNU Emacs.
 
@@ -404,7 +404,7 @@
 (ert-deftest cl-lib-nth-value-test-multiple-values ()
   "While CL multiple values are an alias to list, these won't work."
   :expected-result :failed
-  (should (eq (cl-nth-value 0 '(2 3)) '(2 3)))
+  (should (equal (cl-nth-value 0 '(2 3)) '(2 3)))
   (should (= (cl-nth-value 0 1) 1))
   (should (null (cl-nth-value 1 1)))
   (should-error (cl-nth-value -1 (cl-values 2 3)) :type 'args-out-of-range)
@@ -431,7 +431,8 @@
     (should (eq nums (cdr (cl-adjoin 3 nums))))
     ;; add only when not already there
     (should (eq nums (cl-adjoin 2 nums)))
-    (should (equal '(2 1 (2)) (cl-adjoin 2 '(1 (2)))))
+    (with-suppressed-warnings ((suspicious memql))
+      (should (equal '(2 1 (2)) (cl-adjoin 2 '(1 (2))))))
     ;; default test function is eql
     (should (equal '(1.0 1 2) (cl-adjoin 1.0 nums)))
     ;; own :test function - returns true if match

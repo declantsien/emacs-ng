@@ -1,6 +1,6 @@
 /* Random utility Lisp functions.
 
-Copyright (C) 1985-2022  Free Software Foundation, Inc.
+Copyright (C) 1985-2023 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -497,8 +497,13 @@ Symbols are also allowed; their print names are used instead.  */)
 	  int ws = sizeof (word_t);
 	  const word_t *w1 = (const word_t *) SDATA (string1);
 	  const word_t *w2 = (const word_t *) SDATA (string2);
-	  while (b < nb - ws + 1 && w1[b / ws] == w2[b / ws])
-	    b += ws;
+	  while (b < nb - ws + 1)
+	    {
+	      if (UNALIGNED_LOAD_SIZE (w1, b / ws)
+		  != UNALIGNED_LOAD_SIZE (w2, b / ws))
+		break;
+	      b += ws;
+	    }
 	}
 
       /* Scan forward to the differing byte.  */
@@ -3168,8 +3173,7 @@ DEFUN ("yes-or-no-p", Fyes_or_no_p, Syes_or_no_p, 1, 1, 0,
 Return t if answer is yes, and nil if the answer is no.
 
 PROMPT is the string to display to ask the question; `yes-or-no-p'
-adds \"(yes or no) \" to it.  It does not need to end in space, but if
-it does up to one space will be removed.
+adds \"(yes or no) \" to it.
 
 The user must confirm the answer with RET, and can edit it until it
 has been confirmed.
@@ -3938,7 +3942,7 @@ system.
 If the region can't be decoded, signal an error and don't modify the buffer.
 Optional third argument BASE64URL determines whether to use the URL variant
 of the base 64 encoding, as defined in RFC 4648.
-If optional fourth argument INGORE-INVALID is non-nil invalid characters
+If optional fourth argument IGNORE-INVALID is non-nil invalid characters
 are ignored instead of signaling an error.  */)
      (Lisp_Object beg, Lisp_Object end, Lisp_Object base64url,
       Lisp_Object ignore_invalid)

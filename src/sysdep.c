@@ -1,5 +1,5 @@
 /* Interfaces to system-dependent kernel and library entries.
-   Copyright (C) 1985-1988, 1993-1995, 1999-2022 Free Software
+   Copyright (C) 1985-1988, 1993-1995, 1999-2023 Free Software
    Foundation, Inc.
 
 This file is part of GNU Emacs.
@@ -2653,10 +2653,11 @@ emacs_perror (char const *message)
 int
 renameat_noreplace (int srcfd, char const *src, int dstfd, char const *dst)
 {
-#if defined SYS_renameat2 && defined RENAME_NOREPLACE
-  return syscall (SYS_renameat2, srcfd, src, dstfd, dst, RENAME_NOREPLACE);
-#elif defined CYGWIN && defined RENAME_NOREPLACE
+#if HAVE_RENAMEAT2 && defined RENAME_NOREPLACE
   return renameat2 (srcfd, src, dstfd, dst, RENAME_NOREPLACE);
+#elif defined SYS_renameat2 && defined RENAME_NOREPLACE
+  /* Linux kernel 3.15 (2014) or later, with glibc 2.27 (2018) or earlier.  */
+  return syscall (SYS_renameat2, srcfd, src, dstfd, dst, RENAME_NOREPLACE);
 #elif defined RENAME_EXCL
   return renameatx_np (srcfd, src, dstfd, dst, RENAME_EXCL);
 #else

@@ -1,6 +1,6 @@
 ;;; dired.el --- directory-browsing commands -*- lexical-binding: t -*-
 
-;; Copyright (C) 1985-1986, 1992-1997, 2000-2022 Free Software
+;; Copyright (C) 1985-1986, 1992-1997, 2000-2023 Free Software
 ;; Foundation, Inc.
 
 ;; Author: Sebastian Kremer <sk@thp.uni-koeln.de>
@@ -530,7 +530,7 @@ The directory name must be absolute, but need not be fully expanded.")
 
 (put 'dired-actual-switches 'safe-local-variable 'dired-safe-switches-p)
 
-(defvar dired-re-inode-size "[0-9 \t]*[.,0-9]*[BkKMGTPEZY]?[ \t]*"
+(defvar dired-re-inode-size "[0-9 \t]*[.,0-9]*[BkKMGTPEZYRQ]?[ \t]*"
   "Regexp for optional initial inode and file size as made by `ls -i -s'.")
 
 ;; These regexps must be tested at beginning-of-line, but are also
@@ -4882,9 +4882,9 @@ Interactively with prefix argument, read FILE-NAME."
 
 (defvar-keymap dired-jump-map
   :doc "Keymap to repeat `dired-jump'.  Used in `repeat-mode'."
+  :repeat t
   "j"   #'dired-jump
   "C-j" #'dired-jump)
-(put 'dired-jump 'repeat-map 'dired-jump-map)
 
 
 ;;; Miscellaneous commands

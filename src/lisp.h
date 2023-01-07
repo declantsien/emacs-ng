@@ -1,6 +1,6 @@
 /* Fundamental definitions for GNU Emacs Lisp interpreter. -*- coding: utf-8 -*-
 
-Copyright (C) 1985-2022  Free Software Foundation, Inc.
+Copyright (C) 1985-2023 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -22,7 +22,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 
 #include <alloca.h>
 #include <setjmp.h>
-#include <stdalign.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <string.h>
@@ -5297,6 +5296,26 @@ INLINE void
 __lsan_ignore_object (void const *p)
 {
 }
+#endif
+
+/* If built with USE_SANITIZER_UNALIGNED_LOAD defined, use compiler
+   provided ASan functions to perform unaligned loads, allowing ASan
+   to catch bugs which it might otherwise miss.  */
+#if defined HAVE_SANITIZER_COMMON_INTERFACE_DEFS_H \
+  && defined ADDRESS_SANITIZER                     \
+  && defined USE_SANITIZER_UNALIGNED_LOAD
+# include <sanitizer/common_interface_defs.h>
+# if (SIZE_MAX == UINT64_MAX)
+#  define UNALIGNED_LOAD_SIZE(a, i) \
+   (size_t) __sanitizer_unaligned_load64 ((void *) ((a) + (i)))
+# elif (SIZE_MAX == UINT32_MAX)
+#  define UNALIGNED_LOAD_SIZE(a, i) \
+   (size_t) __sanitizer_unaligned_load32 ((void *) ((a) + (i)))
+# else
+#  define UNALIGNED_LOAD_SIZE(a, i) *((a) + (i))
+# endif
+#else
+# define UNALIGNED_LOAD_SIZE(a, i) *((a) + (i))
 #endif
 
 extern void xputenv (const char *);

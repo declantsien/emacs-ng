@@ -1,5 +1,5 @@
 /* Definitions and headers for communication with X protocol.
-   Copyright (C) 1989, 1993-1994, 1998-2022 Free Software Foundation,
+   Copyright (C) 1989, 1993-1994, 1998-2023 Free Software Foundation,
    Inc.
 
 This file is part of GNU Emacs.
@@ -21,6 +21,22 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #define XTERM_H
 
 #include <X11/Xlib.h>
+
+#ifdef HAVE_XFIXES
+#include <X11/extensions/Xfixes.h>
+
+#if defined HAVE_XINPUT2 && XFIXES_MAJOR < 5
+/* XI2 headers need PointerBarrier, which is not defined in old
+   versions of the fixes library.  Define that type here.  */
+typedef XID PointerBarrier;
+#endif
+#if defined HAVE_XCOMPOSITE && XFIXES_MAJOR < 2
+/* Recent Composite headers need XserverRegion, which is not defined
+   in old versions of the fixes library.  Define that type here.  */
+typedef XID XserverRegion;
+#endif
+#endif
+
 #include <X11/cursorfont.h>
 
 /* Include Xutil.h after keysym.h to work around a bug that prevents
@@ -318,6 +334,9 @@ struct x_failable_request
   /* If this is zero, then the request has not yet been made.
      Otherwise, this is the request that ends this sequence.  */
   unsigned long end;
+
+  /* Any selection event serial associated with this error trap.  */
+  unsigned int selection_serial;
 };
 
 #ifdef HAVE_XFIXES
@@ -359,6 +378,10 @@ struct x_display_info
 
   /* Number of frames that are on this display.  */
   int reference_count;
+
+  /* True if this display connection cannot communicate with the
+     window manager because it is not trusted by the X server.  */
+  bool untrusted;
 
   /* The Screen this connection is connected to.  */
   Screen *screen;
@@ -406,7 +429,7 @@ struct x_display_info
      Unused if this display supports Xfixes extension.  */
   Cursor invisible_cursor;
 
-#ifdef HAVE_XFIXES
+#if defined HAVE_XFIXES && XFIXES_VERSION >= 40000
   /* Whether or not to use Xfixes for pointer blanking.  */
   bool fixes_pointer_blanking;
 #endif
@@ -536,6 +559,12 @@ struct x_display_info
   /* Atoms used by both versions of the OffiX DND protocol (the "old
      KDE" protocol in x-dnd.el). */
   Atom Xatom_DndProtocol, Xatom_DND_PROTOCOL;
+
+  /* Atoms to make x_intern_cached_atom fast.  */
+  Atom Xatom_text_plain_charset_utf_8, Xatom_LENGTH, Xatom_FILE_NAME,
+    Xatom_CHARACTER_POSITION, Xatom_LINE_NUMBER, Xatom_COLUMN_NUMBER,
+    Xatom_OWNER_OS, Xatom_HOST_NAME, Xatom_USER, Xatom_CLASS,
+    Xatom_NAME, Xatom_SAVE_TARGETS;
 
   /* The frame (if any) which has the X window that has keyboard focus.
      Zero if none.  This is examined by Ffocus_frame in xfns.c.  Note
@@ -1261,6 +1290,11 @@ struct x_output
      strictly an optimization to avoid extraneous synchronizing in
      some cases.  */
   int root_x, root_y;
+
+  /* The frame visibility state.  This starts out
+     VisibilityFullyObscured, but is set to something else in
+     handle_one_xevent.  */
+  int visibility_state;
 };
 
 enum
@@ -1378,6 +1412,11 @@ extern void x_mark_frame_dirty (struct frame *f);
 
 /* And its corresponding visual info.  */
 #define FRAME_X_VISUAL_INFO(f) (&FRAME_DISPLAY_INFO (f)->visual_info)
+
+/* Whether or not the frame is visible.  Do not test this alone.
+   Instead, use FRAME_REDISPLAY_P.  */
+#define FRAME_X_VISIBLE(f) (FRAME_X_OUTPUT (f)->visibility_state	\
+			    != VisibilityFullyObscured)
 
 #ifdef HAVE_XRENDER
 #define FRAME_X_PICTURE_FORMAT(f) FRAME_DISPLAY_INFO (f)->pict_format
@@ -1644,7 +1683,8 @@ extern bool x_had_errors_p (Display *);
 extern void x_unwind_errors_to (int);
 extern void x_uncatch_errors (void);
 extern void x_uncatch_errors_after_check (void);
-extern void x_ignore_errors_for_next_request (struct x_display_info *);
+extern void x_ignore_errors_for_next_request (struct x_display_info *,
+					      unsigned int);
 extern void x_stop_ignoring_errors (struct x_display_info *);
 extern void x_clear_errors (Display *);
 extern void x_set_window_size (struct frame *, bool, int, int);
@@ -1717,6 +1757,11 @@ extern Lisp_Object x_handle_translate_coordinates (struct frame *, Lisp_Object,
 
 extern Bool x_query_pointer (Display *, Window, Window *, Window *, int *,
 			     int *, int *, int *, unsigned int *);
+extern Atom x_intern_cached_atom (struct x_display_info *, const char *,
+				  bool);
+extern void x_intern_atoms (struct x_display_info *, char **, int, Atom *);
+extern char *x_get_atom_name (struct x_display_info *, Atom, bool *)
+  ATTRIBUTE_MALLOC ATTRIBUTE_DEALLOC_FREE;
 
 #ifdef HAVE_GTK3
 extern void x_scroll_bar_configure (GdkEvent *);
@@ -1798,6 +1843,9 @@ extern void x_handle_property_notify (const XPropertyEvent *);
 extern void x_handle_selection_notify (const XSelectionEvent *);
 extern void x_handle_selection_event (struct selection_input_event *);
 extern void x_clear_frame_selections (struct frame *);
+extern void x_remove_selection_transfers (struct x_display_info *);
+extern void x_handle_selection_error (unsigned int, XErrorEvent *);
+
 extern Lisp_Object x_atom_to_symbol (struct x_display_info *, Atom);
 extern Atom symbol_to_x_atom (struct x_display_info *, Lisp_Object);
 
@@ -1807,11 +1855,8 @@ extern bool x_handle_dnd_message (struct frame *,
 				  struct input_event *,
 				  bool, int, int);
 extern int x_check_property_data (Lisp_Object);
-extern void x_fill_property_data (Display *,
-                                  Lisp_Object,
-                                  void *,
-				  int,
-                                  int);
+extern void x_fill_property_data (struct x_display_info *, Lisp_Object,
+                                  void *, int, int);
 extern Lisp_Object x_property_data_to_lisp (struct frame *,
                                             const unsigned char *,
                                             Atom,
@@ -1824,10 +1869,10 @@ extern Lisp_Object x_timestamp_for_selection (struct x_display_info *,
 					      Lisp_Object);
 extern void x_own_selection (Lisp_Object, Lisp_Object, Lisp_Object,
 			     Lisp_Object, Time);
-extern Atom x_intern_cached_atom (struct x_display_info *, const char *,
-				  bool);
-extern char *x_get_atom_name (struct x_display_info *, Atom, bool *)
-  ATTRIBUTE_MALLOC ATTRIBUTE_DEALLOC_FREE;
+
+extern void mark_xselect (void);
+
+/* Misc definitions.  */
 
 #ifdef USE_GTK
 extern bool xg_set_icon (struct frame *, Lisp_Object);

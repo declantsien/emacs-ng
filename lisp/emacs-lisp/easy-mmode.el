@@ -1,6 +1,6 @@
 ;;; easy-mmode.el --- easy definition for major and minor modes  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 1997, 2000-2022 Free Software Foundation, Inc.
+;; Copyright (C) 1997, 2000-2023 Free Software Foundation, Inc.
 
 ;; Author: Georges Brun-Cottan <Georges.Brun-Cottan@inria.fr>
 ;; Maintainer: Stefan Monnier <monnier@gnu.org>
@@ -250,7 +250,8 @@ INIT-VALUE LIGHTER KEYMAP.
          (warnwrap (if (or (null body) (keywordp (car body))) #'identity
                      (lambda (exp)
                        (macroexp-warn-and-return
-                        "Use keywords rather than deprecated positional arguments to `define-minor-mode'"
+                        (format-message
+                         "Use keywords rather than deprecated positional arguments to `define-minor-mode'")
                         exp))))
 	 keyw keymap-sym tmp)
 
@@ -417,6 +418,8 @@ No problems result if this variable is not bound.
 	  `(defvar ,keymap-sym
 	     (let ((m ,keymap))
 	       (cond ((keymapp m) m)
+                     ;; FIXME: `easy-mmode-define-keymap' is obsolete,
+                     ;; so this form should also be obsolete somehow.
 		     ((listp m)
                       (with-suppressed-warnings ((obsolete
                                                   easy-mmode-define-keymap))
@@ -682,6 +685,7 @@ Valid keywords and arguments are:
   :group     Ignored.
   :suppress  Non-nil to call `suppress-keymap' on keymap,
              `nodigits' to suppress digits as prefix arguments."
+  (declare (obsolete define-keymap "29.1"))
   (let (inherit dense suppress)
     (while args
       (let ((key (pop args))
@@ -722,9 +726,7 @@ The M, BS, and ARGS arguments are as per that function.  DOC is
 the constant's documentation.
 
 This macro is deprecated; use `defvar-keymap' instead."
-  ;; FIXME: Declare obsolete in favor of `defvar-keymap'.  It is still
-  ;; used for `gud-menu-map' and `gud-minor-mode-map', so fix that first.
-  (declare (doc-string 3) (indent 1))
+  (declare (doc-string 3) (indent 1) (obsolete defvar-keymap "29.1"))
   `(defconst ,m
      (easy-mmode-define-keymap ,bs nil (if (boundp ',m) ,m) ,(cons 'list args))
      ,doc))

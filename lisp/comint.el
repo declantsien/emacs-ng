@@ -1,6 +1,6 @@
 ;;; comint.el --- general command interpreter in a window stuff -*- lexical-binding: t -*-
 
-;; Copyright (C) 1988, 1990, 1992-2022 Free Software Foundation, Inc.
+;; Copyright (C) 1988, 1990, 1992-2023 Free Software Foundation, Inc.
 
 ;; Author: Olin Shivers <shivers@cs.cmu.edu>
 ;;	Simon Marshall <simon@gnu.org>
@@ -606,11 +606,9 @@ via PTYs.")
 
 (defvar-keymap comint-repeat-map
   :doc "Keymap to repeat comint key sequences.  Used in `repeat-mode'."
+  :repeat t
   "C-n" #'comint-next-prompt
   "C-p" #'comint-previous-prompt)
-
-(put #'comint-next-prompt 'repeat-map 'comint-repeat-map)
-(put #'comint-previous-prompt 'repeat-map 'comint-repeat-map)
 
 ;; Fixme: Is this still relevant?
 (defvar comint-ptyp t
@@ -4121,9 +4119,15 @@ function called, or nil, if no function was called (if BEG = END)."
         (save-restriction
           (let ((beg2 beg1)
                 (end2 end1))
-            (when (= beg2 beg)
+            (when (and (= beg2 beg)
+                       (> beg2 (point-min))
+                       (eq is-output
+                           (eq (get-text-property (1- beg2) 'field) 'output)))
               (setq beg2 (field-beginning beg2)))
-            (when (= end2 end)
+            (when (and (= end2 end)
+                       (< end2 (point-max))
+                       (eq is-output
+                           (eq (get-text-property (1+ end2) 'field) 'output)))
               (setq end2 (field-end end2)))
             ;; Narrow to the whole field surrounding the region
             (narrow-to-region beg2 end2))

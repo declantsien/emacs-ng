@@ -1,6 +1,6 @@
 ;;; xref.el --- Cross-referencing commands              -*-lexical-binding:t-*-
 
-;; Copyright (C) 2014-2022 Free Software Foundation, Inc.
+;; Copyright (C) 2014-2023 Free Software Foundation, Inc.
 ;; Version: 1.6.0
 ;; Package-Requires: ((emacs "26.1"))
 
@@ -994,7 +994,7 @@ point."
   (setq-local add-log-current-defun-function
 	      #'xref--add-log-current-defun)
   (setq-local outline-minor-mode-cycle t
-              outline-minor-mode-use-buttons t
+              outline-minor-mode-use-buttons 'insert
               outline-search-function
               (lambda (&optional bound move backward looking-at)
                 (outline-search-text-property

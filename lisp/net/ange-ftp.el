@@ -1,6 +1,6 @@
 ;;; ange-ftp.el --- transparent FTP support for GNU Emacs  -*- lexical-binding:t -*-
 
-;; Copyright (C) 1989-2022 Free Software Foundation, Inc.
+;; Copyright (C) 1989-2023 Free Software Foundation, Inc.
 
 ;; Author: Andy Norman <ange@hplb.hpl.hp.com>
 ;; Maintainer: emacs-devel@gnu.org
@@ -4129,7 +4129,7 @@ directory, so that Emacs will know its current contents."
 	(or (file-exists-p parent)
 	    (ange-ftp-make-directory parent parents))))
   (if (file-exists-p dir)
-      (unless parents
+      (if parents t
 	(signal
          'file-already-exists
          (list "Cannot make directory: file already exists" dir)))
@@ -4158,7 +4158,8 @@ directory, so that Emacs will know its current contents."
 				(format "Could not make directory %s: %s"
 					dir
 					(cdr result))))
-	    (ange-ftp-add-file-entry dir t))
+	    (ange-ftp-add-file-entry dir t)
+            nil)
 	(ange-ftp-real-make-directory dir)))))
 
 (defun ange-ftp-delete-directory (dir &optional recursive trash)
@@ -4498,6 +4499,25 @@ NEWNAME should be the name to give the new compressed or uncompressed file.")
 (put 'process-file 'ange-ftp 'ange-ftp-process-file)
 (put 'start-file-process 'ange-ftp 'ignore)
 (put 'shell-command 'ange-ftp 'ange-ftp-shell-command)
+
+;; Do not execute system information functions.
+(put 'file-system-info 'ange-ftp 'ignore)
+(put 'list-system-processes 'ange-ftp 'ignore)
+(put 'memory-info 'ange-ftp 'ignore)
+(put 'process-attributes 'ange-ftp 'ignore)
+
+;; There aren't ACLs.  `file-selinux-context' shall return '(nil nil
+;; nil nil) if the file is nonexistent, so we let the default file
+;; name handler do the job.
+(put 'file-acl 'ange-ftp 'ignore)
+;; (put 'file-selinux-context 'ange-ftp 'ignore)
+(put 'set-file-acl 'ange-ftp 'ignore)
+(put 'set-file-selinux-context 'ange-ftp 'ignore)
+
+;; There aren't file notifications.
+(put 'file-notify-add-watch 'ange-ftp 'ignore)
+(put 'file-notify-rm-watch 'ange-ftp 'ignore)
+(put 'file-notify-valid-p 'ange-ftp 'ignore)
 
 ;;; Define ways of getting at unmodified Emacs primitives,
 ;;; turning off our handler.

@@ -1,6 +1,6 @@
 ;;; erc-scenarios-common.el --- Common helpers for ERC scenarios -*- lexical-binding: t -*-
 
-;; Copyright (C) 2022 Free Software Foundation, Inc.
+;; Copyright (C) 2022-2023 Free Software Foundation, Inc.
 
 ;; This file is part of GNU Emacs.
 
@@ -185,7 +185,7 @@ Dialog resource directories are located by expanding the variable
 (defun erc-scenarios-common-assert-initial-buf-name (id port)
   ;; Assert no limbo period when explicit ID given
   (should (string= (if id
-                       (symbol-name id)
+                       (format "%s" id)
                      (format "127.0.0.1:%d" port))
                    (buffer-name))))
 
