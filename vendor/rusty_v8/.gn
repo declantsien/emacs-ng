@@ -1,0 +1,37 @@
+# This file is used by the GN meta build system to find the root of the source
+# tree and to set startup options. For documentation on the values set in this
+# file, run "gn help dotfile" at the command line.
+
+# The location of the build configuration file.
+buildconfig = "//build/config/BUILDCONFIG.gn"
+
+# These are the targets to check headers for by default. The files in targets
+# matching these patterns (see "gn help label_pattern" for format) will have
+# their includes checked for proper dependencies when you run either
+# "gn check" or "gn gen --check".
+check_targets = []
+
+# The secondary source root is a parallel directory tree where
+# GN build files are placed when they can not be placed directly
+# in the source tree, e.g. for third party source trees.
+secondary_source = "//v8/"
+
+default_args = {
+  linux_use_bundled_binutils = false
+  use_sysroot = false
+
+  use_dummy_lastchange = true
+  treat_warnings_as_errors = true
+
+  # TODO(ry) remove
+  v8_imminent_deprecation_warnings = false
+
+  # https://cs.chromium.org/chromium/src/docs/ccache_mac.md
+  clang_use_chrome_plugins = false
+  v8_monolithic = false
+  v8_use_external_startup_data = false
+  v8_use_snapshot = true
+  is_component_build = false
+  win_crt_flavor_agnostic = true
+  symbol_level = 1
+}
