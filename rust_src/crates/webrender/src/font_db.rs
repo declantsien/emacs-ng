@@ -33,26 +33,6 @@ impl FontDB {
                 log::trace!("Load fonts dir: {:?}", dir);
                 db.load_fonts_dir(dir);
             }
-
-            if let Some(serif) = Self::query_generic("serif") {
-                db.set_serif_family(serif);
-            };
-
-            if let Some(sans_serif) = Self::query_generic("sans serif") {
-                db.set_serif_family(sans_serif);
-            };
-
-            if let Some(monospace) = Self::query_generic("monospace") {
-                db.set_monospace_family(monospace);
-            };
-
-            if let Some(cursive) = Self::query_generic("cursive") {
-                db.set_cursive_family(cursive);
-            };
-
-            if let Some(fantasy) = Self::query_generic("fantasy") {
-                db.set_cursive_family(fantasy);
-            };
         }
 
         FontDB { db }
@@ -122,15 +102,12 @@ impl FontDB {
     }
 
     #[cfg(all(unix, not(target_os = "macos")))]
-    pub fn query_generic(name: &str) -> Option<String> {
-        let property = system_fonts::FontPropertyBuilder::new()
-            .family(name)
-            .build();
-        if let Some((_, _, family_name)) = system_fonts::get(&property) {
+    pub fn fc_family_name(name: &str) -> String {
+        if let Some(family_name) = system_fonts::family_name(name) {
             log::trace!("Query: {} Name: {}", name, family_name,);
-            return Some(family_name.to_owned());
+            return family_name;
         }
         log::trace!("Query: {} not found", name);
-        None
+        name.to_string()
     }
 }
