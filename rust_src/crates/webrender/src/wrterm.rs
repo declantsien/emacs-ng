@@ -847,7 +847,7 @@ pub fn x_selection_exists_p(_selection: LispObject, _terminal: LispObject) -> Li
 /// the inner edges of FRAME.  These edges exclude title bar, any borders,
 /// menu bar or tool bar of FRAME.
 #[lisp_fn(min = "0")]
-pub fn x_frame_edges(frame: LispObject, type_: LispObject) -> LispObject {
+pub fn wr_frame_edges(frame: LispObject, type_: LispObject) -> LispObject {
     frame_edges(frame, type_)
 }
 
