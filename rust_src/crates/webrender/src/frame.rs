@@ -36,7 +36,7 @@ pub fn create_frame(
     frame.set_output_method(output_method::output_wr);
 
     let mut event_loop = EVENT_LOOP.lock().unwrap();
-    let mut output = Box::new(Output::build(&mut event_loop, frame));
+    let mut output = Box::new(Output::build(&mut event_loop, dpyinfo, frame));
 
     let window_id = output.get_window().id();
 
