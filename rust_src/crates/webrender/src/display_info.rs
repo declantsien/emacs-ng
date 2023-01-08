@@ -1,4 +1,5 @@
 use libc;
+use raw_window_handle::RawDisplayHandle;
 use std::{collections::HashMap, ptr};
 use winit::window::WindowId;
 
@@ -21,6 +22,10 @@ pub struct DisplayInfoInner {
     pub scratch_cursor_gc: Box<Emacs_GC>,
 
     pub fringe_bitmap_caches: HashMap<i32, FringeBitmap>,
+
+    pub connection: Option<surfman::Connection>,
+
+    pub raw_display_handle: Option<RawDisplayHandle>,
 }
 
 impl Default for DisplayInfoInner {
@@ -36,6 +41,8 @@ impl Default for DisplayInfoInner {
             }),
 
             fringe_bitmap_caches: HashMap::new(),
+            connection: None,
+            raw_display_handle: None,
         }
     }
 }
