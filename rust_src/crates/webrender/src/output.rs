@@ -88,7 +88,11 @@ pub struct Output {
 }
 
 impl Output {
-    pub fn build(event_loop: &mut WrEventLoop, frame: LispFrameRef) -> Self {
+    pub fn build(
+        event_loop: &mut WrEventLoop,
+        dpyinfo: DisplayInfoRef,
+        frame: LispFrameRef,
+    ) -> Self {
         let window_builder = winit::window::WindowBuilder::new().with_visible(true);
 
         #[cfg(wayland_platform)]
@@ -99,7 +103,9 @@ impl Output {
         };
 
         let window = window_builder.build(&event_loop.el()).unwrap();
-        let webrender_surfman = event_loop.new_webrender_surfman(&window);
+        let dpyinfo_ref = dpyinfo.get_inner();
+        let connection = dpyinfo_ref.connection.as_ref();
+        let webrender_surfman = event_loop.new_webrender_surfman(&window, connection);
 
         // Get GL bindings
         let gl = match webrender_surfman.connection().gl_api() {
