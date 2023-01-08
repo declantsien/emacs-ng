@@ -71,6 +71,7 @@
 (if (not (fboundp 'wr-create-frame))
     (error "%s: Loading wr-win.el but not compiled for Webrender" invocation-name))
 (defalias 'x-create-frame 'wr-create-frame)
+(defalias 'x-frame-edges 'wr-frame-edges)
 
 (require 'term/common-win)
 (require 'frame)
