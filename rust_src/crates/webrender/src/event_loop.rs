@@ -1,9 +1,10 @@
 use errno::{set_errno, Errno};
 use nix::sys::signal::{self, Signal};
+use raw_window_handle::{HasRawDisplayHandle, RawDisplayHandle};
 use std::{
     cell::RefCell,
     ptr,
-    sync::Mutex,
+    sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
 
@@ -20,9 +21,9 @@ use copypasta::{
 
 use libc::{c_void, fd_set, pselect, sigset_t, timespec};
 use once_cell::sync::Lazy;
-#[cfg(wayland_platform)]
+#[cfg(free_unix)]
 use winit::platform::wayland::EventLoopWindowTargetExtWayland;
-#[cfg(x11_platform)]
+#[cfg(free_unix)]
 use winit::platform::x11::EventLoopWindowTargetExtX11;
 use winit::{
     event::{Event, StartCause, WindowEvent},
@@ -56,6 +57,7 @@ pub struct WrEventLoop {
     clipboard: Box<dyn ClipboardProvider>,
     el: EventLoop<i32>,
     pub connection: Option<Connection>,
+    pub raw_display_handle: Option<RawDisplayHandle>,
 }
 
 unsafe impl Send for WrEventLoop {}
@@ -92,17 +94,19 @@ impl WrEventLoop {
         webrender_surfman
     }
 
-    pub fn open_native_display(&mut self) -> &Option<Connection> {
+    pub fn open_native_display(&mut self) -> &Option<RawDisplayHandle> {
         let window_builder = winit::window::WindowBuilder::new().with_visible(false);
         let window = window_builder.build(&self.el).unwrap();
+        let rwh = window.raw_display_handle();
 
         // Initialize surfman
         let connection =
             Connection::from_winit_window(&window).expect("Failed to create connection");
 
         self.connection = Some(connection);
+        self.raw_display_handle = Some(rwh);
 
-        &self.connection
+        &self.raw_display_handle
     }
 
     pub fn wait_for_window_resize(&mut self, target_window_id: WindowId) {
@@ -165,16 +169,18 @@ fn build_clipboard(_event_loop: &EventLoop<i32>) -> Box<dyn ClipboardProvider> {
     }
 }
 
-pub static EVENT_LOOP: Lazy<Mutex<WrEventLoop>> = Lazy::new(|| {
+pub static EVENT_LOOP: Lazy<Arc<Mutex<WrEventLoop>>> = Lazy::new(|| {
     let el = winit::event_loop::EventLoopBuilder::<i32>::with_user_event().build();
     let clipboard = build_clipboard(&el);
     let connection = None;
+    let raw_display_handle = None;
 
-    Mutex::new(WrEventLoop {
+    Arc::new(Mutex::new(WrEventLoop {
         clipboard,
         el,
         connection,
-    })
+        raw_display_handle,
+    }))
 });
 
 pub static EVENT_BUFFER: Lazy<Mutex<Vec<GUIEvent>>> = Lazy::new(|| Mutex::new(Vec::new()));
@@ -305,4 +311,42 @@ pub extern "C" fn wr_select1(
     log::trace!("winit event run_return: {ret:?}");
 
     ret
+}
+
+// Polling C-g when emacs is blocked
+pub fn poll_a_event(timeout: Duration) -> Option<GUIEvent> {
+    log::trace!("poll a event {:?}", timeout);
+    let mut event_loop = EVENT_LOOP.lock().unwrap();
+    let deadline = Instant::now() + timeout;
+    let result = RefCell::new(None);
+    event_loop.el.run_return(|e, _target, control_flow| {
+        control_flow.set_wait_until(deadline);
+
+        if let Event::WindowEvent { event, .. } = &e {
+            log::trace!("{:?}", event);
+        }
+
+        match e {
+            Event::WindowEvent { ref event, .. } => match event {
+                WindowEvent::Resized(_)
+                | WindowEvent::KeyboardInput { .. }
+                | WindowEvent::ReceivedCharacter(_)
+                | WindowEvent::ModifiersChanged(_)
+                | WindowEvent::MouseInput { .. }
+                | WindowEvent::CursorMoved { .. }
+                | WindowEvent::Focused(_)
+                | WindowEvent::MouseWheel { .. }
+                | WindowEvent::CloseRequested => {
+                    result.replace(Some(e.to_static().unwrap()));
+                    control_flow.set_exit();
+                }
+                _ => {}
+            },
+            Event::RedrawEventsCleared => {
+                control_flow.set_exit();
+            }
+            _ => {}
+        };
+    });
+    result.into_inner()
 }

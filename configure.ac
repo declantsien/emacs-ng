@@ -7038,10 +7038,10 @@ case "$window_system" in
     webrender)
         CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-webrender\", "
 	if test x$ac_enable_webrender_capture != x ; then
-	   WEBRENDER_DEFAULT_FEATURES="\"capture\", ${WEBRENDER_DEFAULT_FEATURES}"
+	   WEBRENDER_DEFAULT_FEATURES="\"wr_capture\", ${WEBRENDER_DEFAULT_FEATURES}"
 	fi
 	if test x$ac_enable_webrender_x11 != x ; then
-	   WEBRENDER_DEFAULT_FEATURES="\"x11\", ${WEBRENDER_DEFAULT_FEATURES}"
+	   WEBRENDER_DEFAULT_FEATURES="\"wr_x11\", ${WEBRENDER_DEFAULT_FEATURES}"
 	fi
     ;;
 esac
