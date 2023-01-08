@@ -7,6 +7,7 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=src/wrterm.rs");
     println!("cargo:rerun-if-changed=src/event_loop.rs");
+
     // TODO watch relevent files to re rerun, rs files under src?
 
     let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -34,7 +35,7 @@ fn main() {
         free_unix: { all(unix, not(apple), not(android_platform)) },
 
         // Native displays.
-        x11_platform: { all(feature = "wr_x11", free_unix, not(wasm)) },
-        wayland_platform: { all(feature = "wr_wayland", free_unix, not(wasm)) },
+        x11_platform: { all(feature = "x11", free_unix, not(wasm)) },
+        wayland_platform: { all(feature = "wayland", free_unix, not(wasm)) },
     }
 }

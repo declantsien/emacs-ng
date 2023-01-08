@@ -121,6 +121,12 @@ struct scroll_bar
 
 struct pgtk_display_info
 {
+
+#ifdef USE_WEBRENDER
+  /* Inner perporty in Rust */
+  void *inner;
+#endif /*USE_WEBRENDER*/
+
   /* Chain of all pgtk_display_info structures.  */
   struct pgtk_display_info *next;
 
@@ -157,7 +163,12 @@ struct pgtk_display_info
   /* Minimum font height over all fonts in font_table.  */
   int smallest_font_height;
 
+#ifdef USE_WEBRENDER
+  struct wr_bitmap_record *bitmaps;
+#else
   struct pgtk_bitmap_record *bitmaps;
+#endif /*USE_WEBRENDER*/
+
   ptrdiff_t bitmaps_size;
   ptrdiff_t bitmaps_last;
 
@@ -251,6 +262,7 @@ struct pgtk_display_info
   } scroll;
 
   int connection;
+
 };
 
 /* This is a chain of structures for all the PGTK displays currently in use.  */
@@ -258,6 +270,12 @@ extern struct pgtk_display_info *x_display_list;
 
 struct pgtk_output
 {
+
+#ifdef USE_WEBRENDER
+  /* Inner perporty in Rust */
+  void *canvas;
+#endif /*USE_WEBRENDER*/
+
   unsigned long foreground_color;
   unsigned long background_color;
   void *toolbar;
@@ -452,7 +470,9 @@ enum
 #define FRAME_BACKGROUND_COLOR(f) (FRAME_X_OUTPUT (f)->background_color)
 #define FRAME_CURSOR_COLOR(f)     (FRAME_X_OUTPUT (f)->cursor_color)
 #define FRAME_POINTER_TYPE(f)     (FRAME_X_OUTPUT (f)->current_pointer)
+#ifndef USE_WEBRENDER
 #define FRAME_FONT(f)             (FRAME_X_OUTPUT (f)->font)
+#endif
 #define FRAME_GTK_OUTER_WIDGET(f) (FRAME_X_OUTPUT (f)->widget)
 #define FRAME_GTK_WIDGET(f)       (FRAME_X_OUTPUT (f)->edit_widget)
 #define FRAME_WIDGET(f)           (FRAME_GTK_OUTER_WIDGET (f)	\
@@ -484,11 +504,13 @@ enum
 #define FRAME_TOOLBAR_WIDTH(f) \
   (FRAME_TOOLBAR_LEFT_WIDTH (f) + FRAME_TOOLBAR_RIGHT_WIDTH (f))
 
+#ifndef USE_WEBRENDER
 #define FRAME_FONTSET(f) (FRAME_X_OUTPUT (f)->fontset)
 
 #define FRAME_BASELINE_OFFSET(f) (FRAME_X_OUTPUT (f)->baseline_offset)
 #define BLACK_PIX_DEFAULT(f) 0x000000
 #define WHITE_PIX_DEFAULT(f) 0xFFFFFF
+#endif
 
 /* First position where characters can be shown (instead of scrollbar, if
    it is on left. */
@@ -650,6 +672,12 @@ extern bool pgtk_text_icon (struct frame *, const char *);
 
 extern double pgtk_frame_scale_factor (struct frame *);
 extern int pgtk_emacs_to_gtk_modifiers (struct pgtk_display_info *, int);
+
+#ifdef USE_WEBRENDER
+/* extern void wr_display_init_from_wayland (struct pgtk_display_info *, struct wl_display *, int) */
+/* extern void wr_canvas_init_from_wayland (struct frame *, struct wl_surface *) */
+#include "webrender_bindings_ffi.h"
+#endif
 
 #endif /* HAVE_PGTK */
 #endif /* _PGTKTERM_H_ */

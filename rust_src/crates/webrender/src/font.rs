@@ -1,5 +1,8 @@
 use std::{mem::ManuallyDrop, rc::Rc};
 
+use std::ffi::CString;
+use std::ptr;
+
 use fontdb::{Stretch, Style, Weight};
 use lazy_static::lazy_static;
 use std::str;
@@ -9,13 +12,13 @@ use webrender::api::*;
 use emacs::{
     bindings::{
         font, font_driver, font_make_entity, font_make_object, font_metrics, font_property_index,
-        font_style_to_value, frame, glyph_string, intern, Fassoc, Fcdr, Fcons, Fmake_symbol,
-        Fnreverse, FONT_INVALID_CODE,
+        font_style_to_value, frame, glyph_string, intern, register_font_driver, Fassoc, Fcdr,
+        Fcons, Fmake_symbol, Fnreverse, Fprovide, FONT_INVALID_CODE,
     },
     frame::LispFrameRef,
     globals::{
         Qbold, Qextra_bold, Qextra_light, Qiso10646_1, Qitalic, Qlight, Qmedium, Qnil, Qnormal,
-        Qoblique, Qsemi_bold, Qthin, Qultra_bold, Qwr,
+        Qoblique, Qsemi_bold, Qthin, Qttf_parser, Qultra_bold,
     },
     lisp::{ExternalPtr, LispObject},
     multibyte::LispStringRef,
@@ -33,7 +36,7 @@ lazy_static! {
     pub static ref FONT_DRIVER: FontDriver = {
         let mut font_driver = font_driver::default();
 
-        font_driver.type_ = Qwr;
+        font_driver.type_ = Qttf_parser;
         font_driver.case_sensitive = true;
         font_driver.get_cache = Some(get_cache);
         font_driver.list = Some(list);
@@ -159,7 +162,7 @@ impl From<LispObject> for LispFontLike {
 
 extern "C" fn get_cache(f: *mut frame) -> LispObject {
     let frame = LispFrameRef::new(f);
-    let mut dpyinfo = frame.wr_display_info();
+    let mut dpyinfo = frame.display_info();
 
     dpyinfo.get_raw().name_list_element
 }
@@ -200,7 +203,7 @@ extern "C" fn match_(_f: *mut frame, spec: LispObject) -> LispObject {
         let entity: LispFontLike = unsafe { font_make_entity() }.into();
 
         // set type
-        entity.aset(font_property_index::FONT_TYPE_INDEX, Qwr);
+        entity.aset(font_property_index::FONT_TYPE_INDEX, Qttf_parser);
 
         let family_name = f.families.get(0);
         if family_name.is_none() {
@@ -299,7 +302,7 @@ pub struct WRFont<'a> {
     // extend basic font
     pub font: font,
 
-    pub device_pixel_ratio: f32,
+    pub scale: f32,
 
     pub font_instance_key: FontInstanceKey,
 
@@ -314,18 +317,13 @@ impl<'a> WRFont<'a> {
     }
 
     pub fn get_glyph_advance_width(&self, glyph_indices: Vec<GlyphIndex>) -> Vec<Option<i32>> {
-        let pixel_size = self.font.pixel_size;
-        let glyph_size = pixel_size as f32 * self.device_pixel_ratio;
-        let units_per_em = self.face.units_per_em();
-
-        let scale = glyph_size / units_per_em as f32;
 
         glyph_indices
             .into_iter()
             .map(|i| {
                 self.face
                     .glyph_hor_advance(ttf_parser::GlyphId(i as u16))
-                    .map(|a| (a as f32 * scale).round() as i32)
+                    .map(|a| (a as f32 * self.scale).round() as i32)
             })
             .collect()
     }
@@ -334,6 +332,7 @@ impl<'a> WRFont<'a> {
 pub type WRFontRef<'a> = ExternalPtr<WRFont<'a>>;
 
 extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: i32) -> LispObject {
+    log::trace!("open font: {:?}", pixel_size);
     let font_entity: LispFontLike = font_entity.into();
     let desc = font_entity.get_descriptor();
     if desc.is_none() {
@@ -342,17 +341,18 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
     let desc = desc.unwrap();
 
     let frame: LispFrameRef = frame.into();
-    let mut output = frame.wr_output();
+    let dpyinfo = frame.display_info();
+    let mut output = frame.canvas();
 
     // pixel_size here reflects to DPR 1 for webrender display, we have scale_factor from winit.
     // while pgtk/ns/w32 reflects to actual DPR on device by setting resx/resy to display
-    let pixel_size = if !output.font.is_null() {
-        output.font.pixel_size as i64
+    let pixel_size = if !frame.output().get_font().is_null() {
+        frame.output().get_font().pixel_size as i64
     } else {
         pixel_size as i64
     };
 
-    let device_pixel_ratio = output.device_pixel_ratio();
+    let device_pixel_ratio = dpyinfo.scale_factor();
     let glyph_size = pixel_size as f32 * device_pixel_ratio;
 
     let font_object: LispFontLike = unsafe {
@@ -365,7 +365,7 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
     .into();
 
     // set type
-    font_object.aset(font_property_index::FONT_TYPE_INDEX, Qwr);
+    font_object.aset(font_property_index::FONT_TYPE_INDEX, Qttf_parser);
 
     // set name
     font_object.aset(
@@ -380,7 +380,6 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
             .unwrap()
             .as_font_mut() as *mut WRFont,
     );
-    wr_font.device_pixel_ratio = device_pixel_ratio;
 
     let font_result = output.get_or_create_font(&FONT_DB, desc.clone());
     if font_result.is_none() {
@@ -398,15 +397,9 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
 
     let (font_bytes, face_index) = font_data.unwrap();
 
-    let bg_color = None;
-    let flags = FontInstanceFlags::empty();
-    let synthetic_italics = SyntheticItalics::disabled();
     let font_instance_key = output.get_or_create_font_instance(
         font_key,
         glyph_size,
-        bg_color,
-        flags,
-        synthetic_italics,
     );
     wr_font.font_instance_key = font_instance_key;
 
@@ -420,10 +413,6 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
     }
     let face = face_result.ok().unwrap();
 
-    wr_font.face = face;
-
-    let face = &wr_font.face;
-
     let units_per_em = face.units_per_em();
 
     let underline_metrics = face.underline_metrics().unwrap();
@@ -433,7 +422,10 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
 
     let average_width = face.glyph_hor_advance(ttf_parser::GlyphId(0)).unwrap();
 
+    wr_font.face = face;
+
     let scale = glyph_size / units_per_em as f32;
+    wr_font.scale = scale;
 
     wr_font.font.pixel_size = pixel_size as i32;
     wr_font.font.average_width = (average_width as f32 * scale) as i32;
@@ -528,4 +520,28 @@ extern "C" fn text_extents(
         (*metrics).ascent = font.font.ascent as i16;
         (*metrics).descent = font.font.descent as i16;
     }
+}
+
+#[allow(unused_variables)]
+#[no_mangle]
+pub extern "C" fn register_ttf_parser_font_driver(f: *mut frame) {
+    unsafe {
+        register_font_driver(&FONT_DRIVER.0, f);
+    }
+}
+
+#[allow(unused_variables)]
+#[no_mangle]
+pub extern "C" fn syms_of_ttf_parser_font() {
+    let ttf_parser_symbol =
+        CString::new("ttf-parser").expect("Failed to create string for intern function call");
+    def_lisp_sym!(Qttf_parser, "ttf-parser");
+    unsafe {
+        Fprovide(
+            emacs::bindings::intern_c_string(ttf_parser_symbol.as_ptr()),
+            Qnil,
+        );
+    }
+
+    register_ttf_parser_font_driver(ptr::null_mut());
 }

@@ -244,8 +244,9 @@ fn generate_bindings() {
         .generate_inline_functions(true)
         .derive_default(true)
         .ctypes_prefix("::libc")
-        .no_copy("wr_output")
+        .no_copy("winit_output")
         // .blocklist_file("gtk/gtk.h")
+        .blocklist_item("GtkWidget")
         // we define these ourselves, for various reasons
         .blocklist_item("Lisp_Object")
         .blocklist_item("emacs_globals")
@@ -321,7 +322,7 @@ fn generate_bindings() {
     );
     let munged = re.unwrap().replace_all(&source, "");
     let mut file = File::create(out_path).unwrap();
-    write!(file, "use crate::{{\n    globals::emacs_globals,\n    sys::Lisp_Object,\n}};\n\nuse libc::{{timespec, fd_set, sigset_t}};\n").expect("Write error!");
+    write!(file, "use crate::{{\n    globals::emacs_globals,\n    sys::Lisp_Object,\n}};\n\nuse libc::{{timespec, fd_set, sigset_t}};\n\nuse gtk_sys::GtkWidget;\n").expect("Write error!");
     file.write_all(munged.into_owned().as_bytes()).unwrap();
 }
 

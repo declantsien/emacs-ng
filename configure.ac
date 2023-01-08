@@ -536,9 +536,12 @@ otherwise for the first of 'inotify', 'kqueue' or 'gfile' that is usable.])
 OPTION_DEFAULT_OFF([xwidgets],
   [enable use of xwidgets in Emacs buffers (requires gtk3 or macOS Cocoa)])
 
-OPTION_DEFAULT_OFF([webrender],
-  [enable use of webrender(written in Rust) as GUI backend on
+OPTION_DEFAULT_OFF([winit],
+  [enable use of winit(written in Rust) as GUI backend on
 multiple platforms(Linux, Windows and MacOS) (experimental)])
+
+OPTION_DEFAULT_OFF([webrender],
+  [enable use of webrender(written in Rust) as rendering engine])
 
 ## Based on Deno 1.9.1
 ## Update the above when upgrading Deno
@@ -1315,8 +1318,8 @@ AC_ARG_ENABLE(rust-debug,
 Useful for debugging rust component of emacs-ng.])],
 [ac_enable_rust_debug="${enableval}"],[])
 
-AC_ARG_ENABLE(webrender-self-contained,
-[AS_HELP_STRING([--disable-webrender-self-contained],
+AC_ARG_ENABLE(winit-self-contained,
+[AS_HELP_STRING([--disable-winit-self-contained],
                 [disable self contained Webrender build under NeXTstep])],
    EN_NS_SELF_CONTAINED=$enableval,
    EN_NS_SELF_CONTAINED=yes)
@@ -1326,10 +1329,10 @@ AC_ARG_ENABLE(webrender-capture,
 		[enable WebRender capture infrastructure.])],
 [ac_enable_webrender_capture="${enableval}"],[])
 
-AC_ARG_ENABLE(webrender-x11,
-[AS_HELP_STRING([--disable-webrender-x11],
-		[disable WebRender X11 support.])],
-[ac_enable_webrender_x11="${enableval}"],[])
+AC_ARG_ENABLE(winit-x11,
+[AS_HELP_STRING([--enable-winit-x11],
+		[enable Winit X11 support.])],
+[ac_enable_winit_x11="${enableval}"],[])
 
 AC_SUBST([AM_DEFAULT_VERBOSITY])
 AC_CONFIG_FILES([src/verbose.mk])
@@ -2012,10 +2015,15 @@ AC_SUBST([AUTO_DEPEND])
 
 window_system=none
 
-if test "${with_webrender}" = "yes"; then
+if test "${with_winit}" = "yes"; then
   no_x=yes
   with_ns=no
-  window_system=webrender
+  window_system=winit
+  with_webrender=yes
+fi
+
+if test "${with_webrender}" = "yes"; then
+  with_cairo=no
 fi
 
 if test "${with_pgtk}" = "yes"; then
@@ -2506,7 +2514,7 @@ dnl use the toolkit if we have gtk, or X11R5 or newer.
   w32 )
     term_header=w32term.h
   ;;
-  webrender )
+  winit )
     term_header=wrterm.h
   ;;
   pgtk )
@@ -6282,39 +6290,30 @@ AC_SUBST([XMENU_OBJ])
 AC_SUBST([XOBJ])
 AC_SUBST([FONT_OBJ])
 
-WEBRENDER_LIBS=
-WEBRENDER_IMPL_COCOA=no
-if test "${window_system}" = "webrender" ; then
+WINIT_LIBS=
+WINIT_IMPL_COCOA=no
+if test "${window_system}" = "winit" ; then
 
-  AC_DEFINE(USE_WEBRENDER, 1,
-	    [Define to 1 if you want to use the webrender.])
-
-  AC_DEFINE(HAVE_NATIVE_IMAGE_API, 1, [Define to use native OS APIs for images.])
-            NATIVE_IMAGE_API="yes (webrender)"
+  AC_DEFINE(HAVE_WINIT, 1,
+	    [Define to 1 if you want to use the Winit.])
 
   if test "${opsys}" = gnu-linux; then
-    EMACS_CHECK_MODULES([FREETYPE], [freetype2])
-    test "$HAVE_FREETYPE" = "no" && AC_MSG_ERROR(webrender requires libfreetype)
-
-    EMACS_CHECK_MODULES([FONTCONFIG], [fontconfig >= 2.2.0])
-    test "$HAVE_FONTCONFIG" = "no" && AC_MSG_ERROR(webrender requires libfontconfig)
-
     EMACS_CHECK_MODULES([XCB], [xcb >= 1.0.0])
-    test "$HAVE_XCB" = "no" && AC_MSG_ERROR(WebRender Unix build requires libxcb)
+    test "$HAVE_XCB" = "no" && AC_MSG_ERROR(Winit Unix build requires libxcb)
 
-    WEBRENDER_LIBS="$WEBRENDER_LIBS -lxcb -lxcb-xfixes -lxcb-shape -lxcb-render"
+    WINIT_LIBS="$WINIT_LIBS -lxcb -lxcb-xfixes -lxcb-shape -lxcb-render"
 
     if test X$ac_enable_webrender_x11 != Xno; then
-      WEBRENDER_LIBS="-lX11 -lX11-xcb $WEBRENDER_LIBS"
+      WINIT_LIBS="-lX11 -lX11-xcb $WINIT_LIBS"
     fi
   fi
 
   if test "${opsys}" = darwin; then
-     WEBRENDER_IMPL_COCOA=yes
+     WINIT_IMPL_COCOA=yes
   fi
 
   if test "${EN_NS_SELF_CONTAINED}" = yes && test "${opsys}" = darwin; then
-     AC_DEFINE(NS_SELF_CONTAINED, 1, [Build an Webrender NS bundled app])
+     AC_DEFINE(NS_SELF_CONTAINED, 1, [Build an Winit NS bundled app])
      ns_self_contained=yes
      ns_appdir=`pwd`/nextstep/Emacs.app
      ns_appbindir=${ns_appdir}/Contents/MacOS
@@ -6341,8 +6340,28 @@ if test "${window_system}" = "webrender" ; then
   fi
 
 fi
+AC_SUBST(WINIT_OBJ)
+AC_SUBST(WINIT_LIBS)
+AC_SUBST(WINIT_IMPL_COCOA)
+
+WEBRENDER_LIBS=
+if test "${with_webrender}" = "yes" ; then
+  RUSTFLAGS_CFG="\"--cfg=use_webrender\", ${RUSTFLAGS_CFG}"
+  AC_DEFINE(USE_WEBRENDER, 1,
+	    [Define to 1 if you want to use the webrender.])
+
+  AC_DEFINE(HAVE_NATIVE_IMAGE_API, 1, [Define to use native OS APIs for images.])
+            NATIVE_IMAGE_API="yes (webrender)"
+
+  if test "${opsys}" = gnu-linux; then
+    EMACS_CHECK_MODULES([FREETYPE], [freetype2])
+    test "$HAVE_FREETYPE" = "no" && AC_MSG_ERROR(webrender requires libfreetype)
+
+    EMACS_CHECK_MODULES([FONTCONFIG], [fontconfig >= 2.2.0])
+    test "$HAVE_FONTCONFIG" = "no" && AC_MSG_ERROR(webrender requires libfontconfig)
+  fi
+fi
 AC_SUBST(WEBRENDER_LIBS)
-AC_SUBST(WEBRENDER_IMPL_COCOA)
 
 WIDGET_OBJ=
 MOTIF_LIBW=
@@ -7017,33 +7036,29 @@ fi || AC_MSG_ERROR(['src/epaths.h' could not be made.])
     window_system="$window_system" EN_NS_SELF_CONTAINED="$EN_NS_SELF_CONTAINED"])
 
 CARGO_DEFAULT_FEATURES=""
+WINIT_DEFAULT_FEATURES=""
 WEBRENDER_DEFAULT_FEATURES=""
 if test "$HAVE_LIBXML2" = "yes"; then
     CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"use-xml2\", "
 fi
-if test "$window_system" != "none"; then
-    CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system\", "
-fi
+dnl if test "$window_system" != "none"; then
+    RUSTFLAGS_CFG="\"--cfg=have_window_system\", ${RUSTFLAGS_CFG}"
+dnl fi
+RUSTFLAGS_CFG="\"--cfg=window_system=\\\"$window_system\\\"\", ${RUSTFLAGS_CFG}"
 case "$window_system" in
-    x11)
-        CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-x11\", "
-    ;;
-    nextstep)
-	CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-nextstep\", "
-    ;;
-    w32)
-        CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-w32\", "
-    ;;
-    webrender)
-        CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-webrender\", "
-	if test x$ac_enable_webrender_capture != x ; then
-	   WEBRENDER_DEFAULT_FEATURES="\"capture\", ${WEBRENDER_DEFAULT_FEATURES}"
-	fi
+    winit)
+        CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-winit\", "
 	if test X$ac_enable_webrender_x11 != Xno ; then
-	   WEBRENDER_DEFAULT_FEATURES="\"x11\", ${WEBRENDER_DEFAULT_FEATURES}"
+	   WINIT_DEFAULT_FEATURES="\"x11\", ${WINIT_DEFAULT_FEATURES}"
 	fi
     ;;
 esac
+if test "${with_webrender}" = "yes" ; then
+   if test x$ac_enable_webrender_capture != x ; then
+      WEBRENDER_DEFAULT_FEATURES="\"wr_capture\", ${WINIT_DEFAULT_FEATURES}"
+   fi
+   CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"webrender\", "
+fi
 if test "$HAVE_LIBGIT" = "yes"; then
    CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"libgit\", "
 fi
@@ -7054,11 +7069,17 @@ fi
 if test "${HAVE_MODULES}" = "yes"; then
   CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"ng-module\", "
 fi
+
+AC_SUBST(RUSTFLAGS_CFG)
 AC_SUBST(CARGO_DEFAULT_FEATURES)
+AC_SUBST(WINIT_DEFAULT_FEATURES)
 AC_SUBST(WEBRENDER_DEFAULT_FEATURES)
 AC_CONFIG_FILES([Cargo.toml:Cargo.in])
 webrender_src=$srcdir/rust_src/crates/webrender
 AC_CONFIG_FILES([$webrender_src/Cargo.toml:$webrender_src/Cargo.in])
+winit_term_src=$srcdir/rust_src/crates/winit-term
+AC_CONFIG_FILES([$winit_term_src/Cargo.toml:$winit_term_src/Cargo.in])
+AC_CONFIG_FILES([$srcdir/.cargo/config.toml:$srcdir/.cargo/config.in])
 AC_CONFIG_FILES([$srcdir/rust_src/crates/emacs/build.rs])
 
 dnl NB we have to cheat and use the ac_... version because abs_top_srcdir

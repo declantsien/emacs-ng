@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
+use crate::output::OutputRef;
 use bit_vec::BitVec;
 use image::{DynamicImage, GenericImageView, Rgba, RgbaImage};
 
 use emacs::bindings::draw_fringe_bitmap_params;
 use webrender::api::ImageKey;
 
-use crate::output::OutputRef;
+use crate::canvas::CanvasRef;
 
 #[derive(Clone)]
 pub struct FringeBitmap {
@@ -31,7 +32,7 @@ pub fn get_or_create_fringe_bitmap(
         return Some(bitmap.clone());
     }
 
-    let bitmap = create_fringe_bitmap(output, p);
+    let bitmap = create_fringe_bitmap(output.get_canvas(), p);
 
     // add bitmap to cache
     display_info
@@ -41,12 +42,12 @@ pub fn get_or_create_fringe_bitmap(
     return Some(bitmap);
 }
 
-fn create_fringe_bitmap(mut output: OutputRef, p: *mut draw_fringe_bitmap_params) -> FringeBitmap {
+fn create_fringe_bitmap(mut canvas: CanvasRef, p: *mut draw_fringe_bitmap_params) -> FringeBitmap {
     let image_buffer = create_fringe_bitmap_image_buffer(p);
 
     let (width, height) = image_buffer.dimensions();
 
-    let image_key = output.add_image(
+    let image_key = canvas.add_image(
         width as i32,
         height as i32,
         Arc::new(image_buffer.to_rgba8().to_vec()),
