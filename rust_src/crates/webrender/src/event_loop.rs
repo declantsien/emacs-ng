@@ -262,12 +262,12 @@ pub extern "C" fn wr_select1(
                         Err(err) => log::error!("sigio err: {err:?}"),
                     };
 
-                    let is_x11 = false;
+                    let _is_x11 = false;
 
                     #[cfg(x11_platform)]
-                    let is_x11 = _target.is_x11();
+                    let _is_x11 = _target.is_x11();
 
-                    if is_x11 {
+                    if _is_x11 {
                         nfds_result.replace(1);
                     } else {
                         /* Pretend that `select' is interrupted by a signal.  */
