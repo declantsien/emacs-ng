@@ -36,7 +36,8 @@ lsp_json = { version = "0.1.0", path = "rust_src/crates/lsp_json" }
 git = { version = "0.1.0", path = "rust_src/crates/git", optional = true }
 ng_module = { version = "0.1.0", path = "rust_src/crates/ng_module", optional = true }
 js = { version = "0.1.0", path = "rust_src/crates/js", optional = true }
-wrterm = { version = "0.1.0", path = "rust_src/crates/webrender", optional = true }
+winit_term = { version = "0.1.0", path = "rust_src/crates/winit-term", optional = true }
+webrender_bindings = { version = "0.1.0", path = "rust_src/crates/webrender", optional = true }
 clippy = { version = "*", optional = true }
 log = "0.4.17"
 tracing = "0.1"
@@ -63,13 +64,14 @@ window-system = ["emacs/window-system"]
 window-system-x11 = []
 # Use the nextstep window system
 window-system-nextstep = []
+window-system-pgtk = ["webrender"]
 # Use the w32 window system
 window-system-w32 = []
 # Build with git2rs support
 libgit = ["git", "ng-bindgen/libgit"]
 # Use the webrender window system
-webrender = ["dep:wrterm"]
-window-system-webrender = ["ng-bindgen/window-system-webrender", "webrender"]
+webrender = ["dep:webrender_bindings", "ng-bindgen/window-system-winit"]
+window-system-winit = ["dep:winit_term", "webrender"]
 # Treat warnings as a build error on Travis.
 strict = []
 # Use JavaScript and Deno

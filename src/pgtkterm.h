@@ -121,6 +121,12 @@ struct scroll_bar
 
 struct pgtk_display_info
 {
+
+#ifdef USE_WEBRENDER
+  /* Inner perporty in Rust */
+  void *inner;
+#endif /*USE_WEBRENDER*/
+
   /* Chain of all pgtk_display_info structures.  */
   struct pgtk_display_info *next;
 
@@ -157,7 +163,12 @@ struct pgtk_display_info
   /* Minimum font height over all fonts in font_table.  */
   int smallest_font_height;
 
+#ifdef USE_WEBRENDER
+  struct wr_bitmap_record *bitmaps;
+#else
   struct pgtk_bitmap_record *bitmaps;
+#endif /*USE_WEBRENDER*/
+
   ptrdiff_t bitmaps_size;
   ptrdiff_t bitmaps_last;
 
@@ -251,6 +262,7 @@ struct pgtk_display_info
   } scroll;
 
   int connection;
+
 };
 
 /* This is a chain of structures for all the PGTK displays currently in use.  */
@@ -258,6 +270,12 @@ extern struct pgtk_display_info *x_display_list;
 
 struct pgtk_output
 {
+
+#ifdef USE_WEBRENDER
+  /* Inner perporty in Rust */
+  void *inner;
+#endif /*USE_WEBRENDER*/
+
   unsigned long foreground_color;
   unsigned long background_color;
   void *toolbar;
@@ -650,6 +668,9 @@ extern bool pgtk_text_icon (struct frame *, const char *);
 
 extern double pgtk_frame_scale_factor (struct frame *);
 extern int pgtk_emacs_to_gtk_modifiers (struct pgtk_display_info *, int);
+
+extern void surfman_init (struct terminal *);
+/* extern void wr_display_init_from_wayland (struct pgtk_display_info *, struct wl_display *, int) */
 
 #endif /* HAVE_PGTK */
 #endif /* _PGTKTERM_H_ */

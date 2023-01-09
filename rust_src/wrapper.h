@@ -63,3 +63,5 @@
 #ifdef USE_WEBRENDER
 # include "wrterm.h"
 #endif
+
+# include "pgtkterm.h"

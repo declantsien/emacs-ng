@@ -3,6 +3,7 @@ extern crate ng_bindgen;
 use ng_bindgen::{env_var, generate_include_files, BuildError};
 
 fn main() {
+    println!("cargo:rustc-cfg=window_system=\"winit\"");
     // TODO watch relevent files to re rerun, rs files under crates?
 
     // generates include files for the crates from the directory "crates"
