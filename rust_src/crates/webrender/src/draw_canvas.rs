@@ -7,7 +7,7 @@ use crate::{frame::LispFrameExt, fringe::FringeBitmap, image::WrPixmap};
 use super::{
     color::{color_to_pixel, pixel_to_color},
     font::{WRFont, WRFontRef},
-    output::OutputRef,
+    output::CanvasDataRef,
     util::HandyDandyRectBuilder,
 };
 
@@ -20,18 +20,12 @@ use emacs::{
     glyph::GlyphStringRef,
 };
 
-impl OutputRef {
-    pub fn canvas(self) -> DrawCanvas {
-        DrawCanvas::new(self)
-    }
-}
-
 pub struct DrawCanvas {
-    output: OutputRef,
+    output: CanvasDataRef,
 }
 
 impl DrawCanvas {
-    pub fn new(output: OutputRef) -> DrawCanvas {
+    pub fn new(output: CanvasDataRef) -> DrawCanvas {
         DrawCanvas { output }
     }
 
@@ -52,8 +46,8 @@ impl DrawCanvas {
             draw_glyphs_face::DRAW_CURSOR => {
                 let face = unsafe { &*s.face };
                 let frame: LispFrameRef = (*s).f.into();
-                let output = frame.wr_output();
-                let dpyinfo = output.display_info();
+                let output = frame.canvas_data();
+                let dpyinfo = frame.display_info();
 
                 let mut foreground = face.background;
                 let mut background = color_to_pixel(output.cursor_color);
@@ -631,7 +625,7 @@ impl DrawCanvas {
         let viewport = (x, to_y).by(width, height);
 
         let diff_y = to_y - from_y;
-        let frame_size = self.output.get_inner_size();
+        let frame_size = self.output.device_size();
 
         let new_frame_position =
             (0, 0 + diff_y).by(frame_size.width as i32, frame_size.height as i32);

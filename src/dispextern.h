@@ -133,8 +133,10 @@ typedef Emacs_Pixmap Emacs_Pix_Context;
 #include "pgtkgui.h"
 /* Following typedef needed to accommodate the MSDOS port, believe it or not.  */
 typedef struct pgtk_display_info Display_Info;
+#ifndef USE_WEBRENDER
 typedef Emacs_Pixmap XImagePtr;
 typedef XImagePtr XImagePtr_or_DC;
+#endif /* USE_WEBRENDER_ */
 #endif /* HAVE_PGTK */
 
 #ifdef HAVE_HAIKU
@@ -146,7 +148,9 @@ typedef Emacs_Pixmap Emacs_Pix_Context;
 
 #ifdef USE_WEBRENDER
 #include "wrgui.h"
-typedef struct wr_display_info Display_Info;
+#ifdef HAVE_WINIT
+typedef struct winit_display_info Display_Info;
+#endif
 typedef WRImage *XImagePtr;
 typedef XImagePtr XImagePtr_or_DC;
 typedef Emacs_Pixmap Emacs_Pix_Container;

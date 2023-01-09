@@ -1,50 +1,33 @@
+use emacs::lisp::ExternalPtr;
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 
+use crate::frame::LispFrameExt;
 use euclid::default::Size2D;
 use gleam::gl;
 use log::warn;
 use std::collections::HashMap;
 
-use std::{
-    ops::{Deref, DerefMut},
-    ptr,
-};
+use std::ptr;
 use surfman::GLApi;
 use webrender_surfman::WebrenderSurfman;
-use winit::{
-    self,
-    dpi::PhysicalSize,
-    window::{CursorIcon, Window},
-};
 
-#[cfg(wayland_platform)]
-use winit::platform::wayland::WindowBuilderExtWayland;
+use surfman::Connection;
+use surfman::SurfaceType;
 
 use webrender::{self, api::units::*, api::*, RenderApi, Renderer, Transaction};
 
-use emacs::{
-    bindings::{wr_output, Emacs_Cursor},
-    frame::LispFrameRef,
-};
+use emacs::frame::LispFrameRef;
+use raw_window_handle::RawWindowHandle;
 
-use crate::event_loop::WrEventLoop;
-
+use super::display_info::DisplayInfoRef;
 use super::texture::TextureResourceManager;
 use super::util::HandyDandyRectBuilder;
-use super::{cursor::emacs_to_winit_cursor, display_info::DisplayInfoRef};
-use super::{
-    cursor::winit_to_emacs_cursor, font::FontRef, font_db::FontDB, font_db::FontDescriptor,
-};
+use super::{font::FontRef, font_db::FontDB, font_db::FontDescriptor};
 
 #[cfg(wayland_platform)]
 use emacs::{bindings::globals, multibyte::LispStringRef};
 
-pub struct Output {
-    // Extend `wr_output` struct defined in `wrterm.h`
-    pub output: wr_output,
-
-    pub font: FontRef,
-    pub fontset: i32,
+pub struct CanvasData {
 
     fonts: HashMap<FontDescriptor, FontKey>,
     font_instances: HashMap<
@@ -80,32 +63,23 @@ pub struct Output {
     // Need to droppend before window context
     renderer: Renderer,
 
-    window: winit::window::Window,
     webrender_surfman: WebrenderSurfman,
     gl: Rc<dyn gl::Gl>,
 
     frame: LispFrameRef,
+    pub raw_window_handle: RawWindowHandle,
 }
 
-impl Output {
-    pub fn build(
-        event_loop: &mut WrEventLoop,
-        dpyinfo: DisplayInfoRef,
-        frame: LispFrameRef,
-    ) -> Self {
-        let window_builder = winit::window::WindowBuilder::new().with_visible(true);
-
-        #[cfg(wayland_platform)]
-        let window_builder = {
-            let invocation_name: LispStringRef = unsafe { globals.Vinvocation_name.into() };
-            let invocation_name = invocation_name.to_utf8();
-            window_builder.with_name(invocation_name, "")
-        };
-
-        let window = window_builder.build(&event_loop.el()).unwrap();
+impl CanvasData {
+    pub fn build(raw_window_handle: RawWindowHandle, frame: LispFrameRef) -> Self {
+        let dpyinfo = frame.display_info();
         let dpyinfo_ref = dpyinfo.get_inner();
         let connection = dpyinfo_ref.connection.as_ref();
-        let webrender_surfman = event_loop.new_webrender_surfman(&window, connection);
+        let size = DeviceIntSize::new(frame.pixel_width, frame.pixel_height);
+        let webrender_surfman = Self::new_webrender_surfman(raw_window_handle, connection);
+        webrender_surfman
+            .resize(Size2D::new(size.width as i32, size.height as i32))
+            .unwrap();
 
         // Get GL bindings
         let gl = match webrender_surfman.connection().gl_api() {
@@ -125,7 +99,7 @@ impl Output {
             ..webrender::WebRenderOptions::default()
         };
 
-        let notifier = Box::new(Notifier::new(event_loop.create_proxy()));
+        let notifier = Box::new(Notifier::new());
         let (mut renderer, sender) =
             webrender::create_webrender_instance(gl.clone(), notifier, webrender_opts, None)
                 .unwrap();
@@ -145,18 +119,11 @@ impl Output {
         txn.set_root_pipeline(pipeline_id);
 
         let mut api = sender.create_api();
-        let device_size = {
-            let size = window.inner_size();
-            DeviceIntSize::new(size.width as i32, size.height as i32)
-        };
+        let device_size = DeviceIntSize::new(size.width as i32, size.height as i32);
         let document_id = api.add_document(device_size);
         api.send_transaction(document_id, txn);
 
-        let mut output = Self {
-            output: wr_output::default(),
-            window,
-            font: FontRef::new(ptr::null_mut()),
-            fontset: 0,
+        Self {
             fonts: HashMap::new(),
             font_instances: HashMap::new(),
             font_render_mode: None,
@@ -175,17 +142,14 @@ impl Output {
             webrender_surfman,
             texture_resources,
             frame,
-        };
-
-        Self::build_mouse_cursors(&mut output);
-
-        output
+            raw_window_handle,
+        }
     }
 
     fn copy_framebuffer_to_texture(&self, device_rect: DeviceIntRect) -> ImageKey {
         let mut origin = device_rect.min;
 
-        let device_size = self.get_deivce_size();
+        let device_size = self.device_size();
 
         if !self.renderer.device.surface_origin_is_top_left() {
             origin.y = device_size.height - origin.y - device_rect.height();
@@ -223,16 +187,17 @@ impl Output {
         image_key
     }
 
-    fn get_size(window: &Window) -> LayoutSize {
-        let physical_size = window.inner_size();
-        let device_size = LayoutSize::new(physical_size.width as f32, physical_size.height as f32);
-        device_size
+    fn layout_size(&self) -> LayoutSize {
+        LayoutSize::new(
+            self.frame.pixel_width as f32,
+            self.frame.pixel_height as f32,
+        )
     }
 
     fn new_builder(&mut self, image: Option<(ImageKey, LayoutRect)>) -> DisplayListBuilder {
         let pipeline_id = self.pipeline_id;
 
-        let layout_size = Self::get_size(&self.get_window());
+        let layout_size = self.layout_size();
         let mut builder = DisplayListBuilder::new(pipeline_id);
         builder.begin();
 
@@ -254,44 +219,12 @@ impl Output {
         builder
     }
 
-    pub fn show_window(&self) {
-        self.get_window().set_visible(true);
-    }
-    pub fn hide_window(&self) {
-        self.get_window().set_visible(false);
-    }
-
-    pub fn maximize(&self) {
-        self.get_window().set_maximized(true);
-    }
-
-    pub fn set_title(&self, title: &str) {
-        self.get_window().set_title(title);
-    }
-
-    pub fn set_display_info(&mut self, mut dpyinfo: DisplayInfoRef) {
-        self.output.display_info = dpyinfo.get_raw().as_mut();
-    }
-
     pub fn get_frame(&self) -> LispFrameRef {
         self.frame
     }
 
-    pub fn display_info(&self) -> DisplayInfoRef {
-        DisplayInfoRef::new(self.output.display_info as *mut _)
-    }
-
-    pub fn device_pixel_ratio(&self) -> f32 {
-        self.window.scale_factor() as f32
-    }
-
-    pub fn get_inner_size(&self) -> PhysicalSize<u32> {
-        self.get_window().inner_size()
-    }
-
-    fn get_deivce_size(&self) -> DeviceIntSize {
-        let size = self.get_window().inner_size();
-        DeviceIntSize::new(size.width as i32, size.height as i32)
+    pub fn device_size(&self) -> DeviceIntSize {
+        DeviceIntSize::new(self.frame.pixel_width, self.frame.pixel_height)
     }
 
     pub fn display<F>(&mut self, f: F)
@@ -299,7 +232,7 @@ impl Output {
         F: Fn(&mut DisplayListBuilder, SpaceAndClipInfo),
     {
         if self.display_list_builder.is_none() {
-            let layout_size = Self::get_size(&self.get_window());
+            let layout_size = self.layout_size();
 
             let image_and_pos = self
                 .previous_frame_image
@@ -333,7 +266,7 @@ impl Output {
         let builder = std::mem::replace(&mut self.display_list_builder, None);
 
         if let Some(mut builder) = builder {
-            let layout_size = Self::get_size(&self.get_window());
+            let layout_size = self.layout_size();
 
             let epoch = self.epoch;
             let mut txn = Transaction::new();
@@ -348,7 +281,7 @@ impl Output {
 
             self.render_api.flush_scene_builder();
 
-            let device_size = self.get_deivce_size();
+            let device_size = self.device_size();
 
             // Bind the webrender framebuffer
             self.ensure_context_is_current();
@@ -553,42 +486,6 @@ impl Output {
         }
     }
 
-    pub fn get_color_bits(&self) -> u8 {
-        24
-    }
-
-    pub fn get_window(&self) -> &Window {
-        &self.window
-    }
-
-    fn build_mouse_cursors(output: &mut Output) {
-        output.output.text_cursor = winit_to_emacs_cursor(CursorIcon::Text);
-        output.output.nontext_cursor = winit_to_emacs_cursor(CursorIcon::Arrow);
-        output.output.modeline_cursor = winit_to_emacs_cursor(CursorIcon::Hand);
-        output.output.hand_cursor = winit_to_emacs_cursor(CursorIcon::Hand);
-        output.output.hourglass_cursor = winit_to_emacs_cursor(CursorIcon::Progress);
-
-        output.output.horizontal_drag_cursor = winit_to_emacs_cursor(CursorIcon::ColResize);
-        output.output.vertical_drag_cursor = winit_to_emacs_cursor(CursorIcon::RowResize);
-
-        output.output.left_edge_cursor = winit_to_emacs_cursor(CursorIcon::WResize);
-        output.output.right_edge_cursor = winit_to_emacs_cursor(CursorIcon::EResize);
-        output.output.top_edge_cursor = winit_to_emacs_cursor(CursorIcon::NResize);
-        output.output.bottom_edge_cursor = winit_to_emacs_cursor(CursorIcon::SResize);
-
-        output.output.top_left_corner_cursor = winit_to_emacs_cursor(CursorIcon::NwResize);
-        output.output.top_right_corner_cursor = winit_to_emacs_cursor(CursorIcon::NeResize);
-
-        output.output.bottom_left_corner_cursor = winit_to_emacs_cursor(CursorIcon::SwResize);
-        output.output.bottom_right_corner_cursor = winit_to_emacs_cursor(CursorIcon::SeResize);
-    }
-
-    pub fn set_mouse_cursor(&self, cursor: Emacs_Cursor) {
-        let cursor = emacs_to_winit_cursor(cursor);
-
-        self.get_window().set_cursor_icon(cursor)
-    }
-
     pub fn add_image(&mut self, width: i32, height: i32, image_data: Arc<Vec<u8>>) -> ImageKey {
         let image_key = self.render_api.generate_image_key();
 
@@ -629,8 +526,11 @@ impl Output {
         self.render_api.send_transaction(self.document_id, txn);
     }
 
-    pub fn resize(&mut self, size: &PhysicalSize<u32>) {
+    pub fn resize(&mut self, size: &DeviceIntSize) {
+        log::trace!("resize {size:?}");
         let device_size = DeviceIntSize::new(size.width as i32, size.height as i32);
+        self.frame.pixel_width = size.width;
+        self.frame.pixel_height = size.height;
 
         let device_rect =
             DeviceIntRect::from_origin_and_size(DeviceIntPoint::new(0, 0), device_size);
@@ -643,68 +543,117 @@ impl Output {
             .resize(Size2D::new(size.width as i32, size.height as i32))
             .unwrap();
     }
+
+    pub fn new_webrender_surfman(
+        handle: raw_window_handle::RawWindowHandle,
+        connection: Option<&Connection>,
+    ) -> WebrenderSurfman {
+        let connection = connection.expect("device not open");
+        let adapter = connection
+            .create_adapter()
+            .expect("Failed to create adapter");
+        let native_widget = connection
+            .create_native_widget_from_rwh(handle)
+            .expect("Failed to create native widget");
+        let surface_type = SurfaceType::Widget { native_widget };
+        let webrender_surfman = WebrenderSurfman::create(&connection, &adapter, surface_type)
+            .expect("Failed to create WR surfman");
+
+        webrender_surfman
+    }
 }
 
-#[derive(PartialEq)]
+pub type CanvasDataRef = ExternalPtr<CanvasData>;
+
+#[cfg(window_system = "winit")]
+pub type output = emacs::bindings::winit_output;
+#[cfg(window_system = "pgtk")]
+pub type output = emacs::bindings::pgtk_output;
+
+#[derive(Default)]
 #[repr(transparent)]
-pub struct OutputRef(*mut Output);
+pub struct Output(output);
+pub type OutputRef = ExternalPtr<Output>;
 
-impl Copy for OutputRef {}
+impl Output {
+    pub fn new() -> Self {
+        let ret = Output::default();
+        ret
+    }
 
-// Derive fails for this type so do it manually
-impl Clone for OutputRef {
-    fn clone(&self) -> Self {
-        Self(self.0)
+    pub fn empty_inner(&mut self) {
+        self.0.inner = ptr::null_mut();
+    }
+
+    pub fn set_inner(&mut self, data: Box<CanvasData>) {
+        self.0.inner = Box::into_raw(data) as *mut libc::c_void;
+    }
+
+    // pub fn init_inner(&mut self) {
+    //     // let inner = Box::new(DisplayInfoInner::default());
+    //     // self.0.inner = Box::into_raw(inner) as *mut libc::c_void;
+    // }
+
+    pub fn set_display_info(&mut self, mut dpyinfo: DisplayInfoRef) {
+        self.0.display_info = dpyinfo.get_raw().as_mut();
+    }
+
+    pub fn set_font(&mut self, mut font: FontRef) {
+        self.0.font = font.as_mut();
+    }
+
+    pub fn set_fontset(&mut self, fontset: i32) {
+        self.0.fontset = fontset;
+    }
+
+    pub fn display_info(&self) -> DisplayInfoRef {
+        DisplayInfoRef::new(self.0.display_info as *mut _)
+    }
+
+    pub fn font(&self) -> FontRef {
+        FontRef::new(self.0.font as *mut _)
+    }
+
+    pub fn fontset(&self) -> i32 {
+	self.0.fontset
+    }
+
+    pub fn canvas_data(&self) -> CanvasDataRef {
+        CanvasDataRef::new(self.0.inner as *mut CanvasData)
+    }
+
+    pub fn get_raw(&mut self) -> ExternalPtr<output> {
+        (&mut self.0 as *mut output).into()
     }
 }
 
-impl OutputRef {
-    pub const fn new(p: *mut Output) -> Self {
-        Self(p)
-    }
-
-    pub fn as_mut(&mut self) -> *mut wr_output {
-        self.0 as *mut wr_output
-    }
-
-    pub fn as_rust_ptr(&mut self) -> *mut Output {
-        self.0 as *mut Output
-    }
-}
-
-impl Deref for OutputRef {
-    type Target = Output;
-    fn deref(&self) -> &Self::Target {
-        unsafe { &*self.0 }
-    }
-}
-
-impl DerefMut for OutputRef {
-    fn deref_mut(&mut self) -> &mut Output {
-        unsafe { &mut *self.0 }
-    }
-}
-
-impl From<*mut wr_output> for OutputRef {
-    fn from(o: *mut wr_output) -> Self {
-        Self::new(o as *mut Output)
+impl Drop for Output {
+    fn drop(&mut self) {
+        if self.0.inner != ptr::null_mut() {
+            unsafe {
+                let _ = Box::from_raw(self.0.inner as *mut CanvasData);
+            }
+        }
     }
 }
 
 struct Notifier {
-    events_proxy: winit::event_loop::EventLoopProxy<i32>,
+    // events_proxy: winit::event_loop::EventLoopProxy<i32>,
 }
 
 impl Notifier {
-    fn new(events_proxy: winit::event_loop::EventLoopProxy<i32>) -> Notifier {
-        Notifier { events_proxy }
+    // fn new(events_proxy: winit::event_loop::EventLoopProxy<i32>) -> Notifier {
+    //     Notifier { events_proxy }
+    // }
+    fn new() -> Notifier {
+        Notifier {}
     }
 }
 
 impl RenderNotifier for Notifier {
     fn clone(&self) -> Box<dyn RenderNotifier> {
         Box::new(Notifier {
-            events_proxy: self.events_proxy.clone(),
+            // events_proxy: self.events_proxy.clone(),
         })
     }
 

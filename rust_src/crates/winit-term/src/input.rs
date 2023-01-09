@@ -13,6 +13,11 @@ use emacs::{
         ctrl_modifier, down_modifier, meta_modifier, shift_modifier, super_modifier, up_modifier,
     },
 };
+use once_cell::sync::Lazy;
+use std::sync::Mutex;
+
+pub static INPUT_PROCESSOR: Lazy<Mutex<InputProcessor>> =
+    Lazy::new(|| Mutex::new(InputProcessor::new()));
 
 pub struct InputProcessor {
     modifiers: ModifiersState,

@@ -1,6 +1,5 @@
 use errno::{set_errno, Errno};
 use nix::sys::signal::{self, Signal};
-use raw_window_handle::{HasRawDisplayHandle, RawDisplayHandle};
 use std::{
     cell::RefCell,
     ptr,
@@ -26,17 +25,11 @@ use winit::platform::wayland::EventLoopWindowTargetExtWayland;
 #[cfg(x11_platform)]
 use winit::platform::x11::EventLoopWindowTargetExtX11;
 use winit::{
-    event::{Event, StartCause, WindowEvent},
-    event_loop::{ControlFlow, EventLoop, EventLoopProxy},
+    event::{Event, WindowEvent},
+    event_loop::EventLoop,
     monitor::MonitorHandle,
     platform::run_return::EventLoopExtRunReturn,
-    window::Window,
-    window::WindowId,
 };
-
-use surfman::Connection;
-use surfman::SurfaceType;
-use webrender_surfman::WebrenderSurfman;
 
 use emacs::bindings::{inhibit_window_system, make_timespec, thread_select};
 
@@ -64,63 +57,6 @@ unsafe impl Sync for WrEventLoop {}
 impl WrEventLoop {
     pub fn el(&self) -> &EventLoop<i32> {
         &self.el
-    }
-
-    pub fn create_proxy(&self) -> EventLoopProxy<i32> {
-        self.el.create_proxy()
-    }
-
-    pub fn new_webrender_surfman(
-        &mut self,
-        window: &Window,
-        connection: Option<&Connection>,
-    ) -> WebrenderSurfman {
-        let connection = connection.expect("device not open");
-        let adapter = connection
-            .create_adapter()
-            .expect("Failed to create adapter");
-        let native_widget = connection
-            .create_native_widget_from_winit_window(&window)
-            .expect("Failed to create native widget");
-        let surface_type = SurfaceType::Widget { native_widget };
-        let webrender_surfman = WebrenderSurfman::create(&connection, &adapter, surface_type)
-            .expect("Failed to create WR surfman");
-
-        webrender_surfman
-    }
-
-    pub fn open_native_display(&mut self) -> (Connection, RawDisplayHandle) {
-        let window_builder = winit::window::WindowBuilder::new().with_visible(false);
-        let window = window_builder.build(&self.el).unwrap();
-        let rwh = window.raw_display_handle();
-
-        // Initialize surfman
-        let connection =
-            Connection::from_winit_window(&window).expect("Failed to create connection");
-
-        (connection, rwh)
-    }
-
-    pub fn wait_for_window_resize(&mut self, target_window_id: WindowId) {
-        let deadline = Instant::now() + Duration::from_millis(100);
-        self.el.run_return(|e, _, control_flow| match e {
-            Event::NewEvents(StartCause::Init) => {
-                *control_flow = ControlFlow::WaitUntil(deadline);
-            }
-            Event::NewEvents(StartCause::ResumeTimeReached { .. }) => {
-                *control_flow = ControlFlow::Exit;
-            }
-
-            Event::WindowEvent {
-                event: WindowEvent::Resized(_),
-                window_id,
-            } => {
-                if target_window_id == window_id {
-                    *control_flow = ControlFlow::Exit;
-                }
-            }
-            _ => {}
-        });
     }
 
     pub fn get_available_monitors(&self) -> impl Iterator<Item = MonitorHandle> {
@@ -197,7 +133,7 @@ unsafe impl Send for Timespec {}
 unsafe impl Sync for Timespec {}
 
 #[no_mangle]
-pub extern "C" fn wr_select(
+pub extern "C" fn winit_select(
     nfds: i32,
     readfds: *mut fd_set,
     writefds: *mut fd_set,
@@ -249,6 +185,7 @@ pub extern "C" fn wr_select(
                 | WindowEvent::ModifiersChanged(_)
                 | WindowEvent::MouseInput { .. }
                 | WindowEvent::CursorMoved { .. }
+                | WindowEvent::ThemeChanged(_)
                 | WindowEvent::Focused(_)
                 | WindowEvent::MouseWheel { .. }
                 | WindowEvent::CloseRequested => {
