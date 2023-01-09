@@ -54,7 +54,7 @@ wayland-sys = {version = "0.30", features = ["client", "dlopen"]}
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies.x11]
 features = ["xlib"]
-x11 = "2.20"
+version = "2.20"
 optional = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
