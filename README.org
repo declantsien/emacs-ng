@@ -1,0 +1,10 @@
+#+html: <h1 align="center">features/webrender</h1>
+
+#+html: <h3 align="left">Not worth it. Too much work. Abandon...
+Would be easier if we just use Webrender as an alternative rendering engine like Cairo.
+We could just obtain an OpenGL context from native_display_handle using surfman. Not sure
+how much benefits we would gain from there, since the underline core is still Emacs's redisplay.
+
+Also, Winit is in early stage. And Emacs Webrender output implementation is not fully finished yet.
+
+
