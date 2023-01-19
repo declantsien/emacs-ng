@@ -8,7 +8,7 @@ build = "build.rs"
 path = "src/lib.rs"
 
 [dependencies]
-emacs = { path = "../emacs", features = ["window-system-winit"] }
+emacs = { path = "../emacs" }
 lisp-macros = { path = "../lisp_macros" }
 lisp-util = {  path = "../lisp_util" }
 colors = {  path = "../../../etc/colors" }

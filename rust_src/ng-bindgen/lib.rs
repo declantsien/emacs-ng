@@ -474,8 +474,11 @@ fn build_ignored_crates(path: &PathBuf) -> bool {
     #[cfg(not(feature = "ng-module"))]
     ignored_crates.push("ng_module");
 
-    #[cfg(not(feature = "window-system-winit"))]
-    ignored_crates.push("winit");
+    #[cfg(not(window_system = "winit"))]
+    ignored_crates.push("winit-term");
+
+    #[cfg(not(use_webrender))]
+    ignored_crates.push("webrender");
 
     let crate_path = path_as_str(path.file_name()).to_string();
 

@@ -587,7 +587,7 @@ x_free_gc (struct frame *f, Emacs_GC *gc)
 }
 #endif  /* HAVE_NS || HAVE_HAIKU */
 
-#ifdef HAVE_PGTK
+#if defined HAVE_PGTK && !defined USE_WEBRENDER
 /* PGTK emulation of GCs */
 
 static Emacs_GC *

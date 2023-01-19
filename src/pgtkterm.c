@@ -1230,7 +1230,7 @@ pgtk_set_glyph_string_gc (struct glyph_string *s)
 
 /* Set clipping for output of glyph string S.  S may be part of a mode
    line or menu if we don't have X toolkit support.  */
-
+#ifndef USE_WEBRENDER
 static void
 pgtk_set_glyph_string_clipping (struct glyph_string *s, cairo_t * cr)
 {
@@ -3645,6 +3645,38 @@ pgtk_flush_display (struct frame *f)
 
 extern frame_parm_handler pgtk_frame_parm_handlers[];
 
+#ifdef USE_WEBRENDER
+static struct redisplay_interface pgtk_redisplay_interface = {
+  pgtk_frame_parm_handlers,
+  gui_produce_glyphs,
+  gui_write_glyphs,
+  gui_insert_glyphs,
+  gui_clear_end_of_line,
+  wr_scroll_run,
+  wr_after_update_window_line,
+  wr_update_window_begin,
+  wr_update_window_end,
+  wr_flush_display,
+  gui_clear_window_mouse_face,
+  gui_get_glyph_overhangs,
+  gui_fix_overlapping_area,
+  wr_draw_fringe_bitmap,
+  NULL,
+  NULL,
+  NULL,
+  wr_draw_glyph_string,
+  pgtk_define_frame_cursor,
+  wr_clear_frame_area,
+  pgtk_clear_under_internal_border,
+  wr_draw_window_cursor,
+  wr_draw_vertical_window_border,
+  wr_draw_window_divider,
+  NULL,				/* pgtk_shift_glyphs_for_insert, */
+  pgtk_show_hourglass,
+  pgtk_hide_hourglass,
+  pgtk_default_font_parameter,
+};
+#else
 static struct redisplay_interface pgtk_redisplay_interface = {
   pgtk_frame_parm_handlers,
   gui_produce_glyphs,
@@ -3675,6 +3707,7 @@ static struct redisplay_interface pgtk_redisplay_interface = {
   pgtk_hide_hourglass,
   pgtk_default_font_parameter,
 };
+#endif
 
 void
 pgtk_clear_frame (struct frame *f)

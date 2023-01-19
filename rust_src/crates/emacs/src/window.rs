@@ -30,22 +30,22 @@ impl LispWindowRef {
         self.frame.into()
     }
 
-    #[cfg(not(feature = "window-system-winit"))]
+    #[cfg(not(window_system = "winit"))]
     pub fn is_menu_bar(self) -> bool {
         unimplemented!();
     }
 
-    #[cfg(feature = "window-system-winit")]
+    #[cfg(window_system = "winit")]
     pub fn is_menu_bar(self) -> bool {
         false
     }
 
-    #[cfg(not(feature = "window-system-winit"))]
+    #[cfg(not(window_system = "winit"))]
     pub fn is_tool_bar(self) -> bool {
         unimplemented!();
     }
 
-    #[cfg(feature = "window-system-winit")]
+    #[cfg(window_system = "winit")]
     pub fn is_tool_bar(self) -> bool {
         false
     }
