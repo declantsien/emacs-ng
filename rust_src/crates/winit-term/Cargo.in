@@ -8,7 +8,7 @@ build = "build.rs"
 path = "src/lib.rs"
 
 [dependencies]
-emacs = { path = "../emacs", features = ["window-system-winit"] }
+emacs = { path = "../emacs" }
 lisp-macros = { path = "../lisp_macros" }
 lisp-util = {  path = "../lisp_util" }
 webrender_bindings = { path = "../webrender/" }
@@ -62,6 +62,6 @@ optional = true
 core-foundation = "0.9.2"
 
 [features]
-default = ["wr_wayland", @WINIT_DEFAULT_FEATURES@]
-wr_x11 = ["x11", "copypasta/x11", "surfman/sm-x11"]
-wr_wayland = ["copypasta/wayland"]
+default = ["wayland", @WINIT_DEFAULT_FEATURES@]
+x11 = ["dep:x11", "copypasta/x11", "surfman/sm-x11"]
+wayland = ["copypasta/wayland"]

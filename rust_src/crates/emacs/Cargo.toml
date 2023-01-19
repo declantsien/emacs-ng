@@ -16,7 +16,3 @@ memoffset = "0.6.4"
 bindgen = "0.64"
 regex = "1.6"
 libc = "0.2"
-
-[features]
-window-system = []
-window-system-winit = ["window-system"]

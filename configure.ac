@@ -2019,6 +2019,11 @@ if test "${with_winit}" = "yes"; then
   no_x=yes
   with_ns=no
   window_system=winit
+  with_webrender=yes
+fi
+
+if test "${with_webrender}" = "yes"; then
+  with_cairo=no
 fi
 
 if test "${with_pgtk}" = "yes"; then
@@ -6341,6 +6346,7 @@ AC_SUBST(WINIT_IMPL_COCOA)
 
 WEBRENDER_LIBS=
 if test "${with_webrender}" = "yes" ; then
+  RUSTFLAGS_CFG="\"--cfg=use_webrender\", ${RUSTFLAGS_CFG}"
   AC_DEFINE(USE_WEBRENDER, 1,
 	    [Define to 1 if you want to use the webrender.])
 
@@ -7035,26 +7041,15 @@ WEBRENDER_DEFAULT_FEATURES=""
 if test "$HAVE_LIBXML2" = "yes"; then
     CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"use-xml2\", "
 fi
-if test "$window_system" != "none"; then
-    CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system\", "
-fi
+dnl if test "$window_system" != "none"; then
+    RUSTFLAGS_CFG="\"--cfg=have_window_system\", ${RUSTFLAGS_CFG}"
+dnl fi
+RUSTFLAGS_CFG="\"--cfg=window_system=\\\"$window_system\\\"\", ${RUSTFLAGS_CFG}"
 case "$window_system" in
-    x11)
-        CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-x11\", "
-    ;;
-    nextstep)
-	CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-nextstep\", "
-    ;;
-    w32)
-        CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-w32\", "
-    ;;
-    pgtk)
-        CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-pgtk\", "
-    ;;
     winit)
         CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-winit\", "
 	if test X$ac_enable_webrender_x11 != Xno ; then
-	   WINIT_DEFAULT_FEATURES="\"wr_x11\", ${WINIT_DEFAULT_FEATURES}"
+	   WINIT_DEFAULT_FEATURES="\"x11\", ${WINIT_DEFAULT_FEATURES}"
 	fi
     ;;
 esac
@@ -7074,6 +7069,8 @@ fi
 if test "${HAVE_MODULES}" = "yes"; then
   CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"ng-module\", "
 fi
+
+AC_SUBST(RUSTFLAGS_CFG)
 AC_SUBST(CARGO_DEFAULT_FEATURES)
 AC_SUBST(WINIT_DEFAULT_FEATURES)
 AC_SUBST(WEBRENDER_DEFAULT_FEATURES)
@@ -7082,6 +7079,7 @@ webrender_src=$srcdir/rust_src/crates/webrender
 AC_CONFIG_FILES([$webrender_src/Cargo.toml:$webrender_src/Cargo.in])
 winit_term_src=$srcdir/rust_src/crates/winit-term
 AC_CONFIG_FILES([$winit_term_src/Cargo.toml:$winit_term_src/Cargo.in])
+AC_CONFIG_FILES([$srcdir/.cargo/config.toml:$srcdir/.cargo/config.in])
 AC_CONFIG_FILES([$srcdir/rust_src/crates/emacs/build.rs])
 
 dnl NB we have to cheat and use the ac_... version because abs_top_srcdir
