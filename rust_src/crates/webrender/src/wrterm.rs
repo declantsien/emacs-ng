@@ -1,13 +1,8 @@
 //! wrterm.rs
 
-use crate::frame::LispFrameExt;
-use crate::output::CanvasData;
 use crate::output::OutputRef;
-use core::ffi::c_void;
 use emacs::multibyte::LispStringRef;
 use raw_window_handle::RawDisplayHandle;
-use raw_window_handle::RawWindowHandle;
-use raw_window_handle::WaylandDisplayHandle;
 use surfman::Connection;
 
 use lisp_macros::lisp_fn;
@@ -25,12 +20,12 @@ pub use crate::display_info::{DisplayInfo, DisplayInfoRef};
 
 #[no_mangle]
 pub extern "C" fn wr_get_fontset(output: OutputRef) -> i32 {
-    output.fontset()
+    output.get_fontset()
 }
 
 #[no_mangle]
 pub extern "C" fn wr_get_font(output: OutputRef) -> FontRef {
-    output.font()
+    output.get_font()
 }
 
 #[allow(unused_variables)]
@@ -218,32 +213,6 @@ pub fn wr_display_init(
     } else {
         panic!("Failed to initialize surfman");
     };
-}
-
-pub fn wr_display_init_from_wayland(
-    mut dpyinfo_ref: DisplayInfoRef,
-    display: *mut c_void,
-    scale_factor: f32,
-) {
-    if dpyinfo_ref.get_inner().is_null() {
-        dpyinfo_ref.init_inner();
-    }
-    let mut display_handle = WaylandDisplayHandle::empty();
-    display_handle.display = display;
-
-    wr_display_init(
-        dpyinfo_ref,
-        RawDisplayHandle::Wayland(display_handle),
-        scale_factor,
-    );
-}
-
-pub fn wr_canvas_init(raw_handle: RawWindowHandle, frame: LispFrameRef) {
-    let mut output = frame.output();
-
-    let canvas_data = Box::new(CanvasData::build(raw_handle, frame));
-
-    output.set_inner(canvas_data);
 }
 
 include!(concat!(env!("OUT_DIR"), "/wrterm_exports.rs"));

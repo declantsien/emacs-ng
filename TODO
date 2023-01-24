@@ -1,0 +1,5 @@
+* init output inner when create pgtk frame
+wr_canvas_init raw_window_handle
+http://www.manpagez.com/html/gdk/gdk-3.12.1/gdk3-Wayland-Interaction.php#gdk-wayland-window-get-wl-surface
+gtk_widget_get_window
+pgtk_output.widget

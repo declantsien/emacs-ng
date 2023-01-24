@@ -35,7 +35,7 @@ pub fn draw_hollow_box_cursor(mut window: LispWindowRef, row: *mut glyph_row) {
     let width = window.phys_cursor_width;
 
     let frame = window.get_frame();
-    let mut canvas = frame.canvas();
+    let mut commands = frame.draw_commands();
 
     let cursor_rect = (x, y).by(width, height);
 
@@ -44,7 +44,7 @@ pub fn draw_hollow_box_cursor(mut window: LispWindowRef, row: *mut glyph_row) {
         (x, y).by(width, height)
     };
 
-    canvas.draw_hollow_box_cursor(cursor_rect, window_rect);
+    commands.draw_hollow_box_cursor(cursor_rect, window_rect);
 }
 
 pub fn draw_bar_cursor(
@@ -54,7 +54,7 @@ pub fn draw_bar_cursor(
     is_hbar: bool,
 ) {
     let frame = window.get_frame();
-    let mut canvas = frame.canvas();
+    let mut commands = frame.draw_commands();
 
     let cursor_glyph = unsafe { get_phys_cursor_glyph(window.as_mut()) };
 
@@ -123,5 +123,5 @@ pub fn draw_bar_cursor(
         (x, y, width, height)
     };
 
-    canvas.draw_bar_cursor(face, x, y, width, height);
+    commands.draw_bar_cursor(face, x, y, width, height);
 }

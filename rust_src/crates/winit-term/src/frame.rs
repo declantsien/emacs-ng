@@ -14,7 +14,6 @@ use emacs::{
 use raw_window_handle::HasRawWindowHandle;
 use webrender_bindings::frame::LispFrameExt;
 use webrender_bindings::output::Output;
-use webrender_bindings::wr_canvas_init;
 
 use winit::dpi::PhysicalPosition;
 #[cfg(wayland_platform)]
@@ -60,10 +59,9 @@ pub fn create_frame(
     window.set_theme(None);
     window.set_title("Winit Emacs");
     let window_id = window.id();
-    let raw_window_handle = window.raw_window_handle();
     let mut output = Box::new(Output::default());
     output.set_display_info(dpyinfo);
-    build_mouse_cursors(&mut output.as_mut().get_raw());
+    build_mouse_cursors(&mut output.as_mut().as_raw());
 
     // TODO default frame size?
     frame.pixel_width = window.inner_size().width as i32;
@@ -72,14 +70,11 @@ pub fn create_frame(
     // Remeber to destory the Output object when frame destoried.
     let output = Box::into_raw(output);
     frame.output_data.winit = output as *mut winit_output;
-
-    wr_canvas_init(raw_window_handle, frame);
+    let window_handle = window.raw_window_handle();
+    frame.set_window_handle(window_handle);
 
     insert_winit_window(frame.uuid(), window);
-    dpyinfo
-        .get_inner()
-        .outputs
-        .insert(window_id.into(), frame.output());
+    dpyinfo.get_inner().frames.insert(window_id.into(), frame);
 
     frame
 }

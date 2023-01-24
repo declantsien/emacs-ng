@@ -35,8 +35,10 @@ use emacs::{
 pub type TerminalRef = ExternalPtr<terminal>;
 
 #[allow(unused_variables)]
+#[no_mangle]
 pub extern "C" fn wr_update_window_begin(w: *mut Lisp_Window) {}
 
+#[no_mangle]
 pub extern "C" fn wr_update_window_end(
     window: *mut Lisp_Window,
     cursor_no_p: bool,
@@ -73,16 +75,18 @@ pub extern "C" fn wr_update_window_end(
     unsafe { unblock_input() };
 
     let frame: LispFrameRef = window.get_frame();
-    frame.canvas_data().flush();
+    frame.canvas().flush();
 }
 
+#[no_mangle]
 pub extern "C" fn wr_flush_display(f: *mut Lisp_Frame) {
     let frame: LispFrameRef = f.into();
 
-    frame.canvas_data().flush();
+    frame.canvas().flush();
 }
 
 #[allow(unused_variables)]
+#[no_mangle]
 pub extern "C" fn wr_after_update_window_line(w: *mut Lisp_Window, desired_row: *mut glyph_row) {
     let window: LispWindowRef = w.into();
 
@@ -92,17 +96,19 @@ pub extern "C" fn wr_after_update_window_line(w: *mut Lisp_Window, desired_row: 
 }
 
 #[allow(unused_variables)]
+#[no_mangle]
 pub extern "C" fn wr_draw_glyph_string(s: *mut glyph_string) {
     let s: GlyphStringRef = s.into();
 
-    let mut canvas = {
+    let mut commands = {
         let frame: LispFrameRef = s.f.into();
-        frame.canvas()
+        frame.draw_commands()
     };
 
-    canvas.draw_glyph_string(s);
+    commands.draw_glyph_string(s);
 }
 
+#[no_mangle]
 pub extern "C" fn wr_draw_fringe_bitmap(
     window: *mut Lisp_Window,
     row: *mut glyph_row,
@@ -112,8 +118,8 @@ pub extern "C" fn wr_draw_fringe_bitmap(
     let frame: LispFrameRef = window.get_frame();
 
     let output = frame.output();
-    let canvas_data = frame.canvas_data();
-    let mut canvas = frame.canvas();
+    let canvas = frame.canvas();
+    let mut commands = frame.draw_commands();
 
     let row_rect: LayoutRect = unsafe {
         let (window_x, window_y, window_width, _) = window.area_box(glyph_row_area::ANY_AREA);
@@ -160,14 +166,14 @@ pub extern "C" fn wr_draw_fringe_bitmap(
     let background_color = pixel_to_color(unsafe { (*face).background });
 
     let bitmap_color = if unsafe { (*p).cursor_p() } {
-        canvas_data.cursor_color
+        frame.cursor_color()
     } else if unsafe { (*p).overlay_p() } {
         background_color
     } else {
         pixel_to_color(unsafe { (*face).foreground })
     };
 
-    canvas.draw_fringe_bitmap(
+    commands.draw_fringe_bitmap(
         pos,
         image,
         bitmap_color,
@@ -178,6 +184,7 @@ pub extern "C" fn wr_draw_fringe_bitmap(
     );
 }
 
+#[no_mangle]
 pub extern "C" fn wr_set_cursor_color(f: *mut Lisp_Frame, arg: LispObject, _old_val: LispObject) {
     let frame: LispFrameRef = f.into();
 
@@ -186,7 +193,7 @@ pub extern "C" fn wr_set_cursor_color(f: *mut Lisp_Frame, arg: LispObject, _old_
     let color = lookup_color_by_name_or_hex(&color_str);
 
     if let Some(color) = color {
-        frame.canvas_data().cursor_color = color;
+        frame.set_cursor_color(color);
     }
 
     if frame.is_visible() {
@@ -195,6 +202,7 @@ pub extern "C" fn wr_set_cursor_color(f: *mut Lisp_Frame, arg: LispObject, _old_
     }
 }
 
+#[no_mangle]
 pub extern "C" fn wr_draw_window_divider(
     window: *mut Lisp_Window,
     x0: i32,
@@ -205,7 +213,7 @@ pub extern "C" fn wr_draw_window_divider(
     let window: LispWindowRef = window.into();
     let frame: LispFrameRef = window.get_frame();
 
-    let mut canvas = frame.canvas();
+    let mut commands = frame.draw_commands();
 
     let face = frame.face_from_id(face_id::WINDOW_DIVIDER_FACE_ID);
     let face_first = frame.face_from_id(face_id::WINDOW_DIVIDER_FIRST_PIXEL_FACE_ID);
@@ -226,9 +234,10 @@ pub extern "C" fn wr_draw_window_divider(
         None => frame.foreground_pixel,
     };
 
-    canvas.draw_window_divider(color, color_first, color_last, x0, x1, y0, y1);
+    commands.draw_window_divider(color, color_first, color_last, x0, x1, y0, y1);
 }
 
+#[no_mangle]
 pub extern "C" fn wr_draw_vertical_window_border(
     window: *mut Lisp_Window,
     x: i32,
@@ -238,23 +247,25 @@ pub extern "C" fn wr_draw_vertical_window_border(
     let window: LispWindowRef = window.into();
     let frame: LispFrameRef = window.get_frame();
 
-    let mut canvas = frame.canvas();
+    let mut commands = frame.draw_commands();
 
     let face = frame.face_from_id(face_id::VERTICAL_BORDER_FACE_ID);
 
-    canvas.draw_vertical_window_border(face, x, y0, y1);
+    commands.draw_vertical_window_border(face, x, y0, y1);
 }
 
 #[allow(unused_variables)]
+#[no_mangle]
 pub extern "C" fn wr_clear_frame_area(f: *mut Lisp_Frame, x: i32, y: i32, width: i32, height: i32) {
     let frame: LispFrameRef = f.into();
-    let mut canvas = frame.canvas();
+    let mut commands = frame.draw_commands();
 
     let color = pixel_to_color(frame.background_pixel);
 
-    canvas.clear_area(color, x, y, width, height);
+    commands.clear_area(color, x, y, width, height);
 }
 
+#[no_mangle]
 pub extern "C" fn wr_draw_window_cursor(
     window: *mut Lisp_Window,
     row: *mut glyph_row,
@@ -305,6 +316,7 @@ pub extern "C" fn wr_get_string_resource(
     ptr::null()
 }
 
+#[no_mangle]
 pub extern "C" fn wr_new_font(
     frame: *mut Lisp_Frame,
     font_object: LispObject,
@@ -313,7 +325,6 @@ pub extern "C" fn wr_new_font(
     let mut frame: LispFrameRef = frame.into();
 
     let font = LispFontRef::from_vectorlike(font_object.as_vectorlike().unwrap()).as_font_mut();
-    let mut output = frame.canvas_data();
 
     let fontset = if fontset < 0 {
         unsafe { fontset_from_font(font_object) }
@@ -323,7 +334,7 @@ pub extern "C" fn wr_new_font(
 
     frame.output().set_fontset(fontset);
 
-    if frame.output().font() == font.into() {
+    if frame.output().get_font() == font.into() {
         return font_object;
     }
 
@@ -361,13 +372,13 @@ pub extern "C" fn wr_defined_color(
     }
 }
 
+#[no_mangle]
 pub extern "C" fn wr_set_background_color(
     f: *mut Lisp_Frame,
     arg: LispObject,
     _old_val: LispObject,
 ) {
     let mut frame: LispFrameRef = f.into();
-    let mut output = frame.canvas_data();
 
     let color = lookup_color_by_name_or_hex(&format!("{}", arg.as_string().unwrap()))
         .unwrap_or_else(|| ColorF::WHITE);
@@ -375,7 +386,7 @@ pub extern "C" fn wr_set_background_color(
     let pixel = color_to_pixel(color);
 
     frame.background_pixel = pixel;
-    output.background_color = color;
+    frame.set_background_color(color);
 
     frame.update_face_from_frame_param(Qbackground_color, arg);
 
@@ -386,7 +397,7 @@ pub extern "C" fn wr_set_background_color(
 
 pub extern "C" fn wr_clear_frame(f: *mut Lisp_Frame) {
     let frame: LispFrameRef = f.into();
-    let mut output = frame.canvas_data();
+    let mut output = frame.canvas();
 
     output.clear_display_list_builder();
 
@@ -396,10 +407,11 @@ pub extern "C" fn wr_clear_frame(f: *mut Lisp_Frame) {
     wr_clear_frame_area(f, 0, 0, width, height);
 }
 
+#[no_mangle]
 pub extern "C" fn wr_scroll_run(w: *mut Lisp_Window, run: *mut run) {
     let window: LispWindowRef = w.into();
     let frame = window.get_frame();
-    let mut canvas = frame.canvas();
+    let mut commands = frame.draw_commands();
 
     let (x, y, width, height) = window.area_box(glyph_row_area::ANY_AREA);
 
@@ -411,9 +423,10 @@ pub extern "C" fn wr_scroll_run(w: *mut Lisp_Window, run: *mut run) {
     // Cursor off.  Will be switched on again in gui_update_window_end.
     unsafe { gui_clear_cursor(w) };
 
-    canvas.scroll(x, y, width, height, from_y, to_y, scroll_height);
+    commands.scroll(x, y, width, height, from_y, to_y, scroll_height);
 }
 
+#[no_mangle]
 pub extern "C" fn wr_update_end(f: *mut Lisp_Frame) {
     let mut dpyinfo = {
         let frame: LispFrameRef = f.into();
@@ -426,6 +439,7 @@ pub extern "C" fn wr_update_end(f: *mut Lisp_Frame) {
     dpyinfo.mouse_highlight.set_mouse_face_defer(false);
 }
 
+#[no_mangle]
 pub extern "C" fn wr_free_pixmap(f: *mut Lisp_Frame, pixmap: Emacs_Pixmap) {
     // take back ownership and RAII will drop resource.
     let pixmap = unsafe { Box::from_raw(pixmap as *mut WrPixmap) };
@@ -433,5 +447,5 @@ pub extern "C" fn wr_free_pixmap(f: *mut Lisp_Frame, pixmap: Emacs_Pixmap) {
     let image_key = pixmap.image_key;
 
     let frame: LispFrameRef = f.into();
-    frame.canvas_data().delete_image(image_key);
+    frame.canvas().delete_image(image_key);
 }

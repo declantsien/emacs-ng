@@ -35,7 +35,7 @@ fn main() {
         free_unix: { all(unix, not(apple), not(android_platform)) },
 
         // Native displays.
-        x11_platform: { all(feature = "wr_x11", free_unix, not(wasm)) },
-        wayland_platform: { all(feature = "wr_wayland", free_unix, not(wasm)) },
+        x11_platform: { all(feature = "x11", free_unix, not(wasm)) },
+        wayland_platform: { all(feature = "wayland", free_unix, not(wasm)) },
     }
 }

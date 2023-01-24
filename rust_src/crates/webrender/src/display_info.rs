@@ -11,7 +11,7 @@ pub struct DisplayInfoInner {
     pub terminal: TerminalRef,
     pub focus_frame: LispFrameRef,
 
-    pub outputs: HashMap<u64, OutputRef>,
+    pub frames: HashMap<u64, LispFrameRef>,
 
     pub scratch_cursor_gc: Box<Emacs_GC>,
 
@@ -29,7 +29,7 @@ impl Default for DisplayInfoInner {
         DisplayInfoInner {
             terminal: TerminalRef::new(ptr::null_mut()),
             focus_frame: LispFrameRef::new(ptr::null_mut()),
-            outputs: HashMap::new(),
+            frames: HashMap::new(),
             scratch_cursor_gc: Box::new(Emacs_GC {
                 foreground: 0,
                 background: 0,
