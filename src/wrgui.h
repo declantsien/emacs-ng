@@ -43,7 +43,10 @@ typedef struct _XGCValues
 #define GCGraphicsExposures 0
 
 typedef void *Pixmap;
+#ifdef HAVE_WINIT
 typedef char *XrmDatabase;
+#endif
+
 typedef Emacs_GC *GC;
 typedef int Color;
 

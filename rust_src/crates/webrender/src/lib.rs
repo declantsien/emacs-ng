@@ -9,6 +9,7 @@ extern crate lisp_macros;
 extern crate lisp_util;
 extern crate colors;
 
+pub mod canvas;
 pub mod color;
 pub mod display_info;
 pub mod font;
@@ -18,13 +19,14 @@ pub mod output;
 pub mod term;
 
 mod cursor;
-mod draw_canvas;
+mod draw_commands;
 mod font_db;
 mod fringe;
 mod texture;
 pub mod util;
 mod wrterm;
 
+pub use crate::font::*;
 pub use crate::term::*;
 pub use crate::wrterm::*;
 

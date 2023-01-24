@@ -1,8 +1,6 @@
 use raw_window_handle::{HasRawDisplayHandle, RawDisplayHandle};
 use std::ptr;
 use std::time::Duration;
-#[cfg(wayland_platform)]
-use winit::platform::wayland::WindowExtWayland;
 
 use crate::event_loop::poll_a_event;
 use crate::event_loop::EVENT_LOOP;
@@ -240,16 +238,15 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
 
         match e {
             Event::WindowEvent { window_id, event } => {
-                let output = dpyinfo.outputs.get_mut(&window_id.into());
+                let frame = dpyinfo.frames.get(&window_id.into());
 
-                if output.is_none() {
+                if frame.is_none() {
                     continue;
                 }
 
-                let output = output.unwrap();
-                let mut canvas_data = output.canvas_data();
-
-                let frame: LispObject = canvas_data.get_frame().into();
+                let frame: LispFrameRef = *frame.unwrap();
+                let mut canvas = frame.canvas();
+                let frame: LispObject = frame.into();
 
                 match event {
                     WindowEvent::ReceivedCharacter(key_code) => {
@@ -348,7 +345,7 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
 
                     WindowEvent::Resized(size) => {
                         let size = { DeviceIntSize::new(size.width as i32, size.height as i32) };
-                        canvas_data.resize(&size);
+                        canvas.resize(&size);
 
                         let frame: LispFrameRef = frame.into();
                         frame.change_size(
@@ -513,11 +510,11 @@ extern "C" fn winit_mouse_position(
 extern "C" fn winit_destroy_frame(f: *mut Lisp_Frame) {
     let frame: LispFrameRef = f.into();
     let mut output = frame.output();
-    let mut data = frame.canvas_data();
+    let mut data = frame.canvas();
     let display_info = frame.display_info();
     let uuid = frame.uuid();
 
-    display_info.get_inner().outputs.remove(&uuid);
+    display_info.get_inner().frames.remove(&uuid);
     remove_winit_window(&uuid);
 
     // Take back output ownership and destroy it
@@ -572,13 +569,11 @@ pub fn winit_term_init(display_name: LispObject) -> DisplayInfoRef {
     let window = window_builder.build(&event_loop.el()).unwrap();
     let raw_handle = window.raw_display_handle();
     let scale_factor = window.scale_factor();
+
+    dpyinfo_ref.get_inner().raw_display_handle = Some(raw_handle);
+    dpyinfo_ref.get_inner().scale_factor = scale_factor as f32;
+
     let mut _conn = None;
-    wr_display_init(dpyinfo_ref, raw_handle, scale_factor as f32);
-    // wr_display_init_from_wayland(
-    //     dpyinfo_ref,
-    //     window.wayland_display().unwrap(),
-    //     scale_factor as f32,
-    // );
 
     match raw_handle {
         #[cfg(wayland_platform)]

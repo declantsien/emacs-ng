@@ -11,6 +11,7 @@ path = "src/lib.rs"
 libc = "0.2.95"
 lazy_static = "1.4.0"
 memoffset = "0.6.4"
+gtk-sys = "0.16.0"
 
 [build-dependencies]
 bindgen = "0.64"

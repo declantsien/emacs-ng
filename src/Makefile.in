@@ -751,7 +751,7 @@ LIBEMACSNG_CARGO_FILES = $(sort $(shell find ${rust_srcdir} -type f \
 -name 'Cargo.*' -o -name "build.rs"))
 
 $(LIBEMACSNG_ARCHIVE) $(LIBEMACSNG_DEP-INFO): FORCE
-	$(CARGO_BUILD) --manifest-path $(cargo_manifest)
+	$(CARGO_BUILD) $(CARGO_FLAGS) --manifest-path $(cargo_manifest)
 
 clippy:
 	RUSTFLAGS="$(RUSTFLAGS)" \

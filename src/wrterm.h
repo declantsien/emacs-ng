@@ -120,27 +120,16 @@ struct winit_output
   int fontset; /* only used with font_backend */
 
   /* Inner perporty in Rust */
-  void *inner;
+  void *canvas;
 };
 
 typedef struct winit_output winit_output;
 typedef struct winit_display_info winit_display_info;
 
 extern Window winit_get_window_desc(winit_output* output);
-extern int wr_get_fontset(winit_output* output);
-extern struct font *wr_get_font(winit_output* output);
 extern winit_display_info *winit_get_display_info(winit_output* output);
 extern Display *winit_get_display(winit_display_info* output);
 extern Screen winit_get_screen(winit_display_info* output);
-extern int wr_get_baseline_offset(winit_output* output);
-extern int wr_get_pixel(WRImage *ximg, int x, int y);
-extern int wr_put_pixel(WRImage *ximg, int x, int y, unsigned long pixel);
-extern bool wr_load_image (struct frame *f, struct image *img,
-			   Lisp_Object spec_file, Lisp_Object spec_data);
-extern bool wr_can_use_native_image_api (Lisp_Object type);
-
-extern void wr_transform_image(struct frame *f, struct image *img, int width, int height, double rotation);
-
 extern int winit_select (int nfds, fd_set *readfds, fd_set *writefds,
 		       fd_set *exceptfds, struct timespec *timeout,
 		       sigset_t *sigmask);
@@ -156,21 +145,12 @@ extern int winit_select (int nfds, fd_set *readfds, fd_set *writefds,
 
 #define FRAME_OUTPUT_DATA(f) FRAME_X_OUTPUT (f)
 
-#define FRAME_BASELINE_OFFSET(f) (wr_get_baseline_offset(FRAME_X_OUTPUT (f)))
-
 /* This is the `Screen *' which frame F is on.  */
-#define FRAME_X_SCREEN(f) (wr_get_display_info(FRAME_X_OUTPUT (f)))
+#define FRAME_X_SCREEN(f) (winit_get_display_info(FRAME_X_OUTPUT (f)))
 
 /* Return the X window used for displaying data in frame F.  */
 #define FRAME_X_WINDOW(f)  (winit_get_window_desc(FRAME_X_OUTPUT (f)))
 #define FRAME_NATIVE_WINDOW(f) FRAME_X_WINDOW (f)
-
-#define FRAME_FONTSET(f) (wr_get_fontset(FRAME_X_OUTPUT (f)))
-#define FRAME_FONT(f) (wr_get_font(FRAME_X_OUTPUT (f)))
-
-
-#define BLACK_PIX_DEFAULT(f) 0
-#define WHITE_PIX_DEFAULT(f) 65535
 
 extern const char *app_bundle_relocate (const char *);
 
@@ -178,5 +158,7 @@ extern const char *app_bundle_relocate (const char *);
 extern void syms_of_winit_term(void);
 extern void syms_of_winit_term_rust(void);
 extern void syms_of_wrfns (void);
+
+#include "webrender_bindings_ffi.h"
 
 #endif // __WRTERM_H_

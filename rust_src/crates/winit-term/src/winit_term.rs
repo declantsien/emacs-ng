@@ -8,6 +8,7 @@ use winit::window::Window as WinitWindow;
 
 use emacs::bindings::output_method;
 use webrender_bindings::frame::LispFrameExt;
+use webrender_bindings::register_ttf_parser_font_driver;
 use winit::{event::VirtualKeyCode, monitor::MonitorHandle};
 
 use lisp_macros::lisp_fn;
@@ -16,15 +17,13 @@ use crate::event_loop::EVENT_LOOP;
 use crate::frame::frame_edges;
 use crate::{frame::create_frame, input::winit_keycode_emacs_key_name, term::winit_term_init};
 
-use webrender_bindings::font::{syms_of_ttf_parser_font, FONT_DRIVER};
-
 use emacs::{
     bindings::globals,
     bindings::resource_types::{RES_TYPE_NUMBER, RES_TYPE_STRING, RES_TYPE_SYMBOL},
     bindings::{
         block_input, build_string, gui_display_get_arg, hashtest_eql, make_fixnum, make_hash_table,
-        make_monitor_attribute_list, register_font_driver, unblock_input, Display, Emacs_Rectangle,
-        Fcons, Fcopy_alist, Fmake_vector, Fprovide, MonitorInfo, Vframe_list, Window, CHECK_STRING,
+        make_monitor_attribute_list, unblock_input, Display, Emacs_Rectangle, Fcons, Fcopy_alist,
+        Fmake_vector, Fprovide, MonitorInfo, Vframe_list, Window, CHECK_STRING,
         DEFAULT_REHASH_SIZE, DEFAULT_REHASH_THRESHOLD,
     },
     definitions::EmacsInt,
@@ -254,9 +253,7 @@ pub fn winit_create_frame(parms: LispObject) -> LispFrameRef {
 
     let mut frame = create_frame(display, dpyinfo, tem, kb.into());
 
-    unsafe {
-        register_font_driver(&FONT_DRIVER.0 as *const _, frame.as_mut());
-    };
+    register_ttf_parser_font_driver(frame.as_mut());
 
     frame.gui_default_parameter(
         parms,
@@ -815,8 +812,6 @@ pub extern "C" fn syms_of_winit_term() {
     // clipboard manager if one is present.
     #[rustfmt::skip]
     defvar_lisp!(Vx_select_enable_clipboard_manager, "x-select-enable-clipboard-manager", Qt);
-
-    syms_of_ttf_parser_font();
 }
 
 include!(concat!(env!("OUT_DIR"), "/winit_term_exports.rs"));

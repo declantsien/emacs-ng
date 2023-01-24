@@ -32,7 +32,8 @@ impl LispWindowRef {
 
     #[cfg(not(window_system = "winit"))]
     pub fn is_menu_bar(self) -> bool {
-        unimplemented!();
+        true
+        // unimplemented!();
     }
 
     #[cfg(window_system = "winit")]
@@ -42,7 +43,8 @@ impl LispWindowRef {
 
     #[cfg(not(window_system = "winit"))]
     pub fn is_tool_bar(self) -> bool {
-        unimplemented!();
+        true
+        // unimplemented!();
     }
 
     #[cfg(window_system = "winit")]

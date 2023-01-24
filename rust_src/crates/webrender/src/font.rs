@@ -302,7 +302,7 @@ pub struct WRFont<'a> {
     // extend basic font
     pub font: font,
 
-    pub device_pixel_ratio: f32,
+    pub scale: f32,
 
     pub font_instance_key: FontInstanceKey,
 
@@ -317,18 +317,13 @@ impl<'a> WRFont<'a> {
     }
 
     pub fn get_glyph_advance_width(&self, glyph_indices: Vec<GlyphIndex>) -> Vec<Option<i32>> {
-        let pixel_size = self.font.pixel_size;
-        let glyph_size = pixel_size as f32 * self.device_pixel_ratio;
-        let units_per_em = self.face.units_per_em();
-
-        let scale = glyph_size / units_per_em as f32;
 
         glyph_indices
             .into_iter()
             .map(|i| {
                 self.face
                     .glyph_hor_advance(ttf_parser::GlyphId(i as u16))
-                    .map(|a| (a as f32 * scale).round() as i32)
+                    .map(|a| (a as f32 * self.scale).round() as i32)
             })
             .collect()
     }
@@ -347,12 +342,12 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
 
     let frame: LispFrameRef = frame.into();
     let dpyinfo = frame.display_info();
-    let mut output = frame.canvas_data();
+    let mut output = frame.canvas();
 
     // pixel_size here reflects to DPR 1 for webrender display, we have scale_factor from winit.
     // while pgtk/ns/w32 reflects to actual DPR on device by setting resx/resy to display
-    let pixel_size = if !frame.output().font().is_null() {
-        frame.output().font().pixel_size as i64
+    let pixel_size = if !frame.output().get_font().is_null() {
+        frame.output().get_font().pixel_size as i64
     } else {
         pixel_size as i64
     };
@@ -385,7 +380,6 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
             .unwrap()
             .as_font_mut() as *mut WRFont,
     );
-    wr_font.device_pixel_ratio = device_pixel_ratio;
 
     let font_result = output.get_or_create_font(&FONT_DB, desc.clone());
     if font_result.is_none() {
@@ -403,15 +397,9 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
 
     let (font_bytes, face_index) = font_data.unwrap();
 
-    let bg_color = None;
-    let flags = FontInstanceFlags::empty();
-    let synthetic_italics = SyntheticItalics::disabled();
     let font_instance_key = output.get_or_create_font_instance(
         font_key,
         glyph_size,
-        bg_color,
-        flags,
-        synthetic_italics,
     );
     wr_font.font_instance_key = font_instance_key;
 
@@ -425,10 +413,6 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
     }
     let face = face_result.ok().unwrap();
 
-    wr_font.face = face;
-
-    let face = &wr_font.face;
-
     let units_per_em = face.units_per_em();
 
     let underline_metrics = face.underline_metrics().unwrap();
@@ -438,7 +422,10 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
 
     let average_width = face.glyph_hor_advance(ttf_parser::GlyphId(0)).unwrap();
 
+    wr_font.face = face;
+
     let scale = glyph_size / units_per_em as f32;
+    wr_font.scale = scale;
 
     wr_font.font.pixel_size = pixel_size as i32;
     wr_font.font.average_width = (average_width as f32 * scale) as i32;
@@ -537,6 +524,14 @@ extern "C" fn text_extents(
 
 #[allow(unused_variables)]
 #[no_mangle]
+pub extern "C" fn register_ttf_parser_font_driver(f: *mut frame) {
+    unsafe {
+        register_font_driver(&FONT_DRIVER.0, f);
+    }
+}
+
+#[allow(unused_variables)]
+#[no_mangle]
 pub extern "C" fn syms_of_ttf_parser_font() {
     let ttf_parser_symbol =
         CString::new("ttf-parser").expect("Failed to create string for intern function call");
@@ -547,7 +542,6 @@ pub extern "C" fn syms_of_ttf_parser_font() {
             Qnil,
         );
     }
-    unsafe {
-        register_font_driver(&FONT_DRIVER.0, ptr::null_mut());
-    }
+
+    register_ttf_parser_font_driver(ptr::null_mut());
 }

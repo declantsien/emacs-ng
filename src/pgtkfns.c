@@ -37,6 +37,9 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include "font.h"
 #include "xsettings.h"
 #include "atimer.h"
+#ifdef GDK_WINDOWING_WAYLAND
+#include <gdk/gdkwayland.h>
+#endif
 
 static ptrdiff_t image_cache_refcount;
 
@@ -173,7 +176,7 @@ pgtk_display_info_for_name (Lisp_Object name)
 
    ========================================================================== */
 
-
+#ifndef USE_WEBRENDER
 static void
 pgtk_set_foreground_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
 {
@@ -199,7 +202,6 @@ pgtk_set_foreground_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
     }
   unblock_input ();
 }
-
 
 static void
 pgtk_set_background_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
@@ -253,7 +255,9 @@ pgtk_set_border_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
   FRAME_X_OUTPUT (f)->border_pixel = pix;
   pgtk_frame_rehighlight (FRAME_DISPLAY_INFO (f));
 }
+#endif
 
+#ifndef USE_WEBRENDER
 static void
 pgtk_set_cursor_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
 {
@@ -297,6 +301,7 @@ pgtk_set_cursor_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
 
   update_face_from_frame_parameter (f, Qcursor_color, arg);
 }
+#endif
 
 static void
 pgtk_set_name_internal (struct frame *f, Lisp_Object name)
@@ -524,8 +529,10 @@ pgtk_change_tab_bar_height (struct frame *f, int height)
      here.  */
   adjust_frame_glyphs (f);
   SET_FRAME_GARBAGED (f);
+#ifndef USE_WEBRENDER
   if (FRAME_X_WINDOW (f))
     pgtk_clear_under_internal_border (f);
+#endif
 }
 
 /* Set the pixel height of the tool bar of frame F to HEIGHT.  */
@@ -613,6 +620,7 @@ pgtk_set_internal_border_width (struct frame *f, Lisp_Object arg,
     }
 }
 
+#ifndef USE_WEBRENDER
 static void
 pgtk_set_icon_type (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
 {
@@ -680,6 +688,7 @@ pgtk_set_cursor_type (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
 {
   set_frame_cursor_types (f, arg);
 }
+#endif
 
 static void
 pgtk_set_mouse_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
@@ -959,8 +968,8 @@ frame_parm_handler pgtk_frame_parm_handlers[] =
     0,
     gui_set_font,		/* generic OK */
     0,
-    pgtk_set_icon_name,
-    pgtk_set_icon_type,
+    NULL,
+    NULL,
     pgtk_set_child_frame_border_width,
     pgtk_set_internal_border_width,	/* generic OK */
     gui_set_right_divider_width,
@@ -991,7 +1000,7 @@ frame_parm_handler pgtk_frame_parm_handlers[] =
     pgtk_set_tool_bar_position,
     0,
     pgtk_set_undecorated,
-    pgtk_set_parent_frame,
+    NULL, // set_parent_frame
     pgtk_set_skip_taskbar,
     pgtk_set_no_focus_on_map,
     pgtk_set_no_accept_focus,
@@ -1363,7 +1372,9 @@ This function is an internal primitive--use `make-frame' instead.  */ )
 
   f->output_method = output_pgtk;
   FRAME_X_OUTPUT (f) = xzalloc (sizeof *FRAME_X_OUTPUT (f));
+#ifndef USE_WEBRENDER
   FRAME_FONTSET (f) = -1;
+#endif
   FRAME_X_OUTPUT (f)->white_relief.pixel = -1;
   FRAME_X_OUTPUT (f)->black_relief.pixel = -1;
 
@@ -1440,10 +1451,14 @@ This function is an internal primitive--use `make-frame' instead.  */ )
       specbind (Qx_resource_name, name);
     }
 
+#ifndef USE_WEBRENDER
   register_font_driver (&ftcrfont_driver, f);
 #ifdef HAVE_HARFBUZZ
   register_font_driver (&ftcrhbfont_driver, f);
 #endif	/* HAVE_HARFBUZZ */
+#else
+register_ttf_parser_font_driver(f);
+#endif
 
   image_cache_refcount =
     FRAME_IMAGE_CACHE (f) ? FRAME_IMAGE_CACHE (f)->refcount : 0;
@@ -1613,6 +1628,12 @@ This function is an internal primitive--use `make-frame' instead.  */ )
      FRAME_SCALE_FACTOR) expect the widget to be realized.  */
   if (FRAME_GTK_WIDGET (f))
     gtk_widget_realize (FRAME_GTK_WIDGET (f));
+
+/* #ifdef GDK_WINDOWING_WAYLAND */
+/*   GdkWindow *gwin = gtk_widget_get_window (FRAME_GTK_WIDGET (f)); */
+/*   struct wl_surface *wl_sur = gdk_wayland_window_get_wl_surface(gwin); */
+/*   wr_canvas_init_from_wayland (wl_sur, frame); */
+/* #endif */
 
 #define INSTALL_CURSOR(FIELD, NAME) \
   FRAME_X_OUTPUT (f)->FIELD = gdk_cursor_new_for_display (FRAME_X_DISPLAY (f), GDK_ ## NAME)
@@ -2390,7 +2411,7 @@ DEFUN ("xw-color-defined-p", Fxw_color_defined_p, Sxw_color_defined_p, 1, 2, 0,
     return Qnil;
 }
 
-
+#ifndef USE_WEBRENDER
 DEFUN ("xw-color-values", Fxw_color_values, Sxw_color_values, 1, 2, 0,
        doc: /* Internal function called by `color-values', which see.  */)
   (Lisp_Object color, Lisp_Object frame)
@@ -2424,6 +2445,7 @@ If omitted or nil, that stands for the selected frame's display.  */)
 {
   return Qnil;
 }
+#endif
 
 DEFUN ("x-display-pixel-width", Fx_display_pixel_width, Sx_display_pixel_width, 0, 1, 0,
        doc: /* Return the width in pixels of the display TERMINAL.
@@ -2751,7 +2773,9 @@ x_create_tip_frame (struct pgtk_display_info *dpyinfo, Lisp_Object parms, struct
      counts etc.  */
   f->output_method = output_pgtk;
   f->output_data.pgtk = xzalloc (sizeof *f->output_data.pgtk);
+#ifndef USE_WEBRENDER
   FRAME_FONTSET (f) = -1;
+#endif
   f->output_data.pgtk->white_relief.pixel = -1;
   f->output_data.pgtk->black_relief.pixel = -1;
 
@@ -2797,10 +2821,14 @@ x_create_tip_frame (struct pgtk_display_info *dpyinfo, Lisp_Object parms, struct
       specbind (Qx_resource_name, name);
     }
 
+#ifndef USE_WEBRENDER
   register_font_driver (&ftcrfont_driver, f);
 #ifdef HAVE_HARFBUZZ
   register_font_driver (&ftcrhbfont_driver, f);
 #endif	/* HAVE_HARFBUZZ */
+#else
+register_ttf_parser_font_driver(f);
+#endif
 
   image_cache_refcount =
     FRAME_IMAGE_CACHE (f) ? FRAME_IMAGE_CACHE (f)->refcount : 0;
@@ -2866,6 +2894,11 @@ x_create_tip_frame (struct pgtk_display_info *dpyinfo, Lisp_Object parms, struct
   gui_figure_window_size (f, parms, false, false);
 
   xg_create_frame_widgets (f);
+/* #ifdef GDK_WINDOWING_WAYLAND */
+/*   GdkWindow *gwin = gtk_widget_get_window (FRAME_GTK_WIDGET (f)); */
+/*   struct wl_surface *wl_sur = gdk_wayland_window_get_wl_surface(gwin); */
+/*   wr_canvas_init_from_wayland (wl_sur, frame); */
+/* #endif */
   pgtk_set_event_handler (f);
   tip_window = FRAME_GTK_OUTER_WIDGET (f);
   gtk_window_set_transient_for (GTK_WINDOW (tip_window),
@@ -3932,11 +3965,15 @@ syms_of_pgtkfns (void)
   }
 
   defsubr (&Spgtk_set_resource);
+#ifndef USE_WEBRENDER
   defsubr (&Sxw_display_color_p);	/* this and next called directly by C code */
   defsubr (&Sx_display_grayscale_p);
+#endif
   defsubr (&Spgtk_font_name);
   defsubr (&Sxw_color_defined_p);
+#ifndef USE_WEBRENDER
   defsubr (&Sxw_color_values);
+#endif
   defsubr (&Sx_server_max_request_size);
   defsubr (&Sx_display_pixel_width);
   defsubr (&Sx_display_pixel_height);
