@@ -45,8 +45,9 @@ extern void
 wr_update_end (struct frame *f);
 extern Lisp_Object wr_new_font (struct frame *f, Lisp_Object font_object, int fontset);
 
-#define FRAME_FONTSET(f) (wr_get_fontset(FRAME_X_OUTPUT (f)))
-#define FRAME_FONT(f) (wr_get_font(FRAME_X_OUTPUT (f)))
-#define FRAME_BASELINE_OFFSET(f) (wr_get_baseline_offset(FRAME_X_OUTPUT (f)))
+#define FRAME_FONT(f)             (FRAME_X_OUTPUT (f)->font)
+#define FRAME_FONTSET(f) (FRAME_X_OUTPUT (f)->fontset)
+#define FRAME_BASELINE_OFFSET(f) (FRAME_X_OUTPUT (f)->baseline_offset)
+
 #define BLACK_PIX_DEFAULT(f) 0
 #define WHITE_PIX_DEFAULT(f) 65535

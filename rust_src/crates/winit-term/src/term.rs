@@ -196,7 +196,7 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
     let terminal: TerminalRef = terminal.into();
     let dpyinfo = DisplayInfoRef::new(unsafe { terminal.display_info.winit } as *mut _);
 
-    let mut dpyinfo = dpyinfo.get_inner();
+    let dpyinfo = dpyinfo.get_inner();
     let mut input_processor = INPUT_PROCESSOR.lock().unwrap();
 
     let mut count = 0;
