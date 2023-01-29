@@ -1,4 +1,3 @@
-use crate::output::OutputRef;
 use libc;
 use raw_window_handle::RawDisplayHandle;
 use std::{collections::HashMap, ptr};

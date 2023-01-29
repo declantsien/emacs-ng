@@ -120,7 +120,7 @@ struct winit_output
   int fontset; /* only used with font_backend */
 
   /* Inner perporty in Rust */
-  void *canvas;
+  void *inner;
 };
 
 typedef struct winit_output winit_output;
@@ -151,6 +151,9 @@ extern int winit_select (int nfds, fd_set *readfds, fd_set *writefds,
 /* Return the X window used for displaying data in frame F.  */
 #define FRAME_X_WINDOW(f)  (winit_get_window_desc(FRAME_X_OUTPUT (f)))
 #define FRAME_NATIVE_WINDOW(f) FRAME_X_WINDOW (f)
+#define FRAME_FONT(f)             (FRAME_X_OUTPUT (f)->font)
+#define FRAME_FONTSET(f) (FRAME_X_OUTPUT (f)->fontset)
+#define FRAME_BASELINE_OFFSET(f) (FRAME_X_OUTPUT (f)->baseline_offset)
 
 extern const char *app_bundle_relocate (const char *);
 

@@ -1,5 +1,6 @@
 use std::{mem::ManuallyDrop, rc::Rc};
 
+use std::collections::HashMap;
 use std::ffi::CString;
 use std::ptr;
 
@@ -304,10 +305,16 @@ pub struct WRFont<'a> {
 
     pub scale: f32,
 
-    pub font_instance_key: FontInstanceKey,
+    pub face_index: u32,
 
-    pub font_bytes: ManuallyDrop<Rc<Vec<u8>>>,
+    pub face_info: &'a fontdb::FaceInfo,
 
+    pub instance_keys: HashMap<u64, FontInstanceKey>,
+
+    pub font_bytes: ManuallyDrop<Rc<Vec<u8>>>, // needs by face
+
+    // bring face data around instead of query from fontdb in real-time
+    // would make ui more smoother
     pub face: ttf_parser::Face<'a>,
 }
 
@@ -317,7 +324,6 @@ impl<'a> WRFont<'a> {
     }
 
     pub fn get_glyph_advance_width(&self, glyph_indices: Vec<GlyphIndex>) -> Vec<Option<i32>> {
-
         glyph_indices
             .into_iter()
             .map(|i| {
@@ -342,7 +348,6 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
 
     let frame: LispFrameRef = frame.into();
     let dpyinfo = frame.display_info();
-    let mut output = frame.canvas();
 
     // pixel_size here reflects to DPR 1 for webrender display, we have scale_factor from winit.
     // while pgtk/ns/w32 reflects to actual DPR on device by setting resx/resy to display
@@ -381,29 +386,33 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
             .as_font_mut() as *mut WRFont,
     );
 
-    let font_result = output.get_or_create_font(&FONT_DB, desc.clone());
-    if font_result.is_none() {
-        return Qnil;
-    }
-    let (font_key, font_templete) = font_result.unwrap();
-    let font_data = match font_templete {
-        FontTemplate::Raw(ref bytes, index) => Some((bytes.to_vec(), index)),
-        FontTemplate::Native(_) => None,
-    };
+    let face_info_result = FONT_DB.face_info_from_desc(desc.clone());
 
-    if font_data.is_none() {
+    if face_info_result.is_none() {
+        log::trace!("Failed to open font {:?} from db.", desc);
         return Qnil;
     }
 
-    let (font_bytes, face_index) = font_data.unwrap();
+    let face_info = face_info_result.unwrap();
 
-    let font_instance_key = output.get_or_create_font_instance(
-        font_key,
-        glyph_size,
-    );
-    wr_font.font_instance_key = font_instance_key;
+    wr_font.face_info = face_info;
 
-    wr_font.font_bytes = ManuallyDrop::new(Rc::new(font_bytes.clone()));
+    let result = FONT_DB
+        .db
+        .with_face_data(face_info.id, |font_data, face_index| {
+            let font_bytes = Rc::new(font_data.to_vec());
+            (font_bytes, face_index)
+        });
+
+    if result.is_none() {
+        log::trace!("Failed to get font face {:?} from db.", desc);
+        return Qnil;
+    }
+
+    let (font_bytes, face_index) = result.unwrap();
+
+    wr_font.font_bytes = ManuallyDrop::new(font_bytes.clone());
+    wr_font.face_index = face_index;
 
     let font_bytes = wr_font.font_bytes.clone();
 
@@ -411,17 +420,13 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
     if face_result.is_err() {
         return Qnil;
     }
+
     let face = face_result.ok().unwrap();
-
     let units_per_em = face.units_per_em();
-
     let underline_metrics = face.underline_metrics().unwrap();
-
     let ascent = face.ascender();
     let descent = face.descender();
-
     let average_width = face.glyph_hor_advance(ttf_parser::GlyphId(0)).unwrap();
-
     wr_font.face = face;
 
     let scale = glyph_size / units_per_em as f32;

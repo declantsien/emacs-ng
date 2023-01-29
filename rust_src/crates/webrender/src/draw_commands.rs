@@ -5,7 +5,6 @@ use webrender::{self, api::units::*, api::*};
 use crate::{frame::LispFrameExt, fringe::FringeBitmap, image::WrPixmap};
 
 use super::{
-    canvas::CanvasRef,
     color::{color_to_pixel, pixel_to_color},
     font::{WRFont, WRFontRef},
     util::HandyDandyRectBuilder,
@@ -46,7 +45,6 @@ impl DrawCommands {
             draw_glyphs_face::DRAW_CURSOR => {
                 let face = unsafe { &*s.face };
                 let frame: LispFrameRef = (*s).f.into();
-                let output = frame.canvas();
                 let dpyinfo = frame.display_info();
 
                 let mut foreground = face.background;
@@ -103,6 +101,10 @@ impl DrawCommands {
         let to = s.nchars as usize;
 
         let gc = s.gc;
+        let font_instance_key = self
+            .frame
+            .canvas()
+            .get_or_create_font_instance(font, font.font.pixel_size as f32);
 
         self.frame.canvas().display(|builder, space_and_clip| {
             let glyph_indices: Vec<u32> =
@@ -182,7 +184,7 @@ impl DrawCommands {
                     &CommonItemProperties::new(visible_rect, space_and_clip),
                     visible_rect,
                     &glyph_instances,
-                    font.font_instance_key,
+                    font_instance_key,
                     foreground_color,
                     None,
                 );
@@ -362,13 +364,17 @@ impl DrawCommands {
 
                 let visible_rect = (x, y).by(s.width, visible_height);
 
+                let font_instance_key = self
+                    .frame
+                    .canvas()
+                    .get_or_create_font_instance(font, font.font.pixel_size as f32);
                 // draw foreground
                 if !glyph_instances.is_empty() {
                     builder.push_text(
                         &CommonItemProperties::new(visible_rect, space_and_clip),
                         visible_rect,
                         &glyph_instances,
-                        font.font_instance_key,
+                        font_instance_key,
                         foreground_color,
                         None,
                     );

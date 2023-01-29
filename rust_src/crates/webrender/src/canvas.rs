@@ -2,6 +2,7 @@ use emacs::lisp::ExternalPtr;
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use crate::frame::LispFrameExt;
+use crate::WRFontRef;
 use euclid::default::Size2D;
 use gleam::gl;
 use log::warn;
@@ -19,10 +20,9 @@ use emacs::frame::LispFrameRef;
 
 use super::texture::TextureResourceManager;
 use super::util::HandyDandyRectBuilder;
-use super::{font_db::FontDB, font_db::FontDescriptor};
 
 pub struct Canvas {
-    fonts: HashMap<FontDescriptor, FontKey>,
+    fonts: HashMap<fontdb::ID, FontKey>,
     font_instances: HashMap<
         (
             FontKey,
@@ -396,46 +396,26 @@ impl Canvas {
         self.font_render_mode = render_mode;
     }
 
-    pub fn get_or_create_font(
-        &mut self,
-        font_db: &FontDB,
-        desc: FontDescriptor,
-    ) -> Option<(FontKey, FontTemplate)> {
-        let result = font_db.font_from_desc(desc.clone());
-
-        if result.is_none() {
-            return None;
-        }
-
-        let font = result.unwrap();
-
-        let result = font_db.db.with_face_data(font.id, |font_data, face_index| {
-            let font_bytes = Rc::new(font_data.to_vec());
-            (font_bytes, face_index)
-        });
-
-        if result.is_none() {
-            return None;
-        }
-
-        let (font_bytes, face_index) = result.unwrap();
-
-        let font_template_raw = FontTemplate::Raw(
-            Arc::new(font_bytes.to_vec()),
-            face_index.try_into().unwrap(),
-        );
-
-        let wr_font_key = self.fonts.get(&desc);
+    pub fn get_or_create_font(&mut self, font: WRFontRef) -> Option<FontKey> {
+        let font_id = font.face_info.id;
+        let wr_font_key = self.fonts.get(&font_id);
 
         if let Some(key) = wr_font_key {
-            return Some((*key, font_template_raw));
+            return Some(*key);
         }
+
+        let font_bytes = font.font_bytes.clone();
+        let face_index = font.face_index;
 
         let wr_font_key = {
             #[cfg(macos_platform)]
             {
                 let app_locale = fontdb::Language::English_UnitedStates;
-                let family = font.families.iter().find(|family| family.1 == app_locale);
+                let family = font
+                    .face_info
+                    .families
+                    .iter()
+                    .find(|family| family.1 == app_locale);
 
                 if let Some((name, _)) = family {
                     // println!("Family: {:?}", &family_name);
@@ -449,18 +429,24 @@ impl Canvas {
             }
 
             #[cfg(not(macos_platform))]
-            Some(self.wr_add_font(font_template_raw.clone()))
+            Some(self.wr_add_font(FontTemplate::Raw(
+                Arc::new(font_bytes.to_vec()),
+                face_index.try_into().unwrap(),
+            )))
         };
 
         if let Some(key) = wr_font_key {
-            self.fonts.insert(desc, key);
-            return Some((key, font_template_raw));
+            self.fonts.insert(font_id, key);
+            return Some(key);
         };
 
         None
     }
 
-    pub fn get_or_create_font_instance(&mut self, font_key: FontKey, size: f32) -> FontInstanceKey {
+    pub fn get_or_create_font_instance(&mut self, font: WRFontRef, size: f32) -> FontInstanceKey {
+        let font_key = self
+            .get_or_create_font(font)
+            .expect("Failed to obtain wr fontkey");
         let bg_color = None;
         let flags = FontInstanceFlags::empty();
         let synthetic_italics = SyntheticItalics::disabled();

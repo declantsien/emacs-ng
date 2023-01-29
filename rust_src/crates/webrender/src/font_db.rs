@@ -84,7 +84,7 @@ impl FontDB {
         }
     }
 
-    pub fn font_from_desc(&self, desc: FontDescriptor) -> Option<&FaceInfo> {
+    pub fn face_info_from_desc(&self, desc: FontDescriptor) -> Option<&FaceInfo> {
         match desc {
             FontDescriptor::PostScript(ref name) => self.select_postscript(name),
             FontDescriptor::Properties {

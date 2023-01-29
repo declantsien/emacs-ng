@@ -6971,9 +6971,6 @@ pgtk_term_init (Lisp_Object display_name, char *resource_name)
 
       if (display_get_fd)
 	dpyinfo->connection = display_get_fd (wl_dpy);
-#ifdef USE_WEBRENDER
-      wr_display_init_from_wayland (dpyinfo, wl_dpy, 1);
-#endif
     }
 #endif
 
