@@ -322,7 +322,7 @@ fn generate_bindings() {
     );
     let munged = re.unwrap().replace_all(&source, "");
     let mut file = File::create(out_path).unwrap();
-    write!(file, "use crate::{{\n    globals::emacs_globals,\n    sys::Lisp_Object,\n}};\n\nuse libc::{{timespec, fd_set, sigset_t}};\n\nuse gtk_sys::GtkWidget;\n").expect("Write error!");
+    write!(file, "use crate::{{\n    globals::emacs_globals,\n    sys::Lisp_Object,\n}};\n\nuse libc::{{timespec, fd_set, sigset_t}};\n\n#[cfg(window_system = \"pgtk\")]\nuse gtk_sys::GtkWidget;\n").expect("Write error!");
     file.write_all(munged.into_owned().as_bytes()).unwrap();
 }
 

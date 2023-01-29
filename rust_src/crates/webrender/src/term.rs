@@ -118,7 +118,6 @@ pub extern "C" fn wr_draw_fringe_bitmap(
     let frame: LispFrameRef = window.get_frame();
 
     let output = frame.output();
-    let canvas = frame.canvas();
     let mut commands = frame.draw_commands();
 
     let row_rect: LayoutRect = unsafe {

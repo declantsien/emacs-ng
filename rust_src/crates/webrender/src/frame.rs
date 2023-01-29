@@ -5,8 +5,6 @@ use crate::canvas::CanvasRef;
 use crate::draw_commands::DrawCommands;
 use crate::output::Output;
 use crate::output::OutputRef;
-#[cfg(window_system = "pgtk")]
-use crate::wr_canvas_init_from_wayland;
 use raw_window_handle::RawDisplayHandle;
 use raw_window_handle::RawWindowHandle;
 use std::collections::hash_map::DefaultHasher;
@@ -44,26 +42,8 @@ impl LispFrameExt for LispFrameRef {
     fn canvas(&self) -> CanvasRef {
         if self.output().get_canvas().is_null() {
             log::debug!("canvas_data empty");
-            #[cfg(window_system = "pgtk")]
-            {
-                let mut output = self.output();
-                let widget = output.get_raw().widget;
-                if !widget.is_null() {
-                    let gwin = unsafe { gtk_sys::gtk_widget_get_window(widget) };
-                    let surface = unsafe {
-                        gdk_wayland_sys::gdk_wayland_window_get_wl_surface(
-                            gwin as *mut _ as *mut gdk_wayland_sys::GdkWaylandWindow,
-                        )
-                    };
-                    log::debug!("surface: {:?}", surface);
-                    wr_canvas_init_from_wayland(surface, self.clone());
-                }
-            }
-            #[cfg(window_system = "winit")]
-            {
-                let canvas = Box::new(Canvas::build(self.clone()));
-                self.output().get_inner().set_canvas(canvas);
-            }
+            let canvas = Box::new(Canvas::build(self.clone()));
+            self.output().get_inner().set_canvas(canvas);
         }
 
         self.output().get_canvas()
@@ -102,7 +82,27 @@ impl LispFrameExt for LispFrameRef {
         #[cfg(window_system = "winit")]
         return self.output().get_inner().window_handle;
 
-        #[cfg(not(window_system = "winit"))]
+        #[cfg(window_system = "pgtk")]
+        {
+            use raw_window_handle::WaylandWindowHandle;
+            let mut output = self.output();
+            let widget = output.as_raw().widget;
+            if !widget.is_null() {
+                let gwin = unsafe { gtk_sys::gtk_widget_get_window(widget) };
+                let surface = unsafe {
+                    gdk_wayland_sys::gdk_wayland_window_get_wl_surface(
+                        gwin as *mut _ as *mut gdk_wayland_sys::GdkWaylandWindow,
+                    )
+                };
+                log::debug!("surface: {:?}", surface);
+                let mut window_handle = WaylandWindowHandle::empty();
+                window_handle.surface = surface;
+                return Some(RawWindowHandle::Wayland(window_handle));
+            }
+            return None;
+        }
+
+        #[cfg(not(any(window_system = "winit", window_system = "pgtk")))]
         unimplemented!()
     }
 
@@ -110,7 +110,28 @@ impl LispFrameExt for LispFrameRef {
         #[cfg(window_system = "winit")]
         return self.output().display_info().get_inner().raw_display_handle;
 
-        #[cfg(not(window_system = "winit"))]
+        #[cfg(window_system = "pgtk")]
+        {
+            use raw_window_handle::WaylandDisplayHandle;
+
+            let display = unsafe {
+                self.output()
+                    .display_info()
+                    .get_raw()
+                    .__bindgen_anon_1
+                    .display
+            };
+            let wl_display = unsafe {
+                gdk_wayland_sys::gdk_wayland_display_get_wl_display(
+                    display as *mut _ as *mut gdk_wayland_sys::GdkWaylandDisplay,
+                )
+            };
+            let mut display_handle = WaylandDisplayHandle::empty();
+            display_handle.display = wl_display;
+            return Some(RawDisplayHandle::Wayland(display_handle));
+        }
+
+        #[cfg(not(any(window_system = "winit", window_system = "pgtk")))]
         unimplemented!()
     }
 
