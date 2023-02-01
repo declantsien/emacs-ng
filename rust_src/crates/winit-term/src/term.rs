@@ -194,7 +194,7 @@ extern "C" fn winit_define_frame_cursor(f: *mut Lisp_Frame, cursor: Emacs_Cursor
 
 extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut input_event) -> i32 {
     let terminal: TerminalRef = terminal.into();
-    let dpyinfo = DisplayInfoRef::new(unsafe { terminal.display_info.winit } as *mut _);
+    let mut dpyinfo = DisplayInfoRef::new(unsafe { terminal.display_info.winit } as *mut _);
 
     let dpyinfo = dpyinfo.get_inner();
     let mut input_processor = INPUT_PROCESSOR.lock().unwrap();
@@ -425,7 +425,7 @@ extern "C" fn winit_implicitly_set_name(
 
 extern "C" fn winit_get_focus_frame(frame: *mut Lisp_Frame) -> LispObject {
     let frame: LispFrameRef = frame.into();
-    let dpyinfo = frame.display_info();
+    let mut dpyinfo = frame.display_info();
 
     let focus_frame = dpyinfo.get_inner().focus_frame;
 
@@ -511,7 +511,7 @@ extern "C" fn winit_destroy_frame(f: *mut Lisp_Frame) {
     let frame: LispFrameRef = f.into();
     let mut output = frame.output();
     let mut data = frame.canvas();
-    let display_info = frame.display_info();
+    let mut display_info = frame.display_info();
     let uuid = frame.uuid();
 
     display_info.get_inner().frames.remove(&uuid);
@@ -572,6 +572,8 @@ pub fn winit_term_init(display_name: LispObject) -> DisplayInfoRef {
 
     dpyinfo_ref.get_inner().raw_display_handle = Some(raw_handle);
     dpyinfo_ref.get_inner().scale_factor = scale_factor as f32;
+
+    println!("scale factor {:?}", scale_factor);
 
     let mut _conn = None;
 

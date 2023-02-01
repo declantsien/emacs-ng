@@ -81,10 +81,7 @@ rev="716cceb53fa04dd47ca16a34ee5df07f72da1a2d"
 
 [patch.crates-io.font-loader]
 git = "https://github.com/declantsien/rust-font-loader.git"
-rev = "ca0f1be2d23f75e13e04cd07ba4111adfeaf2bd9"
-
-[patch.crates-io.fontdb]
-git = "https://github.com/RazrFalcon/fontdb.git"
+rev = "0a53c767463e13346221ad23fa6dd50cd787cd72"
 
 [patch.crates-io.surfman]
 git ="https://github.com/declantsien/surfman.git"

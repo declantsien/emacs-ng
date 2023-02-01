@@ -25,10 +25,11 @@ use webrender_bindings::display_info::DisplayInfoRef;
 
 pub fn create_frame(
     display: LispObject,
-    dpyinfo: DisplayInfoRef,
+    mut dpyinfo: DisplayInfoRef,
     tem: LispObject,
     mut kb: KeyboardRef,
 ) -> LispFrameRef {
+    log::trace!("create_frame");
     let frame = if tem.eq(Qnone) || tem.is_nil() {
         unsafe { make_frame_without_minibuffer(Qnil, kb.as_mut(), display) }
     } else if tem.eq(Qonly) {
@@ -75,7 +76,7 @@ pub fn create_frame(
 
     insert_winit_window(frame.uuid(), window);
     dpyinfo.get_inner().frames.insert(window_id.into(), frame);
-
+    log::trace!("create_frame done");
     frame
 }
 
