@@ -69,7 +69,10 @@ impl DisplayInfo {
         self.0.inner = Box::into_raw(inner) as *mut libc::c_void;
     }
 
-    pub fn get_inner(&self) -> DisplayInfoInnerRef {
+    pub fn get_inner(&mut self) -> DisplayInfoInnerRef {
+        if self.0.inner.is_null() {
+            self.init_inner();
+        }
         DisplayInfoInnerRef::new(self.0.inner as *mut DisplayInfoInner)
     }
 
@@ -79,7 +82,7 @@ impl DisplayInfo {
 
     // TODO get dynamic scale factor from raw_display_handle
     // or update scale factor when changed
-    pub fn scale_factor(&self) -> f32 {
+    pub fn scale_factor(&mut self) -> f32 {
         self.get_inner().scale_factor
     }
 

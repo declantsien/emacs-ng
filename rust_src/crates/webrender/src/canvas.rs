@@ -404,8 +404,14 @@ impl Canvas {
             return Some(*key);
         }
 
-        let font_bytes = font.font_bytes.clone();
-        let face_index = font.face_index;
+        let font_result = font.cache().get_font(font.face_info.id);
+
+        if font_result.is_none() {
+            return None;
+        }
+
+        let font_result = font_result.unwrap();
+        let (font_bytes, face_index) = (font_result.data, font_result.info.index);
 
         let wr_font_key = {
             #[cfg(macos_platform)]

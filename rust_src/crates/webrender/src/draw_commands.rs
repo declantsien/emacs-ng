@@ -45,7 +45,7 @@ impl DrawCommands {
             draw_glyphs_face::DRAW_CURSOR => {
                 let face = unsafe { &*s.face };
                 let frame: LispFrameRef = (*s).f.into();
-                let dpyinfo = frame.display_info();
+                let mut dpyinfo = frame.display_info();
 
                 let mut foreground = face.background;
                 let mut background = color_to_pixel(frame.cursor_color());
@@ -104,7 +104,7 @@ impl DrawCommands {
         let font_instance_key = self
             .frame
             .canvas()
-            .get_or_create_font_instance(font, font.font.pixel_size as f32);
+            .get_or_create_font_instance(font, font.glyph_size as f32);
 
         self.frame.canvas().display(|builder, space_and_clip| {
             let glyph_indices: Vec<u32> =
@@ -367,7 +367,7 @@ impl DrawCommands {
                 let font_instance_key = self
                     .frame
                     .canvas()
-                    .get_or_create_font_instance(font, font.font.pixel_size as f32);
+                    .get_or_create_font_instance(font, font.glyph_size as f32);
                 // draw foreground
                 if !glyph_instances.is_empty() {
                     builder.push_text(

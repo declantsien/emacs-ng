@@ -86,7 +86,8 @@ impl LispFrameExt for LispFrameRef {
         {
             use raw_window_handle::WaylandWindowHandle;
             let mut output = self.output();
-            let widget = output.as_raw().widget;
+            // let widget = output.as_raw().widget;
+            let widget = output.as_raw().edit_widget;
             if !widget.is_null() {
                 let gwin = unsafe { gtk_sys::gtk_widget_get_window(widget) };
                 let surface = unsafe {
