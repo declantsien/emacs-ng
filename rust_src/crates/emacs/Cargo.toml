@@ -11,6 +11,8 @@ path = "src/lib.rs"
 libc = "0.2.95"
 lazy_static = "1.4.0"
 memoffset = "0.6.4"
+
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
 gtk-sys = "0.16.0"
 
 [build-dependencies]
