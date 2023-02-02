@@ -11,11 +11,18 @@ path = "src/lib.rs"
 libc = "0.2.95"
 lazy_static = "1.4.0"
 memoffset = "0.6.4"
+winit = { version = "0.28", optional = true}
+tao = { version = "0.18", optional = true }
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
-gtk-sys = "0.16.0"
+gtk-sys = { version = "0.16.0", optional = true }
 
 [build-dependencies]
 bindgen = "0.64"
 regex = "1.6"
 libc = "0.2"
+
+[features]
+pgtk = ["dep:gtk-sys"]
+tao = ["dep:tao"]
+winit = ["dep:winit"]

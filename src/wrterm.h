@@ -159,9 +159,7 @@ extern const char *app_bundle_relocate (const char *);
 
 /* Symbol initializations implemented in each pgtk sources. */
 extern void syms_of_winit_term(void);
-extern void syms_of_winit_term_rust(void);
-extern void syms_of_wrfns (void);
 
-#include "webrender_bindings_ffi.h"
+#include "wr_renderer_ffi.h"
 
 #endif // __WRTERM_H_

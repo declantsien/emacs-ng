@@ -1,6 +1,7 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 #![feature(concat_idents)]
 #![allow(non_upper_case_globals)]
+#![feature(once_cell)]
 
 #[macro_use]
 extern crate emacs;
@@ -19,9 +20,9 @@ pub mod output;
 pub mod term;
 
 mod cursor;
-mod draw_commands;
 mod font_db;
 mod fringe;
+mod renderer;
 mod texture;
 pub mod util;
 mod wrterm;

@@ -36,8 +36,8 @@ lsp_json = { version = "0.1.0", path = "rust_src/crates/lsp_json" }
 git = { version = "0.1.0", path = "rust_src/crates/git", optional = true }
 ng_module = { version = "0.1.0", path = "rust_src/crates/ng_module", optional = true }
 js = { version = "0.1.0", path = "rust_src/crates/js", optional = true }
-winit_term = { version = "0.1.0", path = "rust_src/crates/winit-term", optional = true }
-webrender_bindings = { version = "0.1.0", path = "rust_src/crates/webrender", optional = true }
+winit-term = { version = "0.1.0", path = "rust_src/crates/winit-term", optional = true }
+wr-renderer = { version = "0.1.0", path = "rust_src/crates/webrender", optional = true }
 clippy = { version = "*", optional = true }
 log = "0.4.17"
 tracing = "0.1"
@@ -60,9 +60,17 @@ default = [
 use-xml2 = []
 # Build with git2rs support
 libgit = ["git", "ng-bindgen/libgit"]
+# Use the x11 window system
+window-system-x11 = []
+# Use the nextstep window system
+window-system-nextstep = []
+# Use the w32 window system
+window-system-w32 = []
 # Use the webrender renderer
-webrender = ["dep:webrender_bindings"]
-window-system-winit = ["dep:winit_term", "webrender"]
+webrender = ["wr-renderer"]
+window-system-winit = ["dep:winit-term", "webrender", "emacs/winit"]
+window-system-tao = ["dep:winit-term", "webrender", "emacs/tao"]
+window-system-pgtk = ["emacs/pgtk"]
 # Treat warnings as a build error on Travis.
 strict = []
 # Use JavaScript and Deno
@@ -70,14 +78,14 @@ javascript = ["dep:js", "ng-bindgen/javascript"]
 # Build with dynamic modules support's extensions.
 ng-module = ["dep:ng_module", "ng-bindgen/ng-module"]
 # Enable glyphs debugging code.
-glyph-debug = []
+glyph-debug = ["wr-renderer?/capture"]
 
 ### Patches
 
 # tmp ignore macOS alternative key characters.
-[patch.crates-io.winit]
-git = "https://github.com/declantsien/winit"
-rev="716cceb53fa04dd47ca16a34ee5df07f72da1a2d"
+# [patch.crates-io.winit]
+# git = "https://github.com/declantsien/winit"
+# rev="716cceb53fa04dd47ca16a34ee5df07f72da1a2d"
 
 [patch.crates-io.font-loader]
 git = "https://github.com/declantsien/rust-font-loader.git"

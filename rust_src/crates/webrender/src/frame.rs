@@ -2,13 +2,10 @@ use emacs::frame::LispFrameRef;
 
 use crate::canvas::Canvas;
 use crate::canvas::CanvasRef;
-use crate::draw_commands::DrawCommands;
 use crate::output::Output;
 use crate::output::OutputRef;
 use raw_window_handle::RawDisplayHandle;
 use raw_window_handle::RawWindowHandle;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 use webrender::api::ColorF;
 use webrender::{self, api::units::*};
 
@@ -20,14 +17,14 @@ pub trait LispFrameExt {
     fn set_cursor_color(&self, color: ColorF);
     fn cursor_color(&self) -> ColorF;
     fn cursor_foreground_color(&self) -> ColorF;
-    #[cfg(window_system = "winit")]
-    fn set_window_handle(&self, handle: RawWindowHandle);
     fn set_background_color(&self, color: ColorF);
     fn display_info(&self) -> DisplayInfoRef;
-    fn draw_commands(&self) -> DrawCommands;
     fn window_handle(&self) -> Option<RawWindowHandle>;
     fn display_handle(&self) -> Option<RawDisplayHandle>;
     fn size(&self) -> DeviceIntSize;
+    #[cfg(window_system = "winit")]
+    fn uuid(&self) -> emacs::windowing::window::WindowId;
+    #[cfg(not(window_system = "winit"))]
     fn uuid(&self) -> u64;
 }
 
@@ -61,11 +58,6 @@ impl LispFrameExt for LispFrameRef {
         self.output().get_inner().cursor_foreground_color
     }
 
-    #[cfg(window_system = "winit")]
-    fn set_window_handle(&self, handle: RawWindowHandle) {
-        self.output().get_inner().set_window_handle(handle);
-    }
-
     fn set_background_color(&self, color: ColorF) {
         self.output().get_inner().set_background_color(color);
     }
@@ -74,19 +66,19 @@ impl LispFrameExt for LispFrameRef {
         self.output().display_info()
     }
 
-    fn draw_commands(&self) -> DrawCommands {
-        DrawCommands::new(self.clone())
-    }
-
     fn window_handle(&self) -> Option<RawWindowHandle> {
         #[cfg(window_system = "winit")]
-        return self.output().get_inner().window_handle;
+        if let Some(window) = &self.output().get_inner().window {
+            use raw_window_handle::HasRawWindowHandle;
+            return Some(window.raw_window_handle());
+        } else {
+            return None;
+        }
 
         #[cfg(window_system = "pgtk")]
         {
             use raw_window_handle::WaylandWindowHandle;
             let mut output = self.output();
-            // let widget = output.as_raw().widget;
             let widget = output.as_raw().edit_widget;
             if !widget.is_null() {
                 let gwin = unsafe { gtk_sys::gtk_widget_get_window(widget) };
@@ -140,6 +132,18 @@ impl LispFrameExt for LispFrameRef {
         DeviceIntSize::new(self.pixel_width, self.pixel_height)
     }
 
+    #[cfg(window_system = "winit")]
+    fn uuid(&self) -> emacs::windowing::window::WindowId {
+        self.output()
+            .get_inner()
+            .window
+            .as_ref()
+            .expect("frame doesnt have associated winit window yet")
+            .id()
+            .clone()
+    }
+
+    #[cfg(not(window_system = "winit"))]
     fn uuid(&self) -> u64 {
         let mut hasher = DefaultHasher::new();
         self.window_handle().hash(&mut hasher);

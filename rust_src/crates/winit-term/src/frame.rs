@@ -1,34 +1,34 @@
 use crate::cursor::build_mouse_cursors;
-use crate::winit_term::insert_winit_window;
-use crate::winit_term::WINIT_WINDOWS;
+use crate::cursor::emacs_to_winit_cursor;
+use crate::event_loop::WrEventLoop;
+use emacs::globals::Qfullscreen;
+use emacs::globals::Qmaximized;
+use emacs::windowing::monitor::MonitorHandle;
 use emacs::{
     bindings::{
-        list4i, make_frame, make_frame_without_minibuffer, make_minibuffer_frame, output_method,
-        winit_output,
+        fullscreen_type, list4i, make_frame, make_frame_without_minibuffer, make_minibuffer_frame,
+        output_method, winit_output, Emacs_Cursor,
     },
-    frame::{window_frame_live_or_selected, LispFrameRef},
+    frame::LispFrameRef,
     globals::{Qinner_edges, Qnil, Qnone, Qonly, Qouter_edges},
     keyboard::KeyboardRef,
     lisp::LispObject,
 };
-use raw_window_handle::HasRawWindowHandle;
-use webrender_bindings::frame::LispFrameExt;
-use webrender_bindings::output::Output;
 
-use winit::dpi::PhysicalPosition;
-#[cfg(wayland_platform)]
-use winit::platform::wayland::WindowBuilderExtWayland;
+use emacs::windowing::window::WindowId;
+use wr_renderer::frame::LispFrameExt;
+use wr_renderer::output::Output;
 
-use crate::event_loop::EVENT_LOOP;
+use emacs::windowing::{dpi::PhysicalPosition, window::WindowBuilder};
 
-use webrender_bindings::display_info::DisplayInfoRef;
+use wr_renderer::display_info::DisplayInfoRef;
 
 pub fn create_frame(
     display: LispObject,
     mut dpyinfo: DisplayInfoRef,
     tem: LispObject,
     mut kb: KeyboardRef,
-) -> LispFrameRef {
+) -> (LispFrameRef, WindowId) {
     log::trace!("create_frame");
     let frame = if tem.eq(Qnone) || tem.is_nil() {
         unsafe { make_frame_without_minibuffer(Qnil, kb.as_mut(), display) }
@@ -45,21 +45,26 @@ pub fn create_frame(
     frame.terminal = dpyinfo.get_inner().terminal.as_mut();
     frame.set_output_method(output_method::output_winit);
 
-    let event_loop = EVENT_LOOP.lock().unwrap();
-    let window_builder = winit::window::WindowBuilder::new().with_visible(true);
+    let event_loop = WrEventLoop::global().try_lock().unwrap();
+    let window_builder = WindowBuilder::new().with_visible(true);
 
-    #[cfg(wayland_platform)]
+    let invocation_name: emacs::multibyte::LispStringRef =
+        unsafe { emacs::bindings::globals.Vinvocation_name.into() };
+    let invocation_name = invocation_name.to_utf8();
+
+    #[cfg(all(wayland_platform, not(use_tao)))]
     let window_builder = {
-        let invocation_name: emacs::multibyte::LispStringRef =
-            unsafe { emacs::bindings::globals.Vinvocation_name.into() };
-        let invocation_name = invocation_name.to_utf8();
+        use crate::emacs::windowing::platform::wayland::WindowBuilderExtWayland;
         window_builder.with_name(invocation_name, "")
     };
+    #[cfg(use_tao)]
+    let window_builder = window_builder.with_title(invocation_name);
 
     let window = window_builder.build(&event_loop.el()).unwrap();
+    #[cfg(not(use_tao))]
     window.set_theme(None);
-    window.set_title("Winit Emacs");
-    let window_id = window.id();
+    #[cfg(not(use_tao))]
+    window.set_title("Emacs NG");
     let mut output = Box::new(Output::default());
     output.set_display_info(dpyinfo);
     build_mouse_cursors(&mut output.as_mut().as_raw());
@@ -71,66 +76,159 @@ pub fn create_frame(
     // Remeber to destory the Output object when frame destoried.
     let output = Box::into_raw(output);
     frame.output_data.winit = output as *mut winit_output;
-    let window_handle = window.raw_window_handle();
-    frame.set_window_handle(window_handle);
 
-    insert_winit_window(frame.uuid(), window);
-    dpyinfo.get_inner().frames.insert(window_id.into(), frame);
+    let window_id = window.id();
+    frame.set_window(window);
+    dpyinfo.get_inner().frames.insert(frame.uuid(), frame);
     log::trace!("create_frame done");
-    frame
+    (frame, window_id)
 }
 
-pub fn frame_edges(frame: LispObject, type_: LispObject) -> LispObject {
-    let frame = window_frame_live_or_selected(frame);
+pub trait LispFrameWinitExt {
+    fn set_window(&self, handle: emacs::windowing::window::Window);
+    fn set_visible2(&mut self, visible: bool);
+    fn set_cursor_icon(&self, cursor: Emacs_Cursor);
+    fn edges(&self, type_: LispObject) -> LispObject;
+    fn fullscreen(&self);
+    fn implicitly_set_name(&mut self, arg: LispObject, _old_val: LispObject);
+    fn iconify(&mut self);
+    fn current_monitor(&self) -> Option<MonitorHandle>;
+}
 
-    let uuid = frame.uuid();
-    let wins = WINIT_WINDOWS.lock().unwrap();
-    let window = wins.get(&uuid).unwrap();
+impl LispFrameWinitExt for LispFrameRef {
+    fn set_window(&self, window: emacs::windowing::window::Window) {
+        self.output().get_inner().set_window(window);
+    }
 
-    let (left, top, right, bottom) = match type_ {
-        Qouter_edges => {
-            let pos = window
-                .outer_position()
-                .unwrap_or_else(|_| PhysicalPosition::<i32>::new(0, 0));
+    fn set_visible2(&mut self, is_visible: bool) {
+        let _ = &self.set_visible(is_visible as u32);
 
-            let size = window.outer_size();
+        let inner = self.output().get_inner();
+        let window = inner
+            .window
+            .as_ref()
+            .expect("frame doesnt have associated winit window yet");
 
-            let left = pos.x;
-            let top = pos.y;
-            let right = left + size.width as i32;
-            let bottom = top + size.height as i32;
-
-            (left, top, right, bottom)
+        if is_visible {
+            window.set_visible(true);
+        } else {
+            window.set_visible(false);
         }
-        Qinner_edges => {
-            let pos = window
-                .inner_position()
-                .unwrap_or_else(|_| PhysicalPosition::<i32>::new(0, 0));
-            let size = window.inner_size();
-            let internal_border_width = frame.internal_border_width();
+    }
 
-            // webrender window has no interanl menu_bar, tab_bar and tool_bar
-            let left = pos.x + internal_border_width;
-            let top = pos.x + internal_border_width;
-            let right = (left + size.width as i32) - internal_border_width;
-            let bottom = (top + size.height as i32) - internal_border_width;
+    fn set_cursor_icon(&self, cursor: Emacs_Cursor) {
+        let inner = self.output().get_inner();
+        let window = inner
+            .window
+            .as_ref()
+            .expect("frame doesnt have associated winit window yet");
+        let cursor = emacs_to_winit_cursor(cursor);
+        window.set_cursor_icon(cursor);
+    }
 
-            (left, top, right, bottom)
+    fn edges(&self, type_: LispObject) -> LispObject {
+        let inner = self.output().get_inner();
+        let window = inner
+            .window
+            .as_ref()
+            .expect("frame doesnt have associated winit window yet");
+
+        let (left, top, right, bottom) = match type_ {
+            Qouter_edges => {
+                let pos = window
+                    .outer_position()
+                    .unwrap_or_else(|_| PhysicalPosition::<i32>::new(0, 0));
+
+                let size = window.outer_size();
+
+                let left = pos.x;
+                let top = pos.y;
+                let right = left + size.width as i32;
+                let bottom = top + size.height as i32;
+
+                (left, top, right, bottom)
+            }
+            Qinner_edges => {
+                let pos = window
+                    .inner_position()
+                    .unwrap_or_else(|_| PhysicalPosition::<i32>::new(0, 0));
+                let size = window.inner_size();
+                let internal_border_width = self.internal_border_width();
+
+                // webrender window has no interanl menu_bar, tab_bar and tool_bar
+                let left = pos.x + internal_border_width;
+                let top = pos.x + internal_border_width;
+                let right = (left + size.width as i32) - internal_border_width;
+                let bottom = (top + size.height as i32) - internal_border_width;
+
+                (left, top, right, bottom)
+            }
+            // native edges
+            _ => {
+                let pos = window
+                    .inner_position()
+                    .unwrap_or_else(|_| PhysicalPosition::<i32>::new(0, 0));
+                let size = window.inner_size();
+
+                let left = pos.x;
+                let top = pos.y;
+                let right = left + size.width as i32;
+                let bottom = top + size.height as i32;
+
+                (left, top, right, bottom)
+            }
+        };
+        unsafe { list4i(left as i64, top as i64, right as i64, bottom as i64) }
+    }
+
+    fn fullscreen(&self) {
+        if !self.is_visible() {
+            return;
         }
-        // native edges
-        _ => {
-            let pos = window
-                .inner_position()
-                .unwrap_or_else(|_| PhysicalPosition::<i32>::new(0, 0));
-            let size = window.inner_size();
 
-            let left = pos.x;
-            let top = pos.y;
-            let right = left + size.width as i32;
-            let bottom = top + size.height as i32;
-
-            (left, top, right, bottom)
+        if self.want_fullscreen() == fullscreen_type::FULLSCREEN_MAXIMIZED {
+            let inner = self.output().get_inner();
+            let window = inner
+                .window
+                .as_ref()
+                .expect("frame doesnt have associated winit window yet");
+            window.set_maximized(true);
+            self.store_param(Qfullscreen, Qmaximized);
         }
-    };
-    unsafe { list4i(left as i64, top as i64, right as i64, bottom as i64) }
+    }
+    fn implicitly_set_name(&mut self, arg: LispObject, _old_val: LispObject) {
+        if self.name.eq(arg) {
+            return;
+        }
+
+        self.name = arg;
+
+        let title = format!("{}", arg.force_string());
+        let inner = self.output().get_inner();
+        let window = inner
+            .window
+            .as_ref()
+            .expect("frame doesnt have associated winit window yet");
+
+        window.set_title(&title);
+    }
+
+    fn iconify(&mut self) {
+        self.set_iconified(true);
+        let inner = self.output().get_inner();
+        let window = inner
+            .window
+            .as_ref()
+            .expect("frame doesnt have associated winit window yet");
+        window.set_visible(false);
+    }
+
+    fn current_monitor(&self) -> Option<MonitorHandle> {
+        let inner = self.output().get_inner();
+        let window = inner
+            .window
+            .as_ref()
+            .expect("frame doesnt have associated winit window yet");
+        window.current_monitor()
+    }
 }

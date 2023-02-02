@@ -110,7 +110,7 @@ jobs:
               run: |
                   ## Package Install
                   sudo apt update
-                  sudo apt install -y libxpm-dev libgtk2.0-dev libgif-dev libgnutls28-dev libx11-xcb-dev libxcb-render0-dev libxcb-shape0-dev  libxcb-xfixes0-dev clang llvm lld
+                  sudo apt install -y libxpm-dev libgtk-3-dev libglib2.0-dev libgif-dev libgnutls28-dev libx11-xcb-dev libxcb-render0-dev libxcb-shape0-dev  libxcb-xfixes0-dev clang llvm lld
                   # Already installed: automake autoconf texinfo libjpeg-dev libpng-dev libtiff-dev libx11-dev  libncurses-dev zlib1g-dev
                   # When use native-comp: libgccjit-9-dev
                   # When use gcc: build-essential
@@ -180,7 +180,7 @@ jobs:
             - name: configure(webrender)
               if: ${{ matrix.build == 'webrender' }}
               run: |
-                  ./configure --enable-checking=glyphs --enable-rust-debug --with-webrender
+                  ./configure --enable-checking=glyphs --enable-rust-debug --with-winit
 
             - name: build
               run: |

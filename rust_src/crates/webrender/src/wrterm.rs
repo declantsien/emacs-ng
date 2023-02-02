@@ -1,9 +1,10 @@
 //! wrterm.rs
 
 use crate::output::OutputRef;
+use emacs::bindings::Fprovide;
+use emacs::globals::Qwr;
 use emacs::multibyte::LispStringRef;
-use raw_window_handle::RawDisplayHandle;
-use surfman::Connection;
+use std::ffi::CString;
 
 use lisp_macros::lisp_fn;
 
@@ -15,8 +16,6 @@ use emacs::{
     globals::{Qnil, Qt},
     lisp::LispObject,
 };
-
-pub use crate::display_info::{DisplayInfo, DisplayInfoRef};
 
 #[no_mangle]
 pub extern "C" fn wr_get_fontset(output: OutputRef) -> i32 {
@@ -137,6 +136,7 @@ pub fn wr_api_capture(path: LispStringRef, bits_raw: LispObject, start_sequence:
     error!("Webrender capture not avaiable");
     #[cfg(feature = "capture")]
     {
+        use crate::frame::LispFrameExt;
         use std::fs::{create_dir_all, File};
         use std::io::Write;
 
@@ -155,8 +155,8 @@ pub fn wr_api_capture(path: LispStringRef, bits_raw: LispObject, start_sequence:
             )
         };
 
-        let frame = window_frame_live_or_selected(Qnil);
-        let output = frame.winit_output();
+        let frame = emacs::frame::window_frame_live_or_selected(Qnil);
+        let output = frame.canvas();
         let bits = webrender::CaptureBits::from_bits(bits_raw as _).unwrap();
         let revision_file_path = path.join("wr.txt");
         message!("Trying to save webrender capture under {:?}", &path);
@@ -190,29 +190,34 @@ pub fn wr_api_stop_capture_sequence() {
     error!("Webrender capture not avaiable");
     #[cfg(feature = "capture")]
     {
+        use crate::frame::LispFrameExt;
         message!("Stop capturing WR state");
-        let frame = window_frame_live_or_selected(Qnil);
-        let output = frame.winit_output();
+        let frame = emacs::frame::window_frame_live_or_selected(Qnil);
+        let output = frame.canvas();
         output.render_api.stop_capture_sequence();
     }
 }
 
-pub fn wr_display_init(
-    mut dpyinfo_ref: DisplayInfoRef,
-    raw_handle: RawDisplayHandle,
-    scale_factor: f32,
-) {
-    if dpyinfo_ref.get_inner().is_null() {
-        dpyinfo_ref.init_inner();
+#[no_mangle]
+#[allow(unused_doc_comments)]
+pub extern "C" fn syms_of_webrender() {
+    def_lisp_sym!(Qwr, "wr");
+    unsafe {
+        Fprovide(Qwr, Qnil);
     }
 
-    if let Ok(connection) = Connection::from_raw_display_handle(raw_handle) {
-        dpyinfo_ref.get_inner().raw_display_handle = Some(raw_handle);
-        dpyinfo_ref.get_inner().connection = Some(connection);
-        dpyinfo_ref.get_inner().scale_factor = scale_factor;
-    } else {
-        panic!("Failed to initialize surfman");
-    };
+    #[cfg(feature = "capture")]
+    {
+        let wr_capture_sym =
+            CString::new("wr-capture").expect("Failed to create string for intern function call");
+        def_lisp_sym!(Qwr_capture, "wr-capture");
+        unsafe {
+            Fprovide(
+                emacs::bindings::intern_c_string(wr_capture_sym.as_ptr()),
+                Qnil,
+            );
+        }
+    }
 }
 
 include!(concat!(env!("OUT_DIR"), "/wrterm_exports.rs"));

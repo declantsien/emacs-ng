@@ -7,6 +7,7 @@ use webrender::api::{units::LayoutRect, *};
 
 use crate::frame::LispFrameExt;
 use crate::fringe::get_or_create_fringe_bitmap;
+use crate::renderer::Renderer;
 use crate::{
     color::{color_to_pixel, color_to_xcolor, lookup_color_by_name_or_hex, pixel_to_color},
     cursor::{draw_bar_cursor, draw_filled_cursor, draw_hollow_box_cursor},
@@ -100,12 +101,9 @@ pub extern "C" fn wr_after_update_window_line(w: *mut Lisp_Window, desired_row: 
 pub extern "C" fn wr_draw_glyph_string(s: *mut glyph_string) {
     let s: GlyphStringRef = s.into();
 
-    let mut commands = {
-        let frame: LispFrameRef = s.f.into();
-        frame.draw_commands()
-    };
+    let mut frame: LispFrameRef = s.f.into();
 
-    commands.draw_glyph_string(s);
+    frame.draw_glyph_string(s);
 }
 
 #[no_mangle]
@@ -115,10 +113,9 @@ pub extern "C" fn wr_draw_fringe_bitmap(
     p: *mut draw_fringe_bitmap_params,
 ) {
     let window: LispWindowRef = window.into();
-    let frame: LispFrameRef = window.get_frame();
+    let mut frame: LispFrameRef = window.get_frame();
 
     let output = frame.output();
-    let mut commands = frame.draw_commands();
 
     let row_rect: LayoutRect = unsafe {
         let (window_x, window_y, window_width, _) = window.area_box(glyph_row_area::ANY_AREA);
@@ -172,7 +169,7 @@ pub extern "C" fn wr_draw_fringe_bitmap(
         pixel_to_color(unsafe { (*face).foreground })
     };
 
-    commands.draw_fringe_bitmap(
+    frame.draw_fringe_bitmap(
         pos,
         image,
         bitmap_color,
@@ -210,9 +207,7 @@ pub extern "C" fn wr_draw_window_divider(
     y1: i32,
 ) {
     let window: LispWindowRef = window.into();
-    let frame: LispFrameRef = window.get_frame();
-
-    let mut commands = frame.draw_commands();
+    let mut frame: LispFrameRef = window.get_frame();
 
     let face = frame.face_from_id(face_id::WINDOW_DIVIDER_FACE_ID);
     let face_first = frame.face_from_id(face_id::WINDOW_DIVIDER_FIRST_PIXEL_FACE_ID);
@@ -233,7 +228,7 @@ pub extern "C" fn wr_draw_window_divider(
         None => frame.foreground_pixel,
     };
 
-    commands.draw_window_divider(color, color_first, color_last, x0, x1, y0, y1);
+    frame.draw_window_divider(color, color_first, color_last, x0, x1, y0, y1);
 }
 
 #[no_mangle]
@@ -244,24 +239,21 @@ pub extern "C" fn wr_draw_vertical_window_border(
     y1: i32,
 ) {
     let window: LispWindowRef = window.into();
-    let frame: LispFrameRef = window.get_frame();
-
-    let mut commands = frame.draw_commands();
+    let mut frame: LispFrameRef = window.get_frame();
 
     let face = frame.face_from_id(face_id::VERTICAL_BORDER_FACE_ID);
 
-    commands.draw_vertical_window_border(face, x, y0, y1);
+    frame.draw_vertical_window_border(face, x, y0, y1);
 }
 
 #[allow(unused_variables)]
 #[no_mangle]
 pub extern "C" fn wr_clear_frame_area(f: *mut Lisp_Frame, x: i32, y: i32, width: i32, height: i32) {
-    let frame: LispFrameRef = f.into();
-    let mut commands = frame.draw_commands();
+    let mut frame: LispFrameRef = f.into();
 
     let color = pixel_to_color(frame.background_pixel);
 
-    commands.clear_area(color, x, y, width, height);
+    frame.clear_area(color, x, y, width, height);
 }
 
 #[no_mangle]
@@ -409,8 +401,7 @@ pub extern "C" fn wr_clear_frame(f: *mut Lisp_Frame) {
 #[no_mangle]
 pub extern "C" fn wr_scroll_run(w: *mut Lisp_Window, run: *mut run) {
     let window: LispWindowRef = w.into();
-    let frame = window.get_frame();
-    let mut commands = frame.draw_commands();
+    let mut frame = window.get_frame();
 
     let (x, y, width, height) = window.area_box(glyph_row_area::ANY_AREA);
 
@@ -422,7 +413,7 @@ pub extern "C" fn wr_scroll_run(w: *mut Lisp_Window, run: *mut run) {
     // Cursor off.  Will be switched on again in gui_update_window_end.
     unsafe { gui_clear_cursor(w) };
 
-    commands.scroll(x, y, width, height, from_y, to_y, scroll_height);
+    frame.scroll(x, y, width, height, from_y, to_y, scroll_height);
 }
 
 #[no_mangle]

@@ -1,5 +1,7 @@
 use emacs::lisp::ExternalPtr;
+use std::fmt;
 use std::{cell::RefCell, rc::Rc, sync::Arc};
+use tracing::instrument;
 
 use crate::frame::LispFrameExt;
 use crate::WRFontRef;
@@ -56,6 +58,12 @@ pub struct Canvas {
     gl: Rc<dyn gl::Gl>,
 
     frame: LispFrameRef,
+}
+
+impl fmt::Debug for Canvas {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "canvas")
+    }
 }
 
 impl Canvas {
@@ -341,6 +349,7 @@ impl Canvas {
         let _ = std::mem::replace(&mut self.display_list_builder, None);
     }
 
+    #[instrument(level = "debug")]
     pub fn wr_add_font_instance(
         &mut self,
         font_key: FontKey,
@@ -350,6 +359,9 @@ impl Canvas {
         bg_color: Option<ColorU>,
         synthetic_italics: SyntheticItalics,
     ) -> FontInstanceKey {
+        #[cfg(not(target_arch = "wasm32"))]
+        let now = std::time::Instant::now();
+
         let key = self.render_api.generate_font_instance_key();
         let mut txn = Transaction::new();
         let mut options: FontInstanceOptions = Default::default();
@@ -363,6 +375,11 @@ impl Canvas {
         options.synthetic_italics = synthetic_italics;
         txn.add_font_instance(key, font_key, size, Some(options), None, Vec::new());
         self.render_api.send_transaction(self.document_id, txn);
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let elapsed = now.elapsed();
+            log::debug!("wr add font instance in {:?}", elapsed);
+        }
         key
     }
 
@@ -374,6 +391,8 @@ impl Canvas {
     }
 
     pub fn wr_add_font(&mut self, data: FontTemplate) -> FontKey {
+        #[cfg(not(target_arch = "wasm32"))]
+        let now = std::time::Instant::now();
         let font_key = self.render_api.generate_font_key();
         let mut txn = Transaction::new();
         match data {
@@ -384,7 +403,11 @@ impl Canvas {
         }
 
         self.render_api.send_transaction(self.document_id, txn);
-
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let elapsed = now.elapsed();
+            log::debug!("wr add font in {:?}", elapsed);
+        }
         font_key
     }
 
@@ -397,6 +420,8 @@ impl Canvas {
     }
 
     pub fn get_or_create_font(&mut self, font: WRFontRef) -> Option<FontKey> {
+        #[cfg(not(target_arch = "wasm32"))]
+        let now = std::time::Instant::now();
         let font_id = font.face_info.id;
         let wr_font_key = self.fonts.get(&font_id);
 
@@ -445,11 +470,18 @@ impl Canvas {
             self.fonts.insert(font_id, key);
             return Some(key);
         };
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let elapsed = now.elapsed();
+            log::debug!("get_or_create_font in {:?}", elapsed);
+        }
 
         None
     }
 
     pub fn get_or_create_font_instance(&mut self, font: WRFontRef, size: f32) -> FontInstanceKey {
+        #[cfg(not(target_arch = "wasm32"))]
+        let now = std::time::Instant::now();
         let font_key = self
             .get_or_create_font(font)
             .expect("Failed to obtain wr fontkey");
@@ -460,7 +492,7 @@ impl Canvas {
         let hash_map_key = (font_key, size.into(), flags, bg_color, synthetic_italics);
         let font_instance_key = self.font_instances.get(&hash_map_key);
         //TODO update font instances
-        match font_instance_key {
+        let key = match font_instance_key {
             Some(instance_key) => *instance_key,
             None => {
                 let instance_key = self.wr_add_font_instance(
@@ -474,7 +506,13 @@ impl Canvas {
                 self.font_instances.insert(hash_map_key, instance_key);
                 instance_key
             }
+        };
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let elapsed = now.elapsed();
+            log::debug!("get_or_create_font_instance in {:?}", elapsed);
         }
+        key
     }
 
     pub fn add_image(&mut self, width: i32, height: i32, image_data: Arc<Vec<u8>>) -> ImageKey {
@@ -545,14 +583,9 @@ impl Canvas {
 
 pub type CanvasRef = ExternalPtr<Canvas>;
 
-struct Notifier {
-    // events_proxy: winit::event_loop::EventLoopProxy<i32>,
-}
+struct Notifier {}
 
 impl Notifier {
-    // fn new(events_proxy: winit::event_loop::EventLoopProxy<i32>) -> Notifier {
-    //     Notifier { events_proxy }
-    // }
     fn new() -> Notifier {
         Notifier {}
     }
@@ -560,15 +593,10 @@ impl Notifier {
 
 impl RenderNotifier for Notifier {
     fn clone(&self) -> Box<dyn RenderNotifier> {
-        Box::new(Notifier {
-            // events_proxy: self.events_proxy.clone(),
-        })
+        Box::new(Notifier {})
     }
 
-    fn wake_up(&self, _composite_needed: bool) {
-        // #[cfg(not(android_platform))]
-        // let _ = self.events_proxy.send_event((1));
-    }
+    fn wake_up(&self, _composite_needed: bool) {}
 
     fn new_frame_ready(&self, _: DocumentId, _scrolled: bool, composite_needed: bool) {
         self.wake_up(composite_needed);

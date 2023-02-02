@@ -676,7 +676,7 @@ extern int pgtk_emacs_to_gtk_modifiers (struct pgtk_display_info *, int);
 #ifdef USE_WEBRENDER
 /* extern void wr_display_init_from_wayland (struct pgtk_display_info *, struct wl_display *, int) */
 /* extern void wr_canvas_init_from_wayland (struct frame *, struct wl_surface *) */
-#include "webrender_bindings_ffi.h"
+#include "wr_renderer_ffi.h"
 #endif
 
 #endif /* HAVE_PGTK */

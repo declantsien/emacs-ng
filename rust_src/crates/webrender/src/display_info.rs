@@ -6,11 +6,16 @@ use emacs::{bindings::Emacs_GC, frame::LispFrameRef, lisp::ExternalPtr};
 
 use crate::{fringe::FringeBitmap, term::TerminalRef};
 
+#[cfg(window_system = "winit")]
+pub type FrameID = emacs::windowing::window::WindowId;
+#[cfg(window_system = "pgtk")]
+pub type output = u64;
+
 pub struct DisplayInfoInner {
     pub terminal: TerminalRef,
     pub focus_frame: LispFrameRef,
 
-    pub frames: HashMap<u64, LispFrameRef>,
+    pub frames: HashMap<FrameID, LispFrameRef>,
 
     pub scratch_cursor_gc: Box<Emacs_GC>,
 

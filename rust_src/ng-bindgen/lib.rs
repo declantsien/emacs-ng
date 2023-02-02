@@ -520,7 +520,7 @@ pub fn generate_crate_exports(path: &PathBuf) -> Result<(), BuildError> {
 fn get_crate_name(path: &PathBuf) -> String {
     let manifest = Manifest::from_path(path.join("Cargo.toml")).unwrap();
     match manifest.package {
-        Some(package) => package.name,
+        Some(package) => package.name.replace('-', "_"),
         None => path_as_str(path.file_name()).to_string(),
     }
 }

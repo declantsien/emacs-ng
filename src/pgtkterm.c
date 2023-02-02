@@ -1235,7 +1235,6 @@ pgtk_set_glyph_string_gc (struct glyph_string *s)
 
 /* Set clipping for output of glyph string S.  S may be part of a mode
    line or menu if we don't have X toolkit support.  */
-#ifndef USE_WEBRENDER
 static void
 pgtk_set_glyph_string_clipping (struct glyph_string *s, cairo_t * cr)
 {

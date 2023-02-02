@@ -46,3 +46,11 @@ pub mod terminal;
 pub mod vector;
 pub mod window;
 pub mod xdisp;
+
+#[cfg(window_system = "winit")]
+pub mod windowing {
+    #[cfg(feature = "tao")]
+    pub use tao::*;
+    #[cfg(not(feature = "tao"))]
+    pub use winit::*;
+}

@@ -1,8 +1,10 @@
-use winit::{
+#[cfg(not(use_tao))]
+use emacs::windowing::event::{ModifiersState, VirtualKeyCode};
+#[cfg(use_tao)]
+use emacs::windowing::keyboard::{KeyCode as VirtualKeyCode, ModifiersState};
+use emacs::windowing::{
     dpi::PhysicalPosition,
-    event::{
-        ElementState, ModifiersState, MouseButton, MouseScrollDelta, TouchPhase, VirtualKeyCode,
-    },
+    event::{ElementState, MouseButton, MouseScrollDelta, TouchPhase},
 };
 
 use emacs::{
@@ -15,6 +17,104 @@ use emacs::{
 };
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
+
+struct Modifiers {
+    state: ModifiersState,
+}
+
+#[cfg(use_tao)]
+impl Modifiers {
+    pub fn new(state: ModifiersState) -> Modifiers {
+        Modifiers { state }
+    }
+
+    pub fn shift_key(&self) -> bool {
+        self.state.shift_key()
+    }
+    pub fn control_key(&self) -> bool {
+        self.state.control_key()
+    }
+    pub fn alt_key(&self) -> bool {
+        self.state.alt_key()
+    }
+    pub fn super_key(&self) -> bool {
+        self.state.super_key()
+    }
+
+    pub fn set_modifiers(&self, input_processor: &mut InputProcessor) {
+        if self.state.is_empty() {
+            input_processor.modifiers = self.state;
+        } else if self.shift_key() {
+            input_processor
+                .modifiers
+                .set(ModifiersState::SHIFT, self.shift_key());
+        } else if self.alt_key() {
+            input_processor
+                .modifiers
+                .set(ModifiersState::ALT, self.alt_key());
+        } else if self.super_key() {
+            input_processor
+                .modifiers
+                .set(ModifiersState::SUPER, self.super_key());
+        } else if self.control_key() {
+            input_processor
+                .modifiers
+                .set(ModifiersState::CONTROL, self.control_key());
+        }
+    }
+}
+
+#[cfg(use_tao)]
+fn virtual_keycode(code: VirtualKeyCode) -> u32 {
+    let code = unsafe { std::mem::transmute::<VirtualKeyCode, i64>(code) };
+    u32::try_from(code).unwrap()
+}
+
+#[cfg(not(use_tao))]
+impl Modifiers {
+    pub fn new(state: ModifiersState) -> Modifiers {
+        Modifiers { state }
+    }
+
+    pub fn shift_key(&self) -> bool {
+        self.state.shift()
+    }
+    pub fn control_key(&self) -> bool {
+        self.state.ctrl()
+    }
+    pub fn alt_key(&self) -> bool {
+        self.state.alt()
+    }
+    pub fn super_key(&self) -> bool {
+        self.state.logo()
+    }
+
+    pub fn set_modifiers(&self, input_processor: &mut InputProcessor) {
+        if self.state.is_empty() {
+            input_processor.modifiers = self.state;
+        } else if self.shift_key() {
+            let val = self.shift_key();
+            input_processor.modifiers.set(ModifiersState::SHIFT, val);
+        } else if self.alt_key() {
+            input_processor
+                .modifiers
+                .set(ModifiersState::ALT, self.alt_key());
+        } else if self.super_key() {
+            input_processor
+                .modifiers
+                .set(ModifiersState::LOGO, self.super_key());
+        } else if self.control_key() {
+            input_processor
+                .modifiers
+                .set(ModifiersState::CTRL, self.control_key());
+        }
+    }
+}
+
+#[cfg(not(use_tao))]
+fn virtual_keycode(code: VirtualKeyCode) -> u32 {
+    code as u32
+}
 
 pub static INPUT_PROCESSOR: Lazy<Mutex<InputProcessor>> =
     Lazy::new(|| Mutex::new(InputProcessor::new()));
@@ -70,11 +170,12 @@ impl InputProcessor {
         }
 
         self.suppress_chars = true;
+        let code = virtual_keycode(key_code);
 
         let iev: input_event = InputEvent {
             kind: event_kind::NON_ASCII_KEYSTROKE_EVENT,
             part: scroll_bar_part::scroll_bar_nowhere,
-            code: key_code as u32,
+            code,
             modifiers: Self::to_emacs_modifiers(self.modifiers),
             x: 0.into(),
             y: 0.into(),
@@ -103,11 +204,15 @@ impl InputProcessor {
             MouseButton::Middle => 1,
             MouseButton::Right => 2,
             MouseButton::Other(_) => 0,
+            #[cfg(use_tao)]
+            _ => todo!(),
         };
 
         let s = match state {
             ElementState::Pressed => down_modifier,
             ElementState::Released => up_modifier,
+            #[cfg(use_tao)]
+            _ => todo!(),
         };
 
         let iev: input_event = InputEvent {
@@ -181,6 +286,8 @@ impl InputProcessor {
                     None
                 }
             }
+            #[cfg(use_tao)]
+            _ => todo!(),
         };
 
         if event_meta.is_none() {
@@ -211,8 +318,10 @@ impl InputProcessor {
         self.cursor_positon = position;
     }
 
-    pub fn change_modifiers(&mut self, modifiers: ModifiersState) {
-        self.modifiers = modifiers;
+    pub fn change_modifiers(&mut self, state: ModifiersState) {
+        let modifiers = Modifiers::new(state);
+        modifiers.set_modifiers(self);
+        log::trace!("modifier changed {:?}", self.modifiers);
     }
 
     pub fn current_cursor_position(&self) -> &PhysicalPosition<f64> {
@@ -237,17 +346,18 @@ impl InputProcessor {
 
     fn to_emacs_modifiers(modifiers: ModifiersState) -> u32 {
         let mut emacs_modifiers: u32 = 0;
+        let modifiers = Modifiers::new(modifiers);
 
-        if modifiers.alt() {
+        if modifiers.alt_key() {
             emacs_modifiers |= meta_modifier;
         }
-        if modifiers.shift() {
+        if modifiers.shift_key() {
             emacs_modifiers |= shift_modifier;
         }
-        if modifiers.ctrl() {
+        if modifiers.control_key() {
             emacs_modifiers |= ctrl_modifier;
         }
-        if modifiers.logo() {
+        if modifiers.super_key() {
             emacs_modifiers |= super_modifier;
         }
 
@@ -265,8 +375,14 @@ macro_rules! kn {
 pub fn winit_keycode_emacs_key_name(keycode: VirtualKeyCode) -> *const libc::c_char {
     match keycode {
         VirtualKeyCode::Escape => kn!("escape"),
+        #[cfg(not(use_tao))]
         VirtualKeyCode::Back => kn!("backspace"),
+        #[cfg(use_tao)]
+        VirtualKeyCode::Backspace => kn!("backspace"),
+        #[cfg(not(use_tao))]
         VirtualKeyCode::Return => kn!("return"),
+        #[cfg(use_tao)]
+        VirtualKeyCode::Enter => kn!("return"),
         VirtualKeyCode::Tab => kn!("tab"),
 
         VirtualKeyCode::Home => kn!("home"),
@@ -274,10 +390,22 @@ pub fn winit_keycode_emacs_key_name(keycode: VirtualKeyCode) -> *const libc::c_c
         VirtualKeyCode::PageUp => kn!("prior"),
         VirtualKeyCode::PageDown => kn!("next"),
 
+        #[cfg(not(use_tao))]
         VirtualKeyCode::Left => kn!("left"),
+        #[cfg(use_tao)]
+        VirtualKeyCode::ArrowLeft => kn!("left"),
+        #[cfg(not(use_tao))]
         VirtualKeyCode::Right => kn!("right"),
+        #[cfg(use_tao)]
+        VirtualKeyCode::ArrowRight => kn!("right"),
+        #[cfg(not(use_tao))]
         VirtualKeyCode::Up => kn!("up"),
+        #[cfg(use_tao)]
+        VirtualKeyCode::ArrowUp => kn!("up"),
+        #[cfg(not(use_tao))]
         VirtualKeyCode::Down => kn!("down"),
+        #[cfg(use_tao)]
+        VirtualKeyCode::ArrowDown => kn!("down"),
 
         VirtualKeyCode::Insert => kn!("insert"),
 

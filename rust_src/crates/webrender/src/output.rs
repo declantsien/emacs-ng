@@ -15,6 +15,8 @@ pub struct OutputInner {
     pub cursor_color: ColorF,
     pub cursor_foreground_color: ColorF,
     pub window_handle: Option<RawWindowHandle>,
+    #[cfg(window_system = "winit")]
+    pub window: Option<emacs::windowing::window::Window>,
 
     pub canvas: CanvasRef,
 }
@@ -26,6 +28,7 @@ impl Default for OutputInner {
             cursor_color: ColorF::BLACK,
             cursor_foreground_color: ColorF::WHITE,
             window_handle: None,
+            window: None,
             canvas: CanvasRef::new(ptr::null_mut() as *mut _ as *mut Canvas),
         }
     }
@@ -36,8 +39,9 @@ impl OutputInner {
         self.canvas = CanvasRef::new(Box::into_raw(canvas));
     }
 
-    pub fn set_window_handle(&mut self, handle: RawWindowHandle) {
-        self.window_handle = Some(handle);
+    #[cfg(window_system = "winit")]
+    pub fn set_window(&mut self, window: emacs::windowing::window::Window) {
+        self.window = Some(window);
     }
 
     pub fn set_cursor_color(&mut self, color: ColorF) {
@@ -68,6 +72,7 @@ impl Output {
     }
 
     pub fn empty_inner(&mut self) {
+        let _ = unsafe { Box::from_raw(self.get_inner().as_mut()) };
         self.0.inner = ptr::null_mut();
     }
 

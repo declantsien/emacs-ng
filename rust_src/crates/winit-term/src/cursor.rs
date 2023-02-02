@@ -1,4 +1,4 @@
-use winit::window::CursorIcon;
+use emacs::windowing::window::CursorIcon;
 
 use emacs::bindings::{winit_output, Emacs_Cursor};
 
@@ -40,6 +40,8 @@ pub fn winit_to_emacs_cursor(cursor: CursorIcon) -> Emacs_Cursor {
         CursorIcon::NwseResize => 33,
         CursorIcon::ColResize => 34,
         CursorIcon::RowResize => 35,
+        #[cfg(use_tao)]
+        _ => todo!(),
     };
 
     emacs_cursor as *mut ::libc::c_int
