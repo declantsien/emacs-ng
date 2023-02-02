@@ -440,7 +440,6 @@ extern "C" fn encode_char(font: *mut font, c: i32) -> u32 {
 }
 
 extern "C" fn has_char(font: LispObject, c: i32) -> i32 {
-    log::trace!("has_char");
     if font.is_font_entity() {
         let font_entity: LispFontLike = font.into();
         let postscript_name = font_entity.get_postscript_name();
@@ -470,7 +469,6 @@ extern "C" fn has_char(font: LispObject, c: i32) -> i32 {
             .is_some() as i32
     } else {
         let font = font.as_font().unwrap().as_font_mut();
-        log::trace!("has_char done");
         (encode_char(font, c) != FONT_INVALID_CODE) as i32
     }
 }

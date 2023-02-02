@@ -12,12 +12,16 @@ use emacs::{
     lisp::LispObject,
 };
 use raw_window_handle::HasRawWindowHandle;
+use tao::window::WindowId;
 use webrender_bindings::frame::LispFrameExt;
 use webrender_bindings::output::Output;
 
-use winit::dpi::PhysicalPosition;
-#[cfg(wayland_platform)]
+#[cfg(feature = "tao")]
+use tao::{dpi::PhysicalPosition, window::WindowBuilder};
+#[cfg(all(wayland_platform, feature = "winit"))]
 use winit::platform::wayland::WindowBuilderExtWayland;
+#[cfg(feature = "winit")]
+use winit::{dpi::PhysicalPosition, window::WindowBuilder};
 
 use crate::event_loop::EVENT_LOOP;
 
@@ -28,7 +32,7 @@ pub fn create_frame(
     mut dpyinfo: DisplayInfoRef,
     tem: LispObject,
     mut kb: KeyboardRef,
-) -> LispFrameRef {
+) -> (LispFrameRef, WindowId) {
     log::trace!("create_frame");
     let frame = if tem.eq(Qnone) || tem.is_nil() {
         unsafe { make_frame_without_minibuffer(Qnil, kb.as_mut(), display) }
@@ -45,10 +49,10 @@ pub fn create_frame(
     frame.terminal = dpyinfo.get_inner().terminal.as_mut();
     frame.set_output_method(output_method::output_winit);
 
-    let event_loop = EVENT_LOOP.lock().unwrap();
-    let window_builder = winit::window::WindowBuilder::new().with_visible(true);
+    let event_loop = EVENT_LOOP.try_lock().unwrap();
+    let window_builder = WindowBuilder::new().with_visible(true);
 
-    #[cfg(wayland_platform)]
+    #[cfg(all(wayland_platform, feature = "winit"))]
     let window_builder = {
         let invocation_name: emacs::multibyte::LispStringRef =
             unsafe { emacs::bindings::globals.Vinvocation_name.into() };
@@ -57,9 +61,9 @@ pub fn create_frame(
     };
 
     let window = window_builder.build(&event_loop.el()).unwrap();
+    #[cfg(feature = "winit")]
     window.set_theme(None);
     window.set_title("Winit Emacs");
-    let window_id = window.id();
     let mut output = Box::new(Output::default());
     output.set_display_info(dpyinfo);
     build_mouse_cursors(&mut output.as_mut().as_raw());
@@ -74,17 +78,18 @@ pub fn create_frame(
     let window_handle = window.raw_window_handle();
     frame.set_window_handle(window_handle);
 
+    let window_id = window.id();
     insert_winit_window(frame.uuid(), window);
-    dpyinfo.get_inner().frames.insert(window_id.into(), frame);
+    dpyinfo.get_inner().frames.insert(frame.uuid(), frame);
     log::trace!("create_frame done");
-    frame
+    (frame, window_id)
 }
 
 pub fn frame_edges(frame: LispObject, type_: LispObject) -> LispObject {
     let frame = window_frame_live_or_selected(frame);
 
     let uuid = frame.uuid();
-    let wins = WINIT_WINDOWS.lock().unwrap();
+    let wins = WINIT_WINDOWS.try_lock().unwrap();
     let window = wins.get(&uuid).unwrap();
 
     let (left, top, right, bottom) = match type_ {

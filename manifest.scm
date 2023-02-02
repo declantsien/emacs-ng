@@ -9,6 +9,10 @@
 	      ;;x11 deps
 	      "libxcursor" "libxrandr" "libxi" "xorg-server-xwayland" "xcb-util"
 
+	      "cairo"
+	      "gtk+"
+	      "glib"
+
 	      "tree-sitter"
 
 	      "emacs-rustic"

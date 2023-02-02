@@ -6300,6 +6300,20 @@ if test "${window_system}" = "winit" ; then
   if test "${opsys}" = gnu-linux; then
     EMACS_CHECK_MODULES([XCB], [xcb >= 1.0.0])
     test "$HAVE_XCB" = "no" && AC_MSG_ERROR(Winit Unix build requires libxcb)
+    WINIT_LIBS="$XCB_LIBS $WINIT_LIBS"
+
+    GLIB_REQUIRED=2.37.5
+    GTK_REQUIRED=3.22.23
+    GTK_MODULES="gtk+-3.0 >= $GTK_REQUIRED glib-2.0 >= $GLIB_REQUIRED"
+    EMACS_CHECK_MODULES([GTK], [$GTK_MODULES])
+    test "$HAVE_GTK" = "no" &&  AC_MSG_ERROR(tao requires gtk)
+    WINIT_LIBS="$GTK_LIBS $WINIT_LIBS"
+
+    CAIRO_REQUIRED=1.8.0
+    CAIRO_MODULE="cairo >= $CAIRO_REQUIRED"
+    EMACS_CHECK_MODULES([CAIRO], [$CAIRO_MODULE])
+    test $HAVE_CAIRO = "no" && AC_MSG_WARN([tao requires cairo but not found.])
+    WINIT_LIBS="$CAIRO_LIBS $WINIT_LIBS"
 
     WINIT_LIBS="$WINIT_LIBS -lxcb -lxcb-xfixes -lxcb-shape -lxcb-render"
 

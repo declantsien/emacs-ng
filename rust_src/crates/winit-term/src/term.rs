@@ -1,22 +1,32 @@
-use raw_window_handle::{HasRawDisplayHandle, RawDisplayHandle};
-use std::ptr;
-use std::time::Duration;
-
+use crate::event_loop::flush_events;
 use crate::event_loop::poll_a_event;
 use crate::event_loop::EVENT_LOOP;
+use crate::winit_term::frame_uuid;
 use emacs::bindings::{
     add_keyboard_wait_descriptor, init_sigio, interrupt_input, Fwaiting_for_user_input_p,
 };
 use lazy_static::lazy_static;
 #[cfg(wayland_platform)]
 use raw_window_handle::WaylandDisplayHandle;
+use raw_window_handle::{HasRawDisplayHandle, RawDisplayHandle};
 #[cfg(x11_platform)]
 use raw_window_handle::{XcbDisplayHandle, XlibDisplayHandle};
+use std::ptr;
+use std::time::Duration;
+#[cfg(feature = "tao")]
+use tao::{
+    dpi::PhysicalPosition,
+    event::{ElementState, Event, KeyEvent, WindowEvent, WindowEvent::KeyboardInput},
+    keyboard::{Key, KeyCode},
+    window::WindowBuilder,
+};
 #[cfg(wayland_platform)]
 use wayland_sys::client::{wl_display, WAYLAND_CLIENT_HANDLE};
+#[cfg(feature = "winit")]
 use winit::{
     dpi::PhysicalPosition,
     event::{ElementState, Event, KeyboardInput, WindowEvent},
+    window::WindowBuilder,
 };
 
 use crate::winit_term::WINIT_WINDOWS;
@@ -169,7 +179,7 @@ extern "C" fn winit_frame_visible_invisible(frame: *mut Lisp_Frame, is_visible: 
     f.set_visible(is_visible as u32);
 
     let uuid = f.uuid();
-    let wins = WINIT_WINDOWS.lock().unwrap();
+    let wins = WINIT_WINDOWS.try_lock().unwrap();
     let window = wins.get(&uuid).unwrap();
 
     if is_visible {
@@ -185,7 +195,7 @@ extern "C" fn winit_define_frame_cursor(f: *mut Lisp_Frame, cursor: Emacs_Cursor
 
     let cursor = emacs_to_winit_cursor(cursor);
     WINIT_WINDOWS
-        .lock()
+        .try_lock()
         .unwrap()
         .get(&uuid)
         .unwrap()
@@ -197,17 +207,16 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
     let mut dpyinfo = DisplayInfoRef::new(unsafe { terminal.display_info.winit } as *mut _);
 
     let dpyinfo = dpyinfo.get_inner();
-    let mut input_processor = INPUT_PROCESSOR.lock().unwrap();
+    let input_processor = INPUT_PROCESSOR.try_lock();
+
+    if input_processor.is_err() {
+        return 0;
+    }
+    let mut input_processor = input_processor.unwrap();
 
     let mut count = 0;
 
-    let event_buffer = EVENT_BUFFER.try_lock();
-
-    if event_buffer.is_err() {
-        return 0;
-    }
-
-    let mut events = event_buffer.unwrap();
+    let mut events = flush_events();
     if events.len() == 0 && unsafe { Fwaiting_for_user_input_p() }.is_nil() {
         if let Some(rwh) = dpyinfo.raw_display_handle {
             match rwh {
@@ -237,8 +246,17 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
         let e = e.clone();
 
         match e {
-            Event::WindowEvent { window_id, event } => {
-                let frame = dpyinfo.frames.get(&window_id.into());
+            Event::WindowEvent {
+                window_id, event, ..
+            } => {
+                let uuid = frame_uuid(&window_id);
+
+                if uuid.is_none() {
+                    continue;
+                }
+                let uuid = uuid.unwrap();
+
+                let frame = dpyinfo.frames.get(&uuid);
 
                 if frame.is_none() {
                     continue;
@@ -249,33 +267,44 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
                 let frame: LispObject = frame.into();
 
                 match event {
-                    WindowEvent::ReceivedCharacter(key_code) => {
-                        if let Some(mut iev) = input_processor.receive_char(key_code, frame) {
-                            unsafe { kbd_buffer_store_event_hold(&mut iev, hold_quit) };
-                            count += 1;
-                        }
+                    WindowEvent::ReceivedImeText(text) => {
+                        // for (_i, key_code) in text.chars().enumerate() {
+                        //     if let Some(mut iev) = input_processor.receive_char(key_code, frame) {
+                        //         unsafe { kbd_buffer_store_event_hold(&mut iev, hold_quit) };
+                        //         count += 1;
+                        //     }
+                        // }
                     }
 
                     WindowEvent::ModifiersChanged(state) => {
                         input_processor.change_modifiers(state);
                     }
 
-                    WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                state,
-                                virtual_keycode: Some(key_code),
-                                ..
-                            },
-                        ..
-                    } => match state {
+                    WindowEvent::KeyboardInput { event, .. } => match event.state {
                         ElementState::Pressed => {
-                            if let Some(mut iev) = input_processor.key_pressed(key_code, frame) {
+                            if let Some(mut iev) =
+                                input_processor.key_pressed(event.physical_key, frame)
+                            {
                                 unsafe { kbd_buffer_store_event_hold(&mut iev, hold_quit) };
                                 count += 1;
                             }
+
+                            // if let Some(text) = event.key_without_modifiers().to_text() {
+                            if let Some(text) = event.logical_key.to_text() {
+                                for (_i, key_code) in text.chars().enumerate() {
+                                    if let Some(mut iev) =
+                                        input_processor.receive_char(key_code, frame)
+                                    {
+                                        unsafe { kbd_buffer_store_event_hold(&mut iev, hold_quit) };
+                                        count += 1;
+                                    }
+                                }
+                            }
                         }
-                        ElementState::Released => input_processor.key_released(),
+                        ElementState::Released => {
+                            input_processor.key_released();
+                        }
+                        _ => todo!(),
                     },
 
                     WindowEvent::MouseInput { state, button, .. } => {
@@ -376,8 +405,6 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
         };
     }
 
-    events.clear();
-
     count
 }
 
@@ -390,7 +417,7 @@ extern "C" fn winit_fullscreen(f: *mut Lisp_Frame) {
 
     if frame.want_fullscreen() == fullscreen_type::FULLSCREEN_MAXIMIZED {
         let uuid = frame.uuid();
-        let wins = WINIT_WINDOWS.lock().unwrap();
+        let wins = WINIT_WINDOWS.try_lock().unwrap();
         let window = wins.get(&uuid).unwrap();
         window.set_maximized(true);
         frame.store_param(Qfullscreen, Qmaximized);
@@ -416,7 +443,7 @@ extern "C" fn winit_implicitly_set_name(
     let title = format!("{}", arg.force_string());
     let uuid = frame.uuid();
     WINIT_WINDOWS
-        .lock()
+        .try_lock()
         .unwrap()
         .get(&uuid)
         .unwrap()
@@ -448,7 +475,7 @@ extern "C" fn winit_make_frame_visible_invisible(f: *mut Lisp_Frame, visible: bo
     frame.set_visible(visible as u32);
     let uuid = frame.uuid();
     log::info!("uuid: {uuid:?}");
-    let wins = WINIT_WINDOWS.lock().unwrap();
+    let wins = WINIT_WINDOWS.try_lock().unwrap();
     let winit_window = wins.get(&uuid).unwrap();
 
     if visible {
@@ -465,7 +492,7 @@ extern "C" fn winit_iconify_frame(f: *mut Lisp_Frame) {
 
     let uuid = frame.uuid();
     WINIT_WINDOWS
-        .lock()
+        .try_lock()
         .unwrap()
         .get(&uuid)
         .unwrap()
@@ -497,7 +524,7 @@ extern "C" fn winit_mouse_position(
     unsafe { *part = 0 };
 
     let cursor_pos: PhysicalPosition<i32> = INPUT_PROCESSOR
-        .lock()
+        .try_lock()
         .unwrap()
         .current_cursor_position()
         .cast();
@@ -564,8 +591,8 @@ pub fn winit_term_init(display_name: LispObject) -> DisplayInfoRef {
     let dpyinfo = Box::new(DisplayInfo::new());
     let mut dpyinfo_ref = DisplayInfoRef::new(Box::into_raw(dpyinfo));
 
-    let event_loop = EVENT_LOOP.lock().unwrap();
-    let window_builder = winit::window::WindowBuilder::new().with_visible(false);
+    let event_loop = EVENT_LOOP.try_lock().unwrap();
+    let window_builder = WindowBuilder::new().with_visible(false);
     let window = window_builder.build(&event_loop.el()).unwrap();
     let raw_handle = window.raw_display_handle();
     let scale_factor = window.scale_factor();

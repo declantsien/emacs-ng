@@ -218,7 +218,7 @@ impl FontDB {
         let face_id = self.0.with(|fields| {
             let mut font_matches_cache = fields
                 .font_matches_cache
-                .lock()
+                .try_lock()
                 .expect("failed to lock font matches cache");
 
             font_matches_cache
@@ -257,7 +257,7 @@ fn get_font<'b>(
 ) -> Option<Arc<Font<'b>>> {
     fields
         .font_cache
-        .lock()
+        .try_lock()
         .expect("failed to lock font cache")
         .entry(id)
         .or_insert_with(|| {
