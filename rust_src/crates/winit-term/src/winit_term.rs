@@ -1,15 +1,32 @@
 //! wrterm.rs
 
+use crate::event_loop::ensure_window;
 use std::collections::HashMap;
 use std::ffi::CString;
 use std::ptr;
+#[cfg(feature = "tao")]
+use tao::window::WindowId;
 use webrender_bindings::output::OutputRef;
-use winit::window::Window as WinitWindow;
+#[cfg(feature = "winit")]
+use winit::window::WindowId;
 
+use crate::event_loop::poll_a_event;
 use emacs::bindings::output_method;
 use webrender_bindings::frame::LispFrameExt;
 use webrender_bindings::register_ttf_parser_font_driver;
-use winit::{event::VirtualKeyCode, monitor::MonitorHandle};
+
+use tao::{
+    event::{Event, WindowEvent},
+    event_loop::ControlFlow,
+    event_loop::EventLoop,
+    platform::run_return::EventLoopExtRunReturn,
+};
+#[cfg(feature = "tao")]
+use tao::{
+    keyboard::KeyCode as VirtualKeyCode, monitor::MonitorHandle, window::Window as WinitWindow,
+};
+#[cfg(feature = "winit")]
+use winit::{event::VirtualKeyCode, monitor::MonitorHandle, window::Window as WinitWindow};
 
 use lisp_macros::lisp_fn;
 
@@ -43,6 +60,8 @@ use std::sync::Mutex;
 
 pub static WINIT_WINDOWS: Lazy<Mutex<HashMap<u64, WinitWindow>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
+pub static WINIT_WINDOWIDS: Lazy<Mutex<HashMap<WindowId, u64>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
 
 pub type DisplayRef = ExternalPtr<Display>;
 
@@ -52,12 +71,25 @@ pub static tip_frame: LispObject = Qnil;
 #[no_mangle]
 pub static mut winit_display_list: DisplayInfoRef = DisplayInfoRef::new(ptr::null_mut());
 
-pub fn insert_winit_window(id: u64, window: WinitWindow) {
-    WINIT_WINDOWS.lock().unwrap().insert(id, window);
+pub fn insert_winit_window(uuid: u64, window: WinitWindow) {
+    WINIT_WINDOWIDS
+        .try_lock()
+        .unwrap()
+        .insert(window.id().clone(), uuid);
+    WINIT_WINDOWS.try_lock().unwrap().insert(uuid, window);
 }
 
-pub fn remove_winit_window(id: &u64) {
-    WINIT_WINDOWS.lock().unwrap().remove(id);
+pub fn remove_winit_window(uuid: &u64) {
+    WINIT_WINDOWS.try_lock().unwrap().remove(uuid);
+}
+
+pub fn frame_uuid(id: &WindowId) -> Option<u64> {
+    if let Some(uuid) = WINIT_WINDOWIDS.try_lock().unwrap().get(id) {
+        return Some(uuid.clone());
+    }
+    // cleanup ids if not found
+    WINIT_WINDOWIDS.try_lock().unwrap().remove(id);
+    None
 }
 
 #[allow(unused_variables)]
@@ -79,8 +111,14 @@ pub extern "C" fn winit_get_display(display_info: DisplayInfoRef) -> DisplayRef 
 
 #[no_mangle]
 pub extern "C" fn get_keysym_name(keysym: i32) -> *mut libc::c_char {
+    #[cfg(feature = "winit")]
     let name =
         winit_keycode_emacs_key_name(unsafe { std::mem::transmute::<i32, VirtualKeyCode>(keysym) });
+
+    #[cfg(feature = "tao")]
+    let name = winit_keycode_emacs_key_name(unsafe {
+        std::mem::transmute::<i64, VirtualKeyCode>(keysym.into())
+    });
 
     name as *mut libc::c_char
 }
@@ -251,8 +289,8 @@ pub fn winit_create_frame(parms: LispObject) -> LispFrameRef {
         )
     };
 
-    let mut frame = create_frame(display, dpyinfo, tem, kb.into());
-
+    let (mut frame, new_window_id) = create_frame(display, dpyinfo, tem, kb.into());
+    ensure_window(new_window_id);
     register_ttf_parser_font_driver(frame.as_mut());
 
     frame.gui_default_parameter(
@@ -525,7 +563,7 @@ pub fn webrender_monitor_to_emacs_monitor(m: MonitorHandle) -> (MonitorInfo, Opt
 /// Internal use only, use `display-monitor-attributes-list' instead.
 #[lisp_fn(min = "0")]
 pub fn x_display_monitor_attributes_list(_terminal: LispObject) -> LispObject {
-    let event_loop = EVENT_LOOP.lock().unwrap();
+    let event_loop = EVENT_LOOP.try_lock().unwrap();
 
     let monitors: Vec<_> = event_loop.get_available_monitors().collect();
     let primary_monitor = event_loop.get_primary_monitor();
@@ -549,7 +587,7 @@ pub fn x_display_monitor_attributes_list(_terminal: LispObject) -> LispObject {
     let n_monitors = monitors.len();
     let mut monitor_frames = unsafe { Fmake_vector(n_monitors.into(), Qnil).as_vector_unchecked() };
 
-    let winit_windows = WINIT_WINDOWS.lock().unwrap();
+    let winit_windows = WINIT_WINDOWS.try_lock().unwrap();
     for frame in all_frames() {
         let id = frame.uuid();
         let window = winit_windows.get(&id).unwrap();
@@ -596,7 +634,7 @@ pub fn x_display_monitor_attributes_list(_terminal: LispObject) -> LispObject {
 /// each physical monitor, use `display-monitor-attributes-list'.
 #[lisp_fn(min = "0")]
 pub fn x_display_pixel_width(_terminal: LispObject) -> LispObject {
-    let event_loop = EVENT_LOOP.lock().unwrap();
+    let event_loop = EVENT_LOOP.try_lock().unwrap();
 
     let primary_monitor = event_loop.get_primary_monitor();
 
@@ -619,7 +657,7 @@ pub fn x_display_pixel_width(_terminal: LispObject) -> LispObject {
 /// each physical monitor, use `display-monitor-attributes-list'.
 #[lisp_fn(min = "0")]
 pub fn x_display_pixel_height(_terminal: LispObject) -> LispObject {
-    let event_loop = EVENT_LOOP.lock().unwrap();
+    let event_loop = EVENT_LOOP.try_lock().unwrap();
 
     let primary_monitor = event_loop.get_primary_monitor();
 
@@ -647,13 +685,13 @@ pub fn x_own_selection_internal(
     value: LispObject,
     _frame: LispObject,
 ) -> LispObject {
-    let mut event_loop = EVENT_LOOP.lock().unwrap();
+    let mut event_loop = EVENT_LOOP.try_lock().unwrap();
 
     let clipboard = event_loop.get_clipboard();
 
     let content = value.force_string().to_utf8();
 
-    clipboard.set_contents(content).unwrap();
+    clipboard.write_text(content);
 
     value
 }
@@ -678,15 +716,11 @@ pub fn x_get_selection_internal(
     _time_stamp: LispObject,
     _terminal: LispObject,
 ) -> LispObject {
-    let mut event_loop = EVENT_LOOP.lock().unwrap();
+    let mut event_loop = EVENT_LOOP.try_lock().unwrap();
 
     let clipboard = event_loop.get_clipboard();
 
-    let contents: &str = &clipboard.get_contents().unwrap_or_else(|_e| {
-        #[cfg(debug_assertions)]
-        message!("x_get_selection_internal: {}", _e);
-        "".to_owned()
-    });
+    let contents: &str = &clipboard.read_text().unwrap_or("".to_owned());
 
     contents.into()
 }

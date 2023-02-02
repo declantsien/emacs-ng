@@ -24,6 +24,11 @@ mod platform {
 #[cfg(macos_platform)]
 pub use crate::platform::macos;
 
+#[cfg(feature = "tao")]
+pub use tao::window::WindowId;
+#[cfg(feature = "winit")]
+pub use winit::window::WindowId;
+
 pub use crate::winit_term::{tip_frame, winit_display_list};
 
 #[cfg(not(test))]
