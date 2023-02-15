@@ -237,6 +237,11 @@ fn generate_bindings() {
         builder = builder.clang_arg("-Ic:\\Program Files\\LLVM\\lib\\clang\\6.0.0\\include");
     }
 
+    #[cfg(all(use_webrender, window_system = "pgtk"))]
+    {
+        builder = builder.blacklist_item("GtkWidget");
+    }
+
     builder = builder
         .clang_arg("-Demacs")
         .clang_arg("-DEMACS_EXTERN_INLINE")
@@ -244,7 +249,7 @@ fn generate_bindings() {
         .generate_inline_functions(true)
         .derive_default(true)
         .ctypes_prefix("::libc")
-        .no_copy("wr_output")
+        .no_copy("winit_output")
         // .blocklist_file("gtk/gtk.h")
         // we define these ourselves, for various reasons
         .blocklist_item("Lisp_Object")
@@ -321,7 +326,7 @@ fn generate_bindings() {
     );
     let munged = re.unwrap().replace_all(&source, "");
     let mut file = File::create(out_path).unwrap();
-    write!(file, "use crate::{{\n    globals::emacs_globals,\n    sys::Lisp_Object,\n}};\n\nuse libc::{{timespec, fd_set, sigset_t}};\n").expect("Write error!");
+    write!(file, "use crate::{{\n    globals::emacs_globals,\n    sys::Lisp_Object,\n}};\n\nuse libc::{{timespec, fd_set, sigset_t}};\n\n#[cfg(all(use_webrender, window_system = \"pgtk\"))]\nuse gtk_sys::GtkWidget;\n").expect("Write error!");
     file.write_all(munged.into_owned().as_bytes()).unwrap();
 }
 

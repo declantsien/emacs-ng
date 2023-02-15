@@ -474,7 +474,10 @@ fn build_ignored_crates(path: &PathBuf) -> bool {
     #[cfg(not(feature = "ng-module"))]
     ignored_crates.push("ng_module");
 
-    #[cfg(not(feature = "window-system-webrender"))]
+    #[cfg(not(window_system = "winit"))]
+    ignored_crates.push("winit-term");
+
+    #[cfg(not(use_webrender))]
     ignored_crates.push("webrender");
 
     let crate_path = path_as_str(path.file_name()).to_string();
@@ -495,8 +498,9 @@ fn build_ignored_crates(path: &PathBuf) -> bool {
 pub fn generate_crate_exports(path: &PathBuf) -> Result<(), BuildError> {
     let modules = find_crate_modules(&path.join("src"))?;
 
-    let _ = fs::create_dir(path.join("out"));
-    let mut out_file = File::create(path.join("out").join("c_exports.rs"))?;
+    let out_path: PathBuf = [&env_var("OUT_DIR")].iter().collect();
+    let mut out_file = File::create(out_path.join("c_exports.rs"))?;
+
     generate_crate_c_export_file(&out_file, &modules)?;
 
     let crate_name = get_crate_name(path);
@@ -506,7 +510,7 @@ pub fn generate_crate_exports(path: &PathBuf) -> Result<(), BuildError> {
         crate_name
     )?;
 
-    write_lisp_fns(&path.join("out"), &out_file, &modules)?;
+    write_lisp_fns(&out_path, &out_file, &modules)?;
 
     write!(out_file, "}}\n")?;
 
@@ -516,7 +520,7 @@ pub fn generate_crate_exports(path: &PathBuf) -> Result<(), BuildError> {
 fn get_crate_name(path: &PathBuf) -> String {
     let manifest = Manifest::from_path(path.join("Cargo.toml")).unwrap();
     match manifest.package {
-        Some(package) => package.name,
+        Some(package) => package.name.replace('-', "_"),
         None => path_as_str(path.file_name()).to_string(),
     }
 }

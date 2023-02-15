@@ -1,5 +1,7 @@
+#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 #![feature(concat_idents)]
 #![allow(non_upper_case_globals)]
+#![feature(once_cell)]
 
 #[macro_use]
 extern crate emacs;
@@ -8,34 +10,30 @@ extern crate lisp_macros;
 extern crate lisp_util;
 extern crate colors;
 
+pub mod canvas;
 pub mod color;
 pub mod display_info;
 pub mod font;
 pub mod frame;
-pub mod input;
+pub mod image;
 pub mod output;
 pub mod term;
 
 mod cursor;
-mod draw_canvas;
-mod event;
-mod event_loop;
 mod font_db;
 mod fringe;
-mod image;
+mod renderer;
 mod texture;
-mod util;
+pub mod util;
 mod wrterm;
 
-mod platform {
-    #[cfg(target_os = "macos")]
-    pub mod macos;
-}
+pub use crate::font::*;
+pub use crate::term::*;
+pub use crate::wrterm::*;
 
-#[cfg(target_os = "macos")]
-pub use crate::platform::macos;
+pub use webrender::api::units::DeviceIntSize;
 
-pub use crate::wrterm::{tip_frame, wr_display_list};
+// pub use crate::wrterm::{wr_can_use_native_image_api, wr_load_image, wr_transform_image};
 
 #[cfg(not(test))]
-include!(concat!(env!("CARGO_MANIFEST_DIR"), "/out/c_exports.rs"));
+include!(concat!(env!("OUT_DIR"), "/c_exports.rs"));

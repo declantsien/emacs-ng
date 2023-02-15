@@ -1,126 +1,152 @@
-use emacs::{
-    bindings::{
-        list4i, make_frame, make_frame_without_minibuffer, make_minibuffer_frame, output_method,
-        wr_output,
-    },
-    frame::{window_frame_live_or_selected, LispFrameRef},
-    globals::{Qinner_edges, Qnil, Qnone, Qonly, Qouter_edges},
-    keyboard::KeyboardRef,
-    lisp::LispObject,
-};
-use winit::dpi::PhysicalPosition;
+use emacs::frame::LispFrameRef;
 
-use crate::{event_loop::EVENT_LOOP, output::OutputRef};
+use crate::canvas::Canvas;
+use crate::canvas::CanvasRef;
+use crate::output::Output;
+use crate::output::OutputRef;
+use raw_window_handle::RawDisplayHandle;
+use raw_window_handle::RawWindowHandle;
+use webrender::api::ColorF;
+use webrender::{self, api::units::*};
 
-use super::{display_info::DisplayInfoRef, output::Output};
-
-pub fn create_frame(
-    display: LispObject,
-    dpyinfo: DisplayInfoRef,
-    tem: LispObject,
-    mut kb: KeyboardRef,
-) -> LispFrameRef {
-    let frame = if tem.eq(Qnone) || tem.is_nil() {
-        unsafe { make_frame_without_minibuffer(Qnil, kb.as_mut(), display) }
-    } else if tem.eq(Qonly) {
-        unsafe { make_minibuffer_frame() }
-    } else if tem.is_window() {
-        unsafe { make_frame_without_minibuffer(tem, kb.as_mut(), display) }
-    } else {
-        unsafe { make_frame(true) }
-    };
-
-    let mut frame = LispFrameRef::new(frame);
-
-    frame.terminal = dpyinfo.get_inner().terminal.as_mut();
-    frame.set_output_method(output_method::output_wr);
-
-    let mut event_loop = EVENT_LOOP.lock().unwrap();
-    let mut output = Box::new(Output::build(&mut event_loop, frame));
-
-    let window_id = output.get_window().id();
-
-    output.set_display_info(dpyinfo);
-
-    // Remeber to destory the Output object when frame destoried.
-    let output = Box::into_raw(output);
-    frame.output_data.wr = output as *mut wr_output;
-
-    dpyinfo
-        .get_inner()
-        .outputs
-        .insert(window_id, frame.wr_output());
-
-    frame
-}
-
-pub fn frame_edges(frame: LispObject, type_: LispObject) -> LispObject {
-    let frame = window_frame_live_or_selected(frame);
-
-    let output = frame.wr_output();
-
-    let window = output.get_window();
-
-    let (left, top, right, bottom) = match type_ {
-        Qouter_edges => {
-            let pos = window
-                .outer_position()
-                .unwrap_or_else(|_| PhysicalPosition::<i32>::new(0, 0));
-
-            let size = window.outer_size();
-
-            let left = pos.x;
-            let top = pos.y;
-            let right = left + size.width as i32;
-            let bottom = top + size.height as i32;
-
-            (left, top, right, bottom)
-        }
-        Qinner_edges => {
-            let pos = window
-                .inner_position()
-                .unwrap_or_else(|_| PhysicalPosition::<i32>::new(0, 0));
-            let size = window.inner_size();
-            let internal_border_width = frame.internal_border_width();
-
-            // webrender window has no interanl menu_bar, tab_bar and tool_bar
-            let left = pos.x + internal_border_width;
-            let top = pos.x + internal_border_width;
-            let right = (left + size.width as i32) - internal_border_width;
-            let bottom = (top + size.height as i32) - internal_border_width;
-
-            (left, top, right, bottom)
-        }
-        // native edges
-        _ => {
-            let pos = window
-                .inner_position()
-                .unwrap_or_else(|_| PhysicalPosition::<i32>::new(0, 0));
-            let size = window.inner_size();
-
-            let left = pos.x;
-            let top = pos.y;
-            let right = left + size.width as i32;
-            let bottom = top + size.height as i32;
-
-            (left, top, right, bottom)
-        }
-    };
-    unsafe { list4i(left as i64, top as i64, right as i64, bottom as i64) }
-}
+use super::display_info::DisplayInfoRef;
 
 pub trait LispFrameExt {
-    fn wr_output(&self) -> OutputRef;
-    fn wr_display_info(&self) -> DisplayInfoRef;
+    fn output(&self) -> OutputRef;
+    fn canvas(&self) -> CanvasRef;
+    fn set_cursor_color(&self, color: ColorF);
+    fn cursor_color(&self) -> ColorF;
+    fn cursor_foreground_color(&self) -> ColorF;
+    fn set_background_color(&self, color: ColorF);
+    fn display_info(&self) -> DisplayInfoRef;
+    fn window_handle(&self) -> Option<RawWindowHandle>;
+    fn display_handle(&self) -> Option<RawDisplayHandle>;
+    fn size(&self) -> DeviceIntSize;
+    #[cfg(window_system = "winit")]
+    fn uuid(&self) -> winit::window::WindowId;
+    #[cfg(not(window_system = "winit"))]
+    fn uuid(&self) -> u64;
 }
 
 impl LispFrameExt for LispFrameRef {
-    fn wr_output(&self) -> OutputRef {
-        let output: OutputRef = unsafe { self.output_data.wr.into() };
-        output
+    fn output(&self) -> OutputRef {
+        #[cfg(window_system = "winit")]
+        return OutputRef::new(unsafe { self.output_data.winit } as *mut Output);
+        #[cfg(window_system = "pgtk")]
+        return OutputRef::new(unsafe { self.output_data.pgtk } as *mut Output);
     }
 
-    fn wr_display_info(&self) -> DisplayInfoRef {
-        self.wr_output().display_info()
+    fn canvas(&self) -> CanvasRef {
+        if self.output().get_canvas().is_null() {
+            log::debug!("canvas_data empty");
+            let canvas = Box::new(Canvas::build(self.clone()));
+            self.output().get_inner().set_canvas(canvas);
+        }
+
+        self.output().get_canvas()
+    }
+
+    fn set_cursor_color(&self, color: ColorF) {
+        self.output().get_inner().set_cursor_color(color);
+    }
+
+    fn cursor_color(&self) -> ColorF {
+        self.output().get_inner().cursor_color
+    }
+
+    fn cursor_foreground_color(&self) -> ColorF {
+        self.output().get_inner().cursor_foreground_color
+    }
+
+    fn set_background_color(&self, color: ColorF) {
+        self.output().get_inner().set_background_color(color);
+    }
+
+    fn display_info(&self) -> DisplayInfoRef {
+        self.output().display_info()
+    }
+
+    fn window_handle(&self) -> Option<RawWindowHandle> {
+        #[cfg(window_system = "winit")]
+        if let Some(window) = &self.output().get_inner().window {
+            use raw_window_handle::HasRawWindowHandle;
+            return Some(window.raw_window_handle());
+        } else {
+            return None;
+        }
+
+        #[cfg(window_system = "pgtk")]
+        {
+            use raw_window_handle::WaylandWindowHandle;
+            let mut output = self.output();
+            let widget = output.as_raw().edit_widget;
+            if !widget.is_null() {
+                let gwin = unsafe { gtk_sys::gtk_widget_get_window(widget) };
+                let surface = unsafe {
+                    gdk_wayland_sys::gdk_wayland_window_get_wl_surface(
+                        gwin as *mut _ as *mut gdk_wayland_sys::GdkWaylandWindow,
+                    )
+                };
+                log::debug!("surface: {:?}", surface);
+                let mut window_handle = WaylandWindowHandle::empty();
+                window_handle.surface = surface;
+                return Some(RawWindowHandle::Wayland(window_handle));
+            }
+            return None;
+        }
+
+        #[cfg(not(any(window_system = "winit", window_system = "pgtk")))]
+        unimplemented!()
+    }
+
+    fn display_handle(&self) -> Option<RawDisplayHandle> {
+        #[cfg(window_system = "winit")]
+        return self.output().display_info().get_inner().raw_display_handle;
+
+        #[cfg(window_system = "pgtk")]
+        {
+            use raw_window_handle::WaylandDisplayHandle;
+
+            let display = unsafe {
+                self.output()
+                    .display_info()
+                    .get_raw()
+                    .__bindgen_anon_1
+                    .display
+            };
+            let wl_display = unsafe {
+                gdk_wayland_sys::gdk_wayland_display_get_wl_display(
+                    display as *mut _ as *mut gdk_wayland_sys::GdkWaylandDisplay,
+                )
+            };
+            let mut display_handle = WaylandDisplayHandle::empty();
+            display_handle.display = wl_display;
+            return Some(RawDisplayHandle::Wayland(display_handle));
+        }
+
+        #[cfg(not(any(window_system = "winit", window_system = "pgtk")))]
+        unimplemented!()
+    }
+
+    fn size(&self) -> DeviceIntSize {
+        DeviceIntSize::new(self.pixel_width, self.pixel_height)
+    }
+
+    #[cfg(window_system = "winit")]
+    fn uuid(&self) -> winit::window::WindowId {
+        self.output()
+            .get_inner()
+            .window
+            .as_ref()
+            .expect("frame doesnt have associated winit window yet")
+            .id()
+            .clone()
+    }
+
+    #[cfg(not(window_system = "winit"))]
+    fn uuid(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.window_handle().hash(&mut hasher);
+        hasher.finish()
     }
 }

@@ -347,3 +347,5 @@ lib-src/seccomp-filter-exec.pfc
 # GDB history
 .gdb_history
 _gdb_history
+/.cargo/config.toml
+/.cargo/config
