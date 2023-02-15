@@ -250,8 +250,8 @@ See also `frame-live-p'.  */)
       return Qpgtk;
     case output_haiku:
       return Qhaiku;
-    case output_wr:
-      return Qwr;
+    case output_winit:
+      return Qwinit;
     default:
       emacs_abort ();
     }
@@ -6220,7 +6220,9 @@ syms_of_frame (void)
   DEFSYM (Qns, "ns");
   DEFSYM (Qpgtk, "pgtk");
   DEFSYM (Qhaiku, "haiku");
-  DEFSYM (Qwr, "wr");
+  DEFSYM (Qwinit, "winit");
+  DEFSYM (Qwebrender, "webrender");
+  /* DEFSYM (Qttf_parser, "ttf-parser"); */
   DEFSYM (Qvisible, "visible");
   DEFSYM (Qbuffer_predicate, "buffer-predicate");
   DEFSYM (Qbuffer_list, "buffer-list");

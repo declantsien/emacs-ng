@@ -7,6 +7,7 @@
 /// cleared or some other message gets displayed there.  Do not pass
 /// text that is stored in a Lisp string.  Do not pass text in a buffer
 /// that was alloca'd.
+
 pub fn message1(m: *const ::libc::c_char) {
     unsafe { crate::bindings::message1(m) };
 }

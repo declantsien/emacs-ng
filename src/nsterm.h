@@ -859,7 +859,11 @@ struct ns_display_info
   /* Minimum font height over all fonts in font_table.  */
   int smallest_font_height;
 
+#ifdef USE_WEBRENDER
+  struct wr_bitmap_record *bitmaps;
+#else
   struct ns_bitmap_record *bitmaps;
+#endif /*USE_WEBRENDER*/
   ptrdiff_t bitmaps_size;
   ptrdiff_t bitmaps_last;
 
@@ -1086,12 +1090,17 @@ struct x_output
     - NS_SCROLL_BAR_HEIGHT (f)) : 0)
 
 #define FRAME_NS_FONT_TABLE(f) (FRAME_DISPLAY_INFO (f)->font_table)
-
 #define FRAME_FONTSET(f) ((f)->output_data.ns->fontset)
 
 #define FRAME_BASELINE_OFFSET(f) ((f)->output_data.ns->baseline_offset)
+
+#ifndef USE_WEBRENDER
 #define BLACK_PIX_DEFAULT(f) 0x000000
 #define WHITE_PIX_DEFAULT(f) 0xFFFFFF
+#endif /*USE_WEBRENDER*/
+
+/* Return the X output data for frame F.  */
+#define FRAME_X_OUTPUT(f) ((f)->output_data.ns)
 
 /* First position where characters can be shown (instead of scrollbar, if
    it is on left.  */
