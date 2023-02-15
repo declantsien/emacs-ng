@@ -58,7 +58,7 @@ typedef struct _XCharStruct
   int descent;
 } XCharStruct;
 
-#ifdef __OBJC__
+#if defined __OBJC__ && !defined USE_WEBRENDER
 typedef id Emacs_Pixmap;
 #else
 typedef void *Emacs_Pixmap;

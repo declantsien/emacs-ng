@@ -1,4 +1,4 @@
-;;; wr-win.el --- parse relevant switches and set up for Webrender  -*- lexical-binding:t -*-
+;;; winit-win.el --- parse relevant switches and set up for Webrender  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 1993-1994, 2001-2022 Free Software Foundation, Inc.
 
@@ -22,7 +22,7 @@
 
 ;;; Commentary:
 
-;; wr-win.el: this file defines functions to initialize the Webrender window
+;; winit-win.el: this file defines functions to initialize the Webrender window
 ;; system and process WR-specific command line parameters before
 ;; creating the first WR frame.
 
@@ -68,9 +68,10 @@
 
 (eval-when-compile (require 'cl-lib))
 
-(if (not (fboundp 'wr-create-frame))
-    (error "%s: Loading wr-win.el but not compiled for Webrender" invocation-name))
-(defalias 'x-create-frame 'wr-create-frame)
+(if (not (fboundp 'winit-create-frame))
+    (error "%s: Loading winit-win.el but not compiled for Webrender" invocation-name))
+(defalias 'x-create-frame 'winit-create-frame)
+(defalias 'x-frame-edges 'winit-frame-edges)
 
 (require 'term/common-win)
 (require 'frame)
@@ -1143,7 +1144,7 @@ This returns an error if any Emacs frames are X frames."
 (defvar x-display-name)
 (defvar x-command-line-resources)
 
-(cl-defmethod window-system-initialization (&context (window-system wr)
+(cl-defmethod window-system-initialization (&context (window-system winit)
                                             &optional display)
   "Initialize Emacs for X frames and open the first connection to an X server."
   (cl-assert (not wr-initialized))
@@ -1154,7 +1155,7 @@ This returns an error if any Emacs frames are X frames."
 		     x-command-line-resources
 		     ;; Exit Emacs with fatal error if this fails and we
 		     ;; are the initial display.
-		     (eq initial-window-system 'wr))
+		     (eq initial-window-system 'winit))
 
   ;; Create the default fontset.
   (create-default-fontset)
@@ -1255,27 +1256,27 @@ This returns an error if any Emacs frames are X frames."
 		  (selection-symbol target-type &optional time-stamp terminal))
 
 (add-to-list 'display-format-alist '("\\`.*:[0-9]+\\(\\.[0-9]+\\)?\\'" . x))
-(cl-defmethod handle-args-function (args &context (window-system wr))
+(cl-defmethod handle-args-function (args &context (window-system winit))
   (x-handle-args args))
 
-(cl-defmethod frame-creation-function (params &context (window-system wr))
+(cl-defmethod frame-creation-function (params &context (window-system winit))
   (x-create-frame-with-faces params))
 
 (cl-defmethod gui-backend-set-selection (selection value
-                                         &context (window-system wr))
+                                         &context (window-system winit))
   (if value (x-own-selection-internal selection value)
     (x-disown-selection-internal selection)))
 
 (cl-defmethod gui-backend-selection-owner-p (selection
-                                             &context (window-system wr))
+                                             &context (window-system winit))
   (x-selection-owner-p selection))
 
 (cl-defmethod gui-backend-selection-exists-p (selection
-                                              &context (window-system wr))
+                                              &context (window-system winit))
   (x-selection-exists-p selection))
 
 (cl-defmethod gui-backend-get-selection (selection-symbol target-type
-                                         &context (window-system wr)
+                                         &context (window-system winit)
                                          &optional time-stamp terminal)
   (x-get-selection-internal selection-symbol target-type time-stamp terminal))
 
@@ -1284,7 +1285,7 @@ This returns an error if any Emacs frames are X frames."
 ;; TODO
 
 
-(provide 'wr-win)
-(provide 'term/wr-win)
+(provide 'winit-win)
+(provide 'term/winit-win)
 
-;;; wr-win.el ends here
+;;; winit-win.el ends here

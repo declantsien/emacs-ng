@@ -1,8 +1,7 @@
 use winit::{
     dpi::PhysicalPosition,
-    event::{
-        ElementState, ModifiersState, MouseButton, MouseScrollDelta, TouchPhase, VirtualKeyCode,
-    },
+    event::{ElementState, MouseButton, MouseScrollDelta, TouchPhase},
+    keyboard::{KeyCode as VirtualKeyCode, ModifiersState},
 };
 
 use emacs::{
@@ -13,6 +12,11 @@ use emacs::{
         ctrl_modifier, down_modifier, meta_modifier, shift_modifier, super_modifier, up_modifier,
     },
 };
+use once_cell::sync::Lazy;
+use std::sync::Mutex;
+
+pub static INPUT_PROCESSOR: Lazy<Mutex<InputProcessor>> =
+    Lazy::new(|| Mutex::new(InputProcessor::new()));
 
 pub struct InputProcessor {
     modifiers: ModifiersState,
@@ -65,11 +69,13 @@ impl InputProcessor {
         }
 
         self.suppress_chars = true;
+        let code = unsafe { std::mem::transmute::<VirtualKeyCode, i64>(key_code) };
+        let code = u32::try_from(code).unwrap();
 
         let iev: input_event = InputEvent {
             kind: event_kind::NON_ASCII_KEYSTROKE_EVENT,
             part: scroll_bar_part::scroll_bar_nowhere,
-            code: key_code as u32,
+            code,
             modifiers: Self::to_emacs_modifiers(self.modifiers),
             x: 0.into(),
             y: 0.into(),
@@ -98,11 +104,13 @@ impl InputProcessor {
             MouseButton::Middle => 1,
             MouseButton::Right => 2,
             MouseButton::Other(_) => 0,
+            _ => todo!(),
         };
 
         let s = match state {
             ElementState::Pressed => down_modifier,
             ElementState::Released => up_modifier,
+            _ => todo!(),
         };
 
         let iev: input_event = InputEvent {
@@ -176,6 +184,7 @@ impl InputProcessor {
                     None
                 }
             }
+            _ => todo!(),
         };
 
         if event_meta.is_none() {
@@ -206,8 +215,21 @@ impl InputProcessor {
         self.cursor_positon = position;
     }
 
-    pub fn change_modifiers(&mut self, modifiers: ModifiersState) {
-        self.modifiers = modifiers;
+    pub fn change_modifiers(&mut self, state: ModifiersState) {
+        if state.is_empty() {
+            self.modifiers = state;
+        } else if state.shift_key() {
+            self.modifiers.set(ModifiersState::SHIFT, state.shift_key());
+        } else if state.control_key() {
+            self.modifiers
+                .set(ModifiersState::CONTROL, state.control_key());
+        } else if state.alt_key() {
+            self.modifiers.set(ModifiersState::ALT, state.alt_key());
+        } else if state.super_key() {
+            self.modifiers.set(ModifiersState::SUPER, state.super_key());
+        }
+
+        log::trace!("modifer changed {:?}", self.modifiers);
     }
 
     pub fn current_cursor_position(&self) -> &PhysicalPosition<f64> {
@@ -233,16 +255,16 @@ impl InputProcessor {
     fn to_emacs_modifiers(modifiers: ModifiersState) -> u32 {
         let mut emacs_modifiers: u32 = 0;
 
-        if modifiers.alt() {
+        if modifiers.alt_key() {
             emacs_modifiers |= meta_modifier;
         }
-        if modifiers.shift() {
+        if modifiers.shift_key() {
             emacs_modifiers |= shift_modifier;
         }
-        if modifiers.ctrl() {
+        if modifiers.control_key() {
             emacs_modifiers |= ctrl_modifier;
         }
-        if modifiers.logo() {
+        if modifiers.super_key() {
             emacs_modifiers |= super_modifier;
         }
 
@@ -260,8 +282,8 @@ macro_rules! kn {
 pub fn winit_keycode_emacs_key_name(keycode: VirtualKeyCode) -> *const libc::c_char {
     match keycode {
         VirtualKeyCode::Escape => kn!("escape"),
-        VirtualKeyCode::Back => kn!("backspace"),
-        VirtualKeyCode::Return => kn!("return"),
+        VirtualKeyCode::Backspace => kn!("backspace"),
+        VirtualKeyCode::Enter => kn!("return"),
         VirtualKeyCode::Tab => kn!("tab"),
 
         VirtualKeyCode::Home => kn!("home"),
@@ -269,10 +291,10 @@ pub fn winit_keycode_emacs_key_name(keycode: VirtualKeyCode) -> *const libc::c_c
         VirtualKeyCode::PageUp => kn!("prior"),
         VirtualKeyCode::PageDown => kn!("next"),
 
-        VirtualKeyCode::Left => kn!("left"),
-        VirtualKeyCode::Right => kn!("right"),
-        VirtualKeyCode::Up => kn!("up"),
-        VirtualKeyCode::Down => kn!("down"),
+        VirtualKeyCode::ArrowLeft => kn!("left"),
+        VirtualKeyCode::ArrowRight => kn!("right"),
+        VirtualKeyCode::ArrowUp => kn!("up"),
+        VirtualKeyCode::ArrowDown => kn!("down"),
 
         VirtualKeyCode::Insert => kn!("insert"),
 

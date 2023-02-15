@@ -12,7 +12,7 @@ use crate::{
     window::LispWindowRef,
 };
 
-#[cfg(feature = "window-system")]
+#[cfg(have_window_system)]
 use {
     crate::bindings::{gui_default_parameter, resource_types, vertical_scroll_bar_type},
     std::ffi::CString,
@@ -45,11 +45,11 @@ impl LispFrameRef {
     }
 
     pub fn has_tooltip(self) -> bool {
-        #[cfg(feature = "window-system")]
+        #[cfg(have_window_system)]
         {
             self.tooltip()
         }
-        #[cfg(not(feature = "window-system"))]
+        #[cfg(not(have_window_system))]
         {
             false
         }
@@ -60,16 +60,16 @@ impl LispFrameRef {
     }
 
     pub fn vertical_scroll_bar_type(self) -> u32 {
-        #[cfg(feature = "window-system")]
+        #[cfg(have_window_system)]
         {
             (*self).vertical_scroll_bar_type()
         }
-        #[cfg(not(feature = "window-system"))]
+        #[cfg(not(have_window_system))]
         0
     }
 
     pub fn scroll_bar_area_width(self) -> i32 {
-        #[cfg(feature = "window-system")]
+        #[cfg(have_window_system)]
         {
             match self.vertical_scroll_bar_type() {
                 vertical_scroll_bar_type::vertical_scroll_bar_left
@@ -79,14 +79,14 @@ impl LispFrameRef {
                 _ => 0,
             }
         }
-        #[cfg(not(feature = "window-system"))]
+        #[cfg(not(have_window_system))]
         {
             0
         }
     }
 
     pub fn horizontal_scroll_bar_height(self) -> i32 {
-        #[cfg(feature = "window-system")]
+        #[cfg(have_window_system)]
         {
             if self.horizontal_scroll_bars() {
                 self.config_scroll_bar_height
@@ -94,7 +94,7 @@ impl LispFrameRef {
                 0
             }
         }
-        #[cfg(not(feature = "window-system"))]
+        #[cfg(not(have_window_system))]
         {
             0
         }
@@ -134,7 +134,7 @@ impl LispFrameRef {
         }
     }
 
-    #[cfg(feature = "window-system")]
+    #[cfg(have_window_system)]
     pub fn gui_default_parameter(
         mut self,
         alist: LispObject,
