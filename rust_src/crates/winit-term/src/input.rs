@@ -1,12 +1,14 @@
+use crate::frame::LispFrameWinitExt;
+use crate::windowing::{keycode_to_emacs_key_name, to_emacs_modifiers, virtual_keycode};
+
 #[cfg(not(use_tao))]
 use emacs::windowing::event::{ModifiersState, VirtualKeyCode};
 #[cfg(use_tao)]
 use emacs::windowing::keyboard::{KeyCode as VirtualKeyCode, ModifiersState};
 use emacs::windowing::{
-    dpi::PhysicalPosition,
+    dpi::{LogicalPosition, PhysicalPosition},
     event::{ElementState, MouseButton, MouseScrollDelta, TouchPhase},
 };
-
 use emacs::{
     bindings::{event_kind, input_event, scroll_bar_part},
     globals::{Qnil, Qt},
@@ -15,131 +17,114 @@ use emacs::{
         ctrl_modifier, down_modifier, meta_modifier, shift_modifier, super_modifier, up_modifier,
     },
 };
-use once_cell::sync::Lazy;
-use std::sync::Mutex;
+use std::sync::OnceLock;
 
-struct Modifiers {
-    state: ModifiersState,
-}
-
-#[cfg(use_tao)]
-impl Modifiers {
-    pub fn new(state: ModifiersState) -> Modifiers {
-        Modifiers { state }
-    }
-
-    pub fn shift_key(&self) -> bool {
-        self.state.shift_key()
-    }
-    pub fn control_key(&self) -> bool {
-        self.state.control_key()
-    }
-    pub fn alt_key(&self) -> bool {
-        self.state.alt_key()
-    }
-    pub fn super_key(&self) -> bool {
-        self.state.super_key()
+static mut INPUT_STATE: OnceLock<InputProcessor> = OnceLock::new();
+impl InputProcessor {
+    pub fn global() -> &'static InputProcessor {
+        unsafe {
+            INPUT_STATE.get_or_init(|| {
+                log::trace!("INPUT_STATE is being created...");
+                InputProcessor {
+                    modifiers: ModifiersState::default(),
+                    total_delta: PhysicalPosition::new(0.0, 0.9),
+                    #[cfg(not(use_tao))]
+                    suppress_chars: false,
+                }
+            })
+        }
     }
 
-    pub fn set_modifiers(&self, input_processor: &mut InputProcessor) {
-        if self.state.is_empty() {
-            input_processor.modifiers = self.state;
-        } else if self.shift_key() {
-            input_processor
-                .modifiers
-                .set(ModifiersState::SHIFT, self.shift_key());
-        } else if self.alt_key() {
-            input_processor
-                .modifiers
-                .set(ModifiersState::ALT, self.alt_key());
-        } else if self.super_key() {
-            input_processor
-                .modifiers
-                .set(ModifiersState::SUPER, self.super_key());
-        } else if self.control_key() {
-            input_processor
-                .modifiers
-                .set(ModifiersState::CONTROL, self.control_key());
+    pub fn snapshot() -> InputProcessor {
+        Self::global().clone()
+    }
+
+    fn update(new_state: InputProcessor) {
+        log::trace!(
+            "Input state changed:  {:?} {:?}",
+            new_state.modifiers,
+            new_state.total_delta
+        );
+        unsafe {
+            let _ = INPUT_STATE.take();
+        };
+        if let Ok(_) = unsafe { INPUT_STATE.set(new_state) } {
+            log::debug!("Global input state changed");
+        } else {
+            log::error!("Failed to update input state");
         }
     }
 }
 
-#[cfg(use_tao)]
-fn virtual_keycode(code: VirtualKeyCode) -> u32 {
-    let code = unsafe { std::mem::transmute::<VirtualKeyCode, i64>(code) };
-    u32::try_from(code).unwrap()
-}
-
-#[cfg(not(use_tao))]
-impl Modifiers {
-    pub fn new(state: ModifiersState) -> Modifiers {
-        Modifiers { state }
-    }
-
-    pub fn shift_key(&self) -> bool {
-        self.state.shift()
-    }
-    pub fn control_key(&self) -> bool {
-        self.state.ctrl()
-    }
-    pub fn alt_key(&self) -> bool {
-        self.state.alt()
-    }
-    pub fn super_key(&self) -> bool {
-        self.state.logo()
-    }
-
-    pub fn set_modifiers(&self, input_processor: &mut InputProcessor) {
-        if self.state.is_empty() {
-            input_processor.modifiers = self.state;
-        } else if self.shift_key() {
-            let val = self.shift_key();
-            input_processor.modifiers.set(ModifiersState::SHIFT, val);
-        } else if self.alt_key() {
-            input_processor
-                .modifiers
-                .set(ModifiersState::ALT, self.alt_key());
-        } else if self.super_key() {
-            input_processor
-                .modifiers
-                .set(ModifiersState::LOGO, self.super_key());
-        } else if self.control_key() {
-            input_processor
-                .modifiers
-                .set(ModifiersState::CTRL, self.control_key());
-        }
-    }
-}
-
-#[cfg(not(use_tao))]
-fn virtual_keycode(code: VirtualKeyCode) -> u32 {
-    code as u32
-}
-
-pub static INPUT_PROCESSOR: Lazy<Mutex<InputProcessor>> =
-    Lazy::new(|| Mutex::new(InputProcessor::new()));
-
+#[derive(Clone)]
 pub struct InputProcessor {
     modifiers: ModifiersState,
-    suppress_chars: bool,
-    cursor_positon: PhysicalPosition<f64>,
-
     total_delta: PhysicalPosition<f64>,
+    #[cfg(not(use_tao))]
+    suppress_chars: bool,
 }
 
 impl InputProcessor {
-    pub fn new() -> InputProcessor {
-        InputProcessor {
-            modifiers: ModifiersState::empty(),
-            suppress_chars: false,
-            cursor_positon: PhysicalPosition::new(0.0, 0.0),
+    #[cfg(use_tao)]
+    pub fn handle_modifiers_changed(new_state: ModifiersState) {
+        let snapshot = Self::snapshot();
+        let mut modifiers = snapshot.modifiers.clone();
 
-            total_delta: PhysicalPosition::new(0.0, 0.0),
+        if new_state.is_empty() {
+            modifiers = new_state;
+        } else if new_state.shift_key() {
+            modifiers.set(ModifiersState::SHIFT, new_state.shift_key());
+        } else if new_state.control_key() {
+            modifiers.set(ModifiersState::CONTROL, new_state.control_key());
+        } else if new_state.alt_key() {
+            modifiers.set(ModifiersState::ALT, new_state.alt_key());
+        } else if new_state.super_key() {
+            modifiers.set(ModifiersState::SUPER, new_state.super_key());
         }
+
+        Self::update(InputProcessor {
+            modifiers,
+            ..snapshot
+        });
+    }
+    #[cfg(not(use_tao))]
+    pub fn handle_modifiers_changed(new_state: ModifiersState) {
+        let snapshot = Self::snapshot();
+
+        Self::update(InputProcessor {
+            modifiers: new_state,
+            ..snapshot
+        });
     }
 
-    pub fn receive_char(&self, c: char, top_frame: LispObject) -> Option<input_event> {
-        if self.suppress_chars {
+    fn set_total_delta(total_delta: PhysicalPosition<f64>) {
+        let snapshot = Self::snapshot();
+        Self::update(InputProcessor {
+            total_delta,
+            ..snapshot
+        });
+    }
+
+    #[cfg(not(use_tao))]
+    fn set_suppress_chars(suppress_chars: bool) {
+        let snapshot = Self::snapshot();
+        Self::update(InputProcessor {
+            suppress_chars,
+            ..snapshot
+        });
+    }
+
+    fn get_modifiers() -> ModifiersState {
+        let InputProcessor { modifiers, .. } = Self::global();
+        modifiers.clone()
+    }
+}
+
+impl InputProcessor {
+    pub fn handle_receive_char(c: char, top_frame: LispObject) -> Option<input_event> {
+        let state = Self::global();
+        #[cfg(not(use_tao))]
+        if state.suppress_chars {
             return None;
         }
 
@@ -147,7 +132,7 @@ impl InputProcessor {
             kind: event_kind::ASCII_KEYSTROKE_EVENT,
             part: scroll_bar_part::scroll_bar_nowhere,
             code: Self::remove_control(c) as u32,
-            modifiers: Self::to_emacs_modifiers(self.modifiers),
+            modifiers: to_emacs_modifiers(state.modifiers),
             x: 0.into(),
             y: 0.into(),
             timestamp: 0,
@@ -160,23 +145,25 @@ impl InputProcessor {
         Some(iev)
     }
 
-    pub fn key_pressed(
-        &mut self,
+    pub fn handle_key_pressed(
         key_code: VirtualKeyCode,
         top_frame: LispObject,
     ) -> Option<input_event> {
-        if winit_keycode_emacs_key_name(key_code).is_null() {
+        let InputProcessor { modifiers, .. } = Self::global().clone();
+        if keycode_to_emacs_key_name(key_code).is_null() {
             return None;
         }
 
-        self.suppress_chars = true;
+        #[cfg(not(use_tao))]
+        Self::set_suppress_chars(true);
+
         let code = virtual_keycode(key_code);
 
         let iev: input_event = InputEvent {
             kind: event_kind::NON_ASCII_KEYSTROKE_EVENT,
             part: scroll_bar_part::scroll_bar_nowhere,
             code,
-            modifiers: Self::to_emacs_modifiers(self.modifiers),
+            modifiers: to_emacs_modifiers(modifiers.to_owned()),
             x: 0.into(),
             y: 0.into(),
             timestamp: 0,
@@ -189,12 +176,12 @@ impl InputProcessor {
         Some(iev)
     }
 
-    pub fn key_released(&mut self) {
-        self.suppress_chars = false;
+    pub fn handle_key_released() {
+        #[cfg(not(use_tao))]
+        Self::set_suppress_chars(false);
     }
 
-    pub fn mouse_pressed(
-        &self,
+    pub fn handle_mouse_pressed(
         button: MouseButton,
         state: ElementState,
         top_frame: LispObject,
@@ -215,13 +202,20 @@ impl InputProcessor {
             _ => todo!(),
         };
 
+        let mut pos = LogicalPosition::new(0, 0);
+
+        if let Some(frame) = top_frame.as_frame() {
+            pos = frame.cursor_position();
+        }
+
+        let InputProcessor { modifiers, .. } = Self::global();
         let iev: input_event = InputEvent {
             kind: event_kind::MOUSE_CLICK_EVENT,
             part: scroll_bar_part::scroll_bar_nowhere,
             code: c as u32,
-            modifiers: Self::to_emacs_modifiers(self.modifiers) | s,
-            x: (self.cursor_positon.x as i32).into(),
-            y: (self.cursor_positon.y as i32).into(),
+            modifiers: to_emacs_modifiers(modifiers.clone()) | s,
+            x: pos.x.into(),
+            y: pos.y.into(),
             timestamp: 0,
             frame_or_window: top_frame,
             arg: Qnil,
@@ -232,16 +226,11 @@ impl InputProcessor {
         Some(iev)
     }
 
-    pub fn mouse_wheel_scrolled(
-        &mut self,
+    pub fn handle_mouse_wheel_scrolled(
         delta: MouseScrollDelta,
         phase: TouchPhase,
         top_frame: LispObject,
     ) -> Option<input_event> {
-        if phase != TouchPhase::Moved {
-            self.total_delta = PhysicalPosition::new(0.0, 0.0);
-        }
-
         let line_height = top_frame.as_frame().unwrap().line_height as f64;
 
         let event_meta = match delta {
@@ -257,31 +246,33 @@ impl InputProcessor {
                 }
             }
             MouseScrollDelta::PixelDelta(pos) => {
-                self.total_delta.y = self.total_delta.y + pos.y;
-                self.total_delta.x = self.total_delta.x + pos.x;
+                let mut total_delta = Self::global().total_delta.clone();
+                if phase != TouchPhase::Moved {
+                    total_delta = PhysicalPosition::new(0.0, 0.0);
+                }
+                total_delta.y = total_delta.y + pos.y;
+                total_delta.x = total_delta.x + pos.x;
 
-                if self.total_delta.y.abs() >= self.total_delta.x.abs()
-                    && self.total_delta.y.abs() > line_height
+                if total_delta.y.abs() >= total_delta.x.abs() && total_delta.y.abs() > line_height {
+                    let lines = (total_delta.y / line_height).abs() as i32;
+
+                    total_delta.y = total_delta.y % line_height;
+                    total_delta.x = 0.0;
+
+                    let _ = Self::set_total_delta(total_delta.clone());
+
+                    Some((event_kind::WHEEL_EVENT, total_delta.y > 0.0, lines))
+                } else if total_delta.x.abs() > total_delta.y.abs()
+                    && total_delta.x.abs() > line_height
                 {
-                    let lines = (self.total_delta.y / line_height).abs() as i32;
+                    let lines = (total_delta.x / line_height).abs() as i32;
 
-                    self.total_delta.y = self.total_delta.y % line_height;
-                    self.total_delta.x = 0.0;
+                    total_delta.x = total_delta.x % line_height;
+                    total_delta.y = 0.0;
 
-                    Some((event_kind::WHEEL_EVENT, self.total_delta.y > 0.0, lines))
-                } else if self.total_delta.x.abs() > self.total_delta.y.abs()
-                    && self.total_delta.x.abs() > line_height
-                {
-                    let lines = (self.total_delta.x / line_height).abs() as i32;
+                    let _ = Self::set_total_delta(total_delta.clone());
 
-                    self.total_delta.x = self.total_delta.x % line_height;
-                    self.total_delta.y = 0.0;
-
-                    Some((
-                        event_kind::HORIZ_WHEEL_EVENT,
-                        self.total_delta.x > 0.0,
-                        lines,
-                    ))
+                    Some((event_kind::HORIZ_WHEEL_EVENT, total_delta.x > 0.0, lines))
                 } else {
                     None
                 }
@@ -296,14 +287,20 @@ impl InputProcessor {
 
         let (kind, is_upper, lines) = event_meta.unwrap();
 
+        let mut pos = LogicalPosition::new(0, 0);
+
+        if let Some(frame) = top_frame.as_frame() {
+            pos = frame.cursor_position();
+        }
+
         let s = if is_upper { up_modifier } else { down_modifier };
         let iev: input_event = InputEvent {
             kind,
             part: scroll_bar_part::scroll_bar_nowhere,
             code: 0,
-            modifiers: Self::to_emacs_modifiers(self.modifiers) | s,
-            x: (self.cursor_positon.x as i32).into(),
-            y: (self.cursor_positon.y as i32).into(),
+            modifiers: to_emacs_modifiers(Self::get_modifiers()) | s,
+            x: pos.x.into(),
+            y: pos.y.into(),
             timestamp: 0,
             frame_or_window: top_frame,
             arg: lines.into(),
@@ -312,20 +309,6 @@ impl InputProcessor {
         .into();
 
         Some(iev)
-    }
-
-    pub fn cursor_move(&mut self, position: PhysicalPosition<f64>) {
-        self.cursor_positon = position;
-    }
-
-    pub fn change_modifiers(&mut self, state: ModifiersState) {
-        let modifiers = Modifiers::new(state);
-        modifiers.set_modifiers(self);
-        log::trace!("modifier changed {:?}", self.modifiers);
-    }
-
-    pub fn current_cursor_position(&self) -> &PhysicalPosition<f64> {
-        &self.cursor_positon
     }
 
     fn remove_control(c: char) -> char {
@@ -342,99 +325,6 @@ impl InputProcessor {
         }
 
         c as char
-    }
-
-    fn to_emacs_modifiers(modifiers: ModifiersState) -> u32 {
-        let mut emacs_modifiers: u32 = 0;
-        let modifiers = Modifiers::new(modifiers);
-
-        if modifiers.alt_key() {
-            emacs_modifiers |= meta_modifier;
-        }
-        if modifiers.shift_key() {
-            emacs_modifiers |= shift_modifier;
-        }
-        if modifiers.control_key() {
-            emacs_modifiers |= ctrl_modifier;
-        }
-        if modifiers.super_key() {
-            emacs_modifiers |= super_modifier;
-        }
-
-        emacs_modifiers
-    }
-}
-
-// macro for building key_name c string
-macro_rules! kn {
-    ($e:expr) => {
-        concat!($e, '\0').as_ptr() as *const libc::c_char
-    };
-}
-
-pub fn winit_keycode_emacs_key_name(keycode: VirtualKeyCode) -> *const libc::c_char {
-    match keycode {
-        VirtualKeyCode::Escape => kn!("escape"),
-        #[cfg(not(use_tao))]
-        VirtualKeyCode::Back => kn!("backspace"),
-        #[cfg(use_tao)]
-        VirtualKeyCode::Backspace => kn!("backspace"),
-        #[cfg(not(use_tao))]
-        VirtualKeyCode::Return => kn!("return"),
-        #[cfg(use_tao)]
-        VirtualKeyCode::Enter => kn!("return"),
-        VirtualKeyCode::Tab => kn!("tab"),
-
-        VirtualKeyCode::Home => kn!("home"),
-        VirtualKeyCode::End => kn!("end"),
-        VirtualKeyCode::PageUp => kn!("prior"),
-        VirtualKeyCode::PageDown => kn!("next"),
-
-        #[cfg(not(use_tao))]
-        VirtualKeyCode::Left => kn!("left"),
-        #[cfg(use_tao)]
-        VirtualKeyCode::ArrowLeft => kn!("left"),
-        #[cfg(not(use_tao))]
-        VirtualKeyCode::Right => kn!("right"),
-        #[cfg(use_tao)]
-        VirtualKeyCode::ArrowRight => kn!("right"),
-        #[cfg(not(use_tao))]
-        VirtualKeyCode::Up => kn!("up"),
-        #[cfg(use_tao)]
-        VirtualKeyCode::ArrowUp => kn!("up"),
-        #[cfg(not(use_tao))]
-        VirtualKeyCode::Down => kn!("down"),
-        #[cfg(use_tao)]
-        VirtualKeyCode::ArrowDown => kn!("down"),
-
-        VirtualKeyCode::Insert => kn!("insert"),
-
-        VirtualKeyCode::F1 => kn!("f1"),
-        VirtualKeyCode::F2 => kn!("f2"),
-        VirtualKeyCode::F3 => kn!("f3"),
-        VirtualKeyCode::F4 => kn!("f4"),
-        VirtualKeyCode::F5 => kn!("f5"),
-        VirtualKeyCode::F6 => kn!("f6"),
-        VirtualKeyCode::F7 => kn!("f7"),
-        VirtualKeyCode::F8 => kn!("f8"),
-        VirtualKeyCode::F9 => kn!("f9"),
-        VirtualKeyCode::F10 => kn!("f10"),
-        VirtualKeyCode::F11 => kn!("f11"),
-        VirtualKeyCode::F12 => kn!("f12"),
-        VirtualKeyCode::F13 => kn!("f13"),
-        VirtualKeyCode::F14 => kn!("f14"),
-        VirtualKeyCode::F15 => kn!("f15"),
-        VirtualKeyCode::F16 => kn!("f16"),
-        VirtualKeyCode::F17 => kn!("f17"),
-        VirtualKeyCode::F18 => kn!("f18"),
-        VirtualKeyCode::F19 => kn!("f19"),
-        VirtualKeyCode::F20 => kn!("f20"),
-        VirtualKeyCode::F21 => kn!("f21"),
-        VirtualKeyCode::F22 => kn!("f22"),
-        VirtualKeyCode::F23 => kn!("f23"),
-        VirtualKeyCode::F24 => kn!("f24"),
-
-        _ => std::ptr::null(), // null pointer
     }
 }
 

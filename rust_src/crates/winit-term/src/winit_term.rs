@@ -3,6 +3,7 @@
 use crate::clipboard::ClipboardExt;
 use crate::event_loop::WrEventLoop;
 use crate::frame::LispFrameWinitExt;
+use crate::windowing::keysym_to_emacs_key_name;
 use std::ffi::CString;
 use std::ptr;
 use wr_renderer::output::OutputRef;
@@ -19,7 +20,7 @@ use emacs::windowing::monitor::MonitorHandle;
 
 use lisp_macros::lisp_fn;
 
-use crate::{frame::create_frame, input::winit_keycode_emacs_key_name, term::winit_term_init};
+use crate::{frame::create_frame, term::winit_term_init, windowing::keycode_to_emacs_key_name};
 
 use emacs::{
     bindings::globals,
@@ -69,14 +70,7 @@ pub extern "C" fn winit_get_display(display_info: DisplayInfoRef) -> DisplayRef 
 
 #[no_mangle]
 pub extern "C" fn get_keysym_name(keysym: i32) -> *mut libc::c_char {
-    #[cfg(not(use_tao))]
-    let name =
-        winit_keycode_emacs_key_name(unsafe { std::mem::transmute::<i32, VirtualKeyCode>(keysym) });
-
-    #[cfg(use_tao)]
-    let name = winit_keycode_emacs_key_name(unsafe {
-        std::mem::transmute::<i64, VirtualKeyCode>(keysym.into())
-    });
+    let name = keysym_to_emacs_key_name(keysym);
 
     name as *mut libc::c_char
 }

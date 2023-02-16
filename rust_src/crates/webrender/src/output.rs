@@ -17,6 +17,8 @@ pub struct OutputInner {
     pub window_handle: Option<RawWindowHandle>,
     #[cfg(window_system = "winit")]
     pub window: Option<emacs::windowing::window::Window>,
+    #[cfg(all(window_system = "winit", not(use_tao)))]
+    pub cursor_position: emacs::windowing::dpi::PhysicalPosition<f64>,
 
     pub canvas: CanvasRef,
 }
@@ -29,6 +31,8 @@ impl Default for OutputInner {
             cursor_foreground_color: ColorF::WHITE,
             window_handle: None,
             window: None,
+            #[cfg(all(window_system = "winit", not(use_tao)))]
+            cursor_position: emacs::windowing::dpi::PhysicalPosition::new(0.0, 0.0),
             canvas: CanvasRef::new(ptr::null_mut() as *mut _ as *mut Canvas),
         }
     }
@@ -46,6 +50,11 @@ impl OutputInner {
 
     pub fn set_cursor_color(&mut self, color: ColorF) {
         self.cursor_color = color;
+    }
+
+    #[cfg(all(not(use_tao), window_system = "winit"))]
+    pub fn set_cursor_position(&mut self, pos: emacs::windowing::dpi::PhysicalPosition<f64>) {
+        self.cursor_position = pos;
     }
 
     pub fn set_background_color(&mut self, color: ColorF) {

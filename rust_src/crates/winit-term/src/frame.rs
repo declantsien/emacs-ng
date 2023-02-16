@@ -19,7 +19,10 @@ use emacs::windowing::window::WindowId;
 use wr_renderer::frame::LispFrameExt;
 use wr_renderer::output::Output;
 
-use emacs::windowing::{dpi::PhysicalPosition, window::WindowBuilder};
+use emacs::windowing::{
+    dpi::{LogicalPosition, PhysicalPosition},
+    window::WindowBuilder,
+};
 
 use wr_renderer::display_info::DisplayInfoRef;
 
@@ -86,6 +89,8 @@ pub fn create_frame(
 
 pub trait LispFrameWinitExt {
     fn set_window(&self, handle: emacs::windowing::window::Window);
+    #[cfg(not(use_tao))]
+    fn set_cursor_position(&self, pos: PhysicalPosition<f64>);
     fn set_visible2(&mut self, visible: bool);
     fn set_cursor_icon(&self, cursor: Emacs_Cursor);
     fn edges(&self, type_: LispObject) -> LispObject;
@@ -93,11 +98,16 @@ pub trait LispFrameWinitExt {
     fn implicitly_set_name(&mut self, arg: LispObject, _old_val: LispObject);
     fn iconify(&mut self);
     fn current_monitor(&self) -> Option<MonitorHandle>;
+    fn cursor_position(&self) -> LogicalPosition<i32>;
 }
 
 impl LispFrameWinitExt for LispFrameRef {
     fn set_window(&self, window: emacs::windowing::window::Window) {
         self.output().get_inner().set_window(window);
+    }
+
+    fn set_cursor_position(&self, pos: PhysicalPosition<f64>) {
+        self.output().get_inner().set_cursor_position(pos);
     }
 
     fn set_visible2(&mut self, is_visible: bool) {
@@ -230,5 +240,27 @@ impl LispFrameWinitExt for LispFrameRef {
             .as_ref()
             .expect("frame doesnt have associated winit window yet");
         window.current_monitor()
+    }
+
+    fn cursor_position(&self) -> LogicalPosition<i32> {
+        let inner = self.output().get_inner();
+        let window = inner
+            .window
+            .as_ref()
+            .expect("frame doesnt have associated winit window yet");
+        #[cfg(use_tao)]
+        {
+            if let Ok(pos) = window.cursor_position() {
+                return LogicalPosition::<i32>::from_physical(pos, 1.0 / window.scale_factor());
+            }
+            LogicalPosition::new(0, 0)
+        }
+        #[cfg(not(use_tao))]
+        {
+            LogicalPosition::<i32>::from_physical(
+                inner.cursor_position,
+                1.0 / window.scale_factor(),
+            )
+        }
     }
 }

@@ -23,6 +23,25 @@ mod platform {
     pub mod macos;
 }
 
+pub mod windowing {
+    // macro for building key_name c string
+    macro_rules! kn {
+        ($e:expr) => {
+            concat!($e, '\0').as_ptr() as *const libc::c_char
+        };
+    }
+
+    #[cfg(use_tao)]
+    pub use crate::windowing::tao::*;
+    #[cfg(not(use_tao))]
+    pub use crate::windowing::winit::*;
+
+    #[cfg(use_tao)]
+    pub mod tao;
+    #[cfg(not(use_tao))]
+    pub mod winit;
+}
+
 #[cfg(macos_platform)]
 pub use crate::platform::macos;
 
