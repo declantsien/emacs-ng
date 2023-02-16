@@ -186,6 +186,7 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
     let input_processor = INPUT_PROCESSOR.try_lock();
 
     if input_processor.is_err() {
+        log::error!("Failed to grab a lock {:?}", input_processor.err());
         return 0;
     }
     let mut input_processor = input_processor.unwrap();
@@ -320,8 +321,6 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
                             )
                         };
 
-                        input_processor.cursor_move(position);
-
                         frame.set_mouse_moved(true);
                     }
 
@@ -448,9 +447,10 @@ extern "C" fn winit_mouse_position(
     y: *mut LispObject,
     _timestamp: *mut Time,
 ) {
-    let dpyinfo = {
+    let (dpyinfo, cursor_pos) = {
         let frame: LispFrameRef = unsafe { (*fp).into() };
-        frame.display_info()
+
+        (frame.display_info(), frame.cursor_position())
     };
 
     // Clear the mouse-moved flag for every frame on this display.
@@ -462,12 +462,6 @@ extern "C" fn winit_mouse_position(
 
     unsafe { *bar_window = Qnil };
     unsafe { *part = 0 };
-
-    let cursor_pos: PhysicalPosition<i32> = INPUT_PROCESSOR
-        .try_lock()
-        .unwrap()
-        .current_cursor_position()
-        .cast();
 
     unsafe { *x = cursor_pos.x.into() };
     unsafe { *y = cursor_pos.y.into() };
