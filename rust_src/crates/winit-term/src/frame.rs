@@ -84,6 +84,7 @@ pub trait LispFrameWinitExt {
     fn implicitly_set_name(&mut self, arg: LispObject, _old_val: LispObject);
     fn iconify(&mut self);
     fn current_monitor(&self) -> Option<MonitorHandle>;
+    fn cursor_position(&self) -> PhysicalPosition<i32>;
 }
 
 impl LispFrameWinitExt for LispFrameRef {
@@ -221,5 +222,18 @@ impl LispFrameWinitExt for LispFrameRef {
             .as_ref()
             .expect("frame doesnt have associated winit window yet");
         window.current_monitor()
+    }
+
+    fn cursor_position(&self) -> PhysicalPosition<i32> {
+        let inner = self.output().get_inner();
+        let window = inner
+            .window
+            .as_ref()
+            .expect("frame doesnt have associated winit window yet");
+        if let Ok(pos) = window.cursor_position() {
+            return pos.cast();
+        }
+
+        PhysicalPosition::new(0, 0)
     }
 }

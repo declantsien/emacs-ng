@@ -15,13 +15,14 @@ use emacs::{
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
 
+use crate::frame::LispFrameWinitExt;
+
 pub static INPUT_PROCESSOR: Lazy<Mutex<InputProcessor>> =
     Lazy::new(|| Mutex::new(InputProcessor::new()));
 
 pub struct InputProcessor {
     modifiers: ModifiersState,
     suppress_chars: bool,
-    cursor_positon: PhysicalPosition<f64>,
 
     total_delta: PhysicalPosition<f64>,
 }
@@ -31,7 +32,6 @@ impl InputProcessor {
         InputProcessor {
             modifiers: ModifiersState::empty(),
             suppress_chars: false,
-            cursor_positon: PhysicalPosition::new(0.0, 0.0),
 
             total_delta: PhysicalPosition::new(0.0, 0.0),
         }
@@ -113,13 +113,19 @@ impl InputProcessor {
             _ => todo!(),
         };
 
+        let mut pos = PhysicalPosition::new(0, 0);
+
+        if let Some(frame) = top_frame.as_frame() {
+            pos = frame.cursor_position();
+        }
+
         let iev: input_event = InputEvent {
             kind: event_kind::MOUSE_CLICK_EVENT,
             part: scroll_bar_part::scroll_bar_nowhere,
             code: c as u32,
             modifiers: Self::to_emacs_modifiers(self.modifiers) | s,
-            x: (self.cursor_positon.x as i32).into(),
-            y: (self.cursor_positon.y as i32).into(),
+            x: pos.x.into(),
+            y: pos.y.into(),
             timestamp: 0,
             frame_or_window: top_frame,
             arg: Qnil,
@@ -193,14 +199,20 @@ impl InputProcessor {
 
         let (kind, is_upper, lines) = event_meta.unwrap();
 
+        let mut pos = PhysicalPosition::new(0, 0);
+
+        if let Some(frame) = top_frame.as_frame() {
+            pos = frame.cursor_position();
+        }
+
         let s = if is_upper { up_modifier } else { down_modifier };
         let iev: input_event = InputEvent {
             kind,
             part: scroll_bar_part::scroll_bar_nowhere,
             code: 0,
             modifiers: Self::to_emacs_modifiers(self.modifiers) | s,
-            x: (self.cursor_positon.x as i32).into(),
-            y: (self.cursor_positon.y as i32).into(),
+            x: pos.x.into(),
+            y: pos.y.into(),
             timestamp: 0,
             frame_or_window: top_frame,
             arg: lines.into(),
@@ -209,10 +221,6 @@ impl InputProcessor {
         .into();
 
         Some(iev)
-    }
-
-    pub fn cursor_move(&mut self, position: PhysicalPosition<f64>) {
-        self.cursor_positon = position;
     }
 
     pub fn change_modifiers(&mut self, state: ModifiersState) {
@@ -230,10 +238,6 @@ impl InputProcessor {
         }
 
         log::trace!("modifer changed {:?}", self.modifiers);
-    }
-
-    pub fn current_cursor_position(&self) -> &PhysicalPosition<f64> {
-        &self.cursor_positon
     }
 
     fn remove_control(c: char) -> char {
