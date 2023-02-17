@@ -1,3 +1,4 @@
+use std::sync::OnceLock;
 use winit::{
     dpi::PhysicalPosition,
     event::{ElementState, MouseButton, MouseScrollDelta, TouchPhase},
@@ -12,41 +13,91 @@ use emacs::{
         ctrl_modifier, down_modifier, meta_modifier, shift_modifier, super_modifier, up_modifier,
     },
 };
-use once_cell::sync::Lazy;
-use std::sync::Mutex;
 
 use crate::frame::LispFrameWinitExt;
 
-pub static INPUT_PROCESSOR: Lazy<Mutex<InputProcessor>> =
-    Lazy::new(|| Mutex::new(InputProcessor::new()));
+static mut INPUT_STATE: OnceLock<InputProcessor> = OnceLock::new();
+impl InputProcessor {
+    pub fn global() -> &'static InputProcessor {
+        unsafe {
+            INPUT_STATE.get_or_init(|| {
+                log::trace!("INPUT_STATE is being created...");
+                InputProcessor {
+                    modifiers: ModifiersState::default(),
+                    total_delta: PhysicalPosition::new(0.0, 0.9),
+                }
+            })
+        }
+    }
+
+    fn update(new_state: InputProcessor) {
+        log::trace!(
+            "modifer changed {:?} {:?}",
+            new_state.modifiers,
+            new_state.total_delta
+        );
+        unsafe {
+            let _ = INPUT_STATE.take();
+        };
+        if let Ok(_) = unsafe { INPUT_STATE.set(new_state) } {
+            log::debug!("Global input state changed");
+        } else {
+            log::error!("Failed to update input state");
+        }
+    }
+}
 
 pub struct InputProcessor {
     modifiers: ModifiersState,
-    suppress_chars: bool,
-
     total_delta: PhysicalPosition<f64>,
 }
 
 impl InputProcessor {
-    pub fn new() -> InputProcessor {
-        InputProcessor {
-            modifiers: ModifiersState::empty(),
-            suppress_chars: false,
-
-            total_delta: PhysicalPosition::new(0.0, 0.0),
+    pub fn handle_modifiers_changed(new_state: ModifiersState) {
+        let InputProcessor {
+            modifiers,
+            total_delta,
+        } = Self::global();
+        let mut modifiers = modifiers.clone();
+        if new_state.is_empty() {
+            modifiers = new_state;
+        } else if new_state.shift_key() {
+            modifiers.set(ModifiersState::SHIFT, new_state.shift_key());
+        } else if new_state.control_key() {
+            modifiers.set(ModifiersState::CONTROL, new_state.control_key());
+        } else if new_state.alt_key() {
+            modifiers.set(ModifiersState::ALT, new_state.alt_key());
+        } else if new_state.super_key() {
+            modifiers.set(ModifiersState::SUPER, new_state.super_key());
         }
+
+        Self::update(InputProcessor {
+            modifiers,
+            total_delta: total_delta.clone(),
+        });
     }
 
-    pub fn receive_char(&self, c: char, top_frame: LispObject) -> Option<input_event> {
-        if self.suppress_chars {
-            return None;
-        }
+    fn set_total_delta(total_delta: PhysicalPosition<f64>) {
+        let InputProcessor { modifiers, .. } = Self::global();
+        Self::update(InputProcessor {
+            modifiers: modifiers.clone(),
+            total_delta,
+        });
+    }
 
+    fn get_modifiers() -> ModifiersState {
+        let InputProcessor { modifiers, .. } = Self::global();
+        modifiers.clone()
+    }
+}
+
+impl InputProcessor {
+    pub fn handle_receive_char(c: char, top_frame: LispObject) -> Option<input_event> {
         let iev: input_event = InputEvent {
             kind: event_kind::ASCII_KEYSTROKE_EVENT,
             part: scroll_bar_part::scroll_bar_nowhere,
             code: Self::remove_control(c) as u32,
-            modifiers: Self::to_emacs_modifiers(self.modifiers),
+            modifiers: Self::to_emacs_modifiers(Self::get_modifiers()),
             x: 0.into(),
             y: 0.into(),
             timestamp: 0,
@@ -59,16 +110,15 @@ impl InputProcessor {
         Some(iev)
     }
 
-    pub fn key_pressed(
-        &mut self,
+    pub fn handle_key_pressed(
         key_code: VirtualKeyCode,
         top_frame: LispObject,
     ) -> Option<input_event> {
+        let InputProcessor { modifiers, .. } = Self::global().clone();
         if winit_keycode_emacs_key_name(key_code).is_null() {
             return None;
         }
 
-        self.suppress_chars = true;
         let code = unsafe { std::mem::transmute::<VirtualKeyCode, i64>(key_code) };
         let code = u32::try_from(code).unwrap();
 
@@ -76,7 +126,7 @@ impl InputProcessor {
             kind: event_kind::NON_ASCII_KEYSTROKE_EVENT,
             part: scroll_bar_part::scroll_bar_nowhere,
             code,
-            modifiers: Self::to_emacs_modifiers(self.modifiers),
+            modifiers: Self::to_emacs_modifiers(modifiers.to_owned()),
             x: 0.into(),
             y: 0.into(),
             timestamp: 0,
@@ -89,12 +139,9 @@ impl InputProcessor {
         Some(iev)
     }
 
-    pub fn key_released(&mut self) {
-        self.suppress_chars = false;
-    }
+    pub fn handle_key_released() {}
 
-    pub fn mouse_pressed(
-        &self,
+    pub fn handle_mouse_pressed(
         button: MouseButton,
         state: ElementState,
         top_frame: LispObject,
@@ -119,11 +166,12 @@ impl InputProcessor {
             pos = frame.cursor_position();
         }
 
+        let InputProcessor { modifiers, .. } = Self::global();
         let iev: input_event = InputEvent {
             kind: event_kind::MOUSE_CLICK_EVENT,
             part: scroll_bar_part::scroll_bar_nowhere,
             code: c as u32,
-            modifiers: Self::to_emacs_modifiers(self.modifiers) | s,
+            modifiers: Self::to_emacs_modifiers(modifiers.clone()) | s,
             x: pos.x.into(),
             y: pos.y.into(),
             timestamp: 0,
@@ -136,16 +184,11 @@ impl InputProcessor {
         Some(iev)
     }
 
-    pub fn mouse_wheel_scrolled(
-        &mut self,
+    pub fn handle_mouse_wheel_scrolled(
         delta: MouseScrollDelta,
         phase: TouchPhase,
         top_frame: LispObject,
     ) -> Option<input_event> {
-        if phase != TouchPhase::Moved {
-            self.total_delta = PhysicalPosition::new(0.0, 0.0);
-        }
-
         let line_height = top_frame.as_frame().unwrap().line_height as f64;
 
         let event_meta = match delta {
@@ -161,31 +204,33 @@ impl InputProcessor {
                 }
             }
             MouseScrollDelta::PixelDelta(pos) => {
-                self.total_delta.y = self.total_delta.y + pos.y;
-                self.total_delta.x = self.total_delta.x + pos.x;
+                let mut total_delta = Self::global().total_delta.clone();
+                if phase != TouchPhase::Moved {
+                    total_delta = PhysicalPosition::new(0.0, 0.0);
+                }
+                total_delta.y = total_delta.y + pos.y;
+                total_delta.x = total_delta.x + pos.x;
 
-                if self.total_delta.y.abs() >= self.total_delta.x.abs()
-                    && self.total_delta.y.abs() > line_height
+                if total_delta.y.abs() >= total_delta.x.abs() && total_delta.y.abs() > line_height {
+                    let lines = (total_delta.y / line_height).abs() as i32;
+
+                    total_delta.y = total_delta.y % line_height;
+                    total_delta.x = 0.0;
+
+                    let _ = Self::set_total_delta(total_delta.clone());
+
+                    Some((event_kind::WHEEL_EVENT, total_delta.y > 0.0, lines))
+                } else if total_delta.x.abs() > total_delta.y.abs()
+                    && total_delta.x.abs() > line_height
                 {
-                    let lines = (self.total_delta.y / line_height).abs() as i32;
+                    let lines = (total_delta.x / line_height).abs() as i32;
 
-                    self.total_delta.y = self.total_delta.y % line_height;
-                    self.total_delta.x = 0.0;
+                    total_delta.x = total_delta.x % line_height;
+                    total_delta.y = 0.0;
 
-                    Some((event_kind::WHEEL_EVENT, self.total_delta.y > 0.0, lines))
-                } else if self.total_delta.x.abs() > self.total_delta.y.abs()
-                    && self.total_delta.x.abs() > line_height
-                {
-                    let lines = (self.total_delta.x / line_height).abs() as i32;
+                    let _ = Self::set_total_delta(total_delta.clone());
 
-                    self.total_delta.x = self.total_delta.x % line_height;
-                    self.total_delta.y = 0.0;
-
-                    Some((
-                        event_kind::HORIZ_WHEEL_EVENT,
-                        self.total_delta.x > 0.0,
-                        lines,
-                    ))
+                    Some((event_kind::HORIZ_WHEEL_EVENT, total_delta.x > 0.0, lines))
                 } else {
                     None
                 }
@@ -210,7 +255,7 @@ impl InputProcessor {
             kind,
             part: scroll_bar_part::scroll_bar_nowhere,
             code: 0,
-            modifiers: Self::to_emacs_modifiers(self.modifiers) | s,
+            modifiers: Self::to_emacs_modifiers(Self::get_modifiers()) | s,
             x: pos.x.into(),
             y: pos.y.into(),
             timestamp: 0,
@@ -221,23 +266,6 @@ impl InputProcessor {
         .into();
 
         Some(iev)
-    }
-
-    pub fn change_modifiers(&mut self, state: ModifiersState) {
-        if state.is_empty() {
-            self.modifiers = state;
-        } else if state.shift_key() {
-            self.modifiers.set(ModifiersState::SHIFT, state.shift_key());
-        } else if state.control_key() {
-            self.modifiers
-                .set(ModifiersState::CONTROL, state.control_key());
-        } else if state.alt_key() {
-            self.modifiers.set(ModifiersState::ALT, state.alt_key());
-        } else if state.super_key() {
-            self.modifiers.set(ModifiersState::SUPER, state.super_key());
-        }
-
-        log::trace!("modifer changed {:?}", self.modifiers);
     }
 
     fn remove_control(c: char) -> char {

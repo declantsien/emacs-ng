@@ -2,6 +2,7 @@ use crate::event_loop::flush_events;
 use crate::event_loop::poll_a_event;
 use crate::event_loop::WrEventLoop;
 use crate::frame::LispFrameWinitExt;
+use crate::input::InputProcessor;
 use emacs::bindings::{
     add_keyboard_wait_descriptor, init_sigio, interrupt_input, Fredraw_frame,
     Fwaiting_for_user_input_p,
@@ -17,7 +18,6 @@ use std::time::Duration;
 #[cfg(wayland_platform)]
 use wayland_sys::client::{wl_display, WAYLAND_CLIENT_HANDLE};
 use winit::{
-    dpi::PhysicalPosition,
     event::{ElementState, Event, WindowEvent},
     window::WindowBuilder,
 };
@@ -26,7 +26,6 @@ use wr_renderer::DeviceIntSize;
 use wr_renderer::*;
 
 use crate::event::create_emacs_event;
-use crate::input::INPUT_PROCESSOR;
 use wr_renderer::display_info::{DisplayInfo, DisplayInfoRef};
 use wr_renderer::frame::LispFrameExt;
 
@@ -183,13 +182,6 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
     let mut dpyinfo = DisplayInfoRef::new(unsafe { terminal.display_info.winit } as *mut _);
 
     let dpyinfo = dpyinfo.get_inner();
-    let input_processor = INPUT_PROCESSOR.try_lock();
-
-    if input_processor.is_err() {
-        log::error!("Failed to grab a lock {:?}", input_processor.err());
-        return 0;
-    }
-    let mut input_processor = input_processor.unwrap();
 
     let mut count = 0;
 
@@ -252,47 +244,44 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
 
                 match event {
                     WindowEvent::ReceivedImeText(_text) => {
-                        // for (_i, key_code) in text.chars().enumerate() {
-                        //     if let Some(mut iev) = input_processor.receive_char(key_code, frame) {
-                        //         unsafe { kbd_buffer_store_event_hold(&mut iev, hold_quit) };
-                        //         count += 1;
-                        //     }
-                        // }
+                        // TODO
                     }
 
                     WindowEvent::ModifiersChanged(state) => {
-                        input_processor.change_modifiers(state);
+                        let _ = InputProcessor::handle_modifiers_changed(state);
                     }
 
                     WindowEvent::KeyboardInput { event, .. } => match event.state {
-                        ElementState::Pressed => {
-                            if let Some(mut iev) =
-                                input_processor.key_pressed(event.physical_key, frame)
-                            {
-                                unsafe { kbd_buffer_store_event_hold(&mut iev, hold_quit) };
-                                count += 1;
-                            }
-
-                            // if let Some(text) = event.key_without_modifiers().to_text() {
-                            if let Some(text) = event.logical_key.to_text() {
-                                for (_i, key_code) in text.chars().enumerate() {
+                        ElementState::Pressed => match event.logical_key {
+                            winit::keyboard::Key::Character(ch) => {
+                                for (_i, key_code) in ch.chars().enumerate() {
                                     if let Some(mut iev) =
-                                        input_processor.receive_char(key_code, frame)
+                                        InputProcessor::handle_receive_char(key_code, frame)
                                     {
                                         unsafe { kbd_buffer_store_event_hold(&mut iev, hold_quit) };
                                         count += 1;
                                     }
                                 }
                             }
-                        }
+                            _ => {
+                                if let Some(mut iev) =
+                                    InputProcessor::handle_key_pressed(event.physical_key, frame)
+                                {
+                                    unsafe { kbd_buffer_store_event_hold(&mut iev, hold_quit) };
+                                    count += 1;
+                                }
+                            }
+                        },
                         ElementState::Released => {
-                            input_processor.key_released();
+                            InputProcessor::handle_key_released();
                         }
                         _ => todo!(),
                     },
 
                     WindowEvent::MouseInput { state, button, .. } => {
-                        if let Some(mut iev) = input_processor.mouse_pressed(button, state, frame) {
+                        if let Some(mut iev) =
+                            InputProcessor::handle_mouse_pressed(button, state, frame)
+                        {
                             unsafe { kbd_buffer_store_event_hold(&mut iev, hold_quit) };
                             count += 1;
                         }
@@ -300,7 +289,7 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
 
                     WindowEvent::MouseWheel { delta, phase, .. } => {
                         if let Some(mut iev) =
-                            input_processor.mouse_wheel_scrolled(delta, phase, frame)
+                            InputProcessor::handle_mouse_wheel_scrolled(delta, phase, frame)
                         {
                             unsafe { kbd_buffer_store_event_hold(&mut iev, hold_quit) };
                             count += 1;
