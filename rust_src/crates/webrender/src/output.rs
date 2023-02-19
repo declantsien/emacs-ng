@@ -5,6 +5,7 @@ use crate::canvas::Canvas;
 use crate::canvas::CanvasRef;
 use raw_window_handle::RawWindowHandle;
 
+use std::collections::HashMap;
 use std::ptr;
 
 use super::display_info::DisplayInfoRef;
@@ -17,6 +18,10 @@ pub struct OutputInner {
     pub window_handle: Option<RawWindowHandle>,
     #[cfg(window_system = "winit")]
     pub window: Option<winit::window::Window>,
+    #[cfg(window_system = "winit")]
+    pub webview: Option<wry::webview::WebView>,
+    #[cfg(window_system = "winit")]
+    pub test_child_windows: HashMap<winit::window::WindowId, winit::window::Window>,
 
     pub canvas: CanvasRef,
 }
@@ -30,6 +35,10 @@ impl Default for OutputInner {
             window_handle: None,
             #[cfg(window_system = "winit")]
             window: None,
+            #[cfg(window_system = "winit")]
+            webview: None,
+            #[cfg(window_system = "winit")]
+            test_child_windows: HashMap::new(),
             canvas: CanvasRef::new(ptr::null_mut() as *mut _ as *mut Canvas),
         }
     }
@@ -43,6 +52,16 @@ impl OutputInner {
     #[cfg(window_system = "winit")]
     pub fn set_window(&mut self, window: winit::window::Window) {
         self.window = Some(window);
+    }
+
+    #[cfg(window_system = "winit")]
+    pub fn set_webview(&mut self, window: wry::webview::WebView) {
+        self.webview = Some(window);
+    }
+
+    #[cfg(window_system = "winit")]
+    pub fn add_child_window(&mut self, window: winit::window::Window) {
+        self.test_child_windows.insert(window.id(), window);
     }
 
     pub fn set_cursor_color(&mut self, color: ColorF) {

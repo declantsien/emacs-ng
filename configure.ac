@@ -6317,6 +6317,11 @@ if test "${window_system}" = "winit" ; then
     test $HAVE_CAIRO = "no" && AC_MSG_WARN([tao requires cairo but not found.])
     WINIT_LIBS="$CAIRO_LIBS $WINIT_LIBS"
 
+    WEBKIT_REQUIRED=2.12
+    WEBKIT_MODULES="webkit2gtk-4.1 >= $WEBKIT_REQUIRED"
+    EMACS_CHECK_MODULES([WEBKIT], [$WEBKIT_MODULES])
+    WINIT_LIBS="$WEBKIT_LIBS $WINIT_LIBS"
+
     WINIT_LIBS="$WINIT_LIBS -lxcb -lxcb-xfixes -lxcb-shape -lxcb-render"
 
     if test X$ac_enable_winit_x11 != Xno; then

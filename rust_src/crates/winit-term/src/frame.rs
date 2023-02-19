@@ -14,6 +14,7 @@ use emacs::{
     lisp::LispObject,
 };
 use winit::monitor::MonitorHandle;
+use winit::platform::unix::WindowExtUnix;
 use winit::window::WindowId;
 use wr_renderer::frame::LispFrameExt;
 use wr_renderer::output::Output;
@@ -21,6 +22,9 @@ use wr_renderer::output::Output;
 use winit::{dpi::PhysicalPosition, window::WindowBuilder};
 
 use wr_renderer::display_info::DisplayInfoRef;
+#[cfg(target_os = "linux")]
+use winit::platform::unix::WindowBuilderExtUnix;
+use winit::dpi::LogicalSize;
 
 pub fn create_frame(
     display: LispObject,
@@ -46,6 +50,7 @@ pub fn create_frame(
 
     let event_loop = WrEventLoop::global().try_lock().unwrap();
     let window_builder = WindowBuilder::new().with_visible(true);
+    let child_window_builder = WindowBuilder::new().with_inner_size(LogicalSize::new(200, 200));
 
     #[cfg(all(wayland_platform))]
     let window_builder = {
@@ -56,6 +61,16 @@ pub fn create_frame(
     };
 
     let window = window_builder.build(&event_loop.el()).unwrap();
+
+    #[cfg(target_os = "linux")]
+    let child_window_builder = child_window_builder.with_transient_for(window.gtk_window().clone());
+
+    let child_window = child_window_builder.build(&event_loop.el()).unwrap();
+
+    let _webview = wry::webview::WebViewBuilder::new(child_window).expect("new web view")
+        .with_url("https://html5test.com").expect("with url")
+        .build().expect("build");
+
     let mut output = Box::new(Output::default());
     output.set_display_info(dpyinfo);
     build_mouse_cursors(&mut output.as_mut().as_raw());
@@ -72,6 +87,8 @@ pub fn create_frame(
 
     let window_id = window.id();
     frame.set_window(window);
+    frame.set_webview(_webview);
+    // frame.add_test_child(_webview);
     dpyinfo.get_inner().frames.insert(frame.uuid(), frame);
     log::trace!("create_frame done");
     (frame, window_id)
@@ -79,6 +96,8 @@ pub fn create_frame(
 
 pub trait LispFrameWinitExt {
     fn set_window(&self, handle: winit::window::Window);
+    fn set_webview(&self, handle: wry::webview::WebView);
+    fn add_test_child(&self, handle: winit::window::Window);
     fn set_visible2(&mut self, visible: bool);
     fn set_cursor_icon(&self, cursor: Emacs_Cursor);
     fn edges(&self, type_: LispObject) -> LispObject;
@@ -92,6 +111,14 @@ pub trait LispFrameWinitExt {
 impl LispFrameWinitExt for LispFrameRef {
     fn set_window(&self, window: winit::window::Window) {
         self.output().get_inner().set_window(window);
+    }
+
+    fn set_webview(&self, view: wry::webview::WebView) {
+        self.output().get_inner().set_webview(view);
+    }
+
+    fn add_test_child(&self, window: winit::window::Window) {
+        self.output().get_inner().add_child_window(window);
     }
 
     fn set_visible2(&mut self, is_visible: bool) {
