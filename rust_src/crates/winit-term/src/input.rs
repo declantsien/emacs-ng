@@ -23,6 +23,104 @@ use emacs::{
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
 
+struct Modifiers {
+    state: ModifiersState,
+}
+
+#[cfg(feature = "tao")]
+impl Modifiers {
+    pub fn new(state: ModifiersState) -> Modifiers {
+        Modifiers { state }
+    }
+
+    pub fn shift_key(&self) -> bool {
+        self.state.shift_key()
+    }
+    pub fn control_key(&self) -> bool {
+        self.state.control_key()
+    }
+    pub fn alt_key(&self) -> bool {
+        self.state.alt_key()
+    }
+    pub fn super_key(&self) -> bool {
+        self.state.super_key()
+    }
+
+    pub fn set_modifiers(&self, input_processor: &mut InputProcessor) {
+        if self.state.is_empty() {
+            input_processor.modifiers = self.state;
+        } else if self.shift_key() {
+            input_processor
+                .modifiers
+                .set(ModifiersState::SHIFT, self.shift_key());
+        } else if self.alt_key() {
+            input_processor
+                .modifiers
+                .set(ModifiersState::ALT, self.alt_key());
+        } else if self.super_key() {
+            input_processor
+                .modifiers
+                .set(ModifiersState::SUPER, self.super_key());
+        } else if self.control_key() {
+            input_processor
+                .modifiers
+                .set(ModifiersState::CONTROL, self.control_key());
+        }
+    }
+}
+
+#[cfg(feature = "tao")]
+fn virtual_keycode(code: VirtualKeyCode) -> u32 {
+    let code = unsafe { std::mem::transmute::<VirtualKeyCode, i64>(code) };
+    u32::try_from(code).unwrap()
+}
+
+#[cfg(feature = "winit")]
+impl Modifiers {
+    pub fn new(state: ModifiersState) -> Modifiers {
+        Modifiers { state }
+    }
+
+    pub fn shift_key(&self) -> bool {
+        self.state.shift()
+    }
+    pub fn control_key(&self) -> bool {
+        self.state.ctrl()
+    }
+    pub fn alt_key(&self) -> bool {
+        self.state.alt()
+    }
+    pub fn super_key(&self) -> bool {
+        self.state.logo()
+    }
+
+    pub fn set_modifiers(&self, input_processor: &mut InputProcessor) {
+        if self.state.is_empty() {
+            input_processor.modifiers = self.state;
+        } else if self.shift_key() {
+            let val = self.shift_key();
+            input_processor.modifiers.set(ModifiersState::SHIFT, val);
+        } else if self.alt_key() {
+            input_processor
+                .modifiers
+                .set(ModifiersState::ALT, self.alt_key());
+        } else if self.super_key() {
+            input_processor
+                .modifiers
+                .set(ModifiersState::LOGO, self.super_key());
+        } else if self.control_key() {
+            input_processor
+                .modifiers
+                .set(ModifiersState::CTRL, self.control_key());
+        }
+    }
+}
+
+#[cfg(feature = "winit")]
+fn virtual_keycode(code: VirtualKeyCode) -> u32 {
+    code as u32
+}
+
 pub static INPUT_PROCESSOR: Lazy<Mutex<InputProcessor>> =
     Lazy::new(|| Mutex::new(InputProcessor::new()));
 
@@ -77,8 +175,7 @@ impl InputProcessor {
         }
 
         self.suppress_chars = true;
-        let code = unsafe { std::mem::transmute::<VirtualKeyCode, i64>(key_code) };
-        let code = u32::try_from(code).unwrap();
+        let code = virtual_keycode(key_code);
 
         let iev: input_event = InputEvent {
             kind: event_kind::NON_ASCII_KEYSTROKE_EVENT,
@@ -224,20 +321,9 @@ impl InputProcessor {
     }
 
     pub fn change_modifiers(&mut self, state: ModifiersState) {
-        if state.is_empty() {
-            self.modifiers = state;
-        } else if state.shift_key() {
-            self.modifiers.set(ModifiersState::SHIFT, state.shift_key());
-        } else if state.control_key() {
-            self.modifiers
-                .set(ModifiersState::CONTROL, state.control_key());
-        } else if state.alt_key() {
-            self.modifiers.set(ModifiersState::ALT, state.alt_key());
-        } else if state.super_key() {
-            self.modifiers.set(ModifiersState::SUPER, state.super_key());
-        }
-
-        log::trace!("modifer changed {:?}", self.modifiers);
+        let modifiers = Modifiers::new(state);
+        modifiers.set_modifiers(self);
+        log::trace!("modifier changed {:?}", self.modifiers);
     }
 
     pub fn current_cursor_position(&self) -> &PhysicalPosition<f64> {
@@ -262,6 +348,7 @@ impl InputProcessor {
 
     fn to_emacs_modifiers(modifiers: ModifiersState) -> u32 {
         let mut emacs_modifiers: u32 = 0;
+        let modifiers = Modifiers::new(modifiers);
 
         if modifiers.alt_key() {
             emacs_modifiers |= meta_modifier;

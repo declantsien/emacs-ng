@@ -6,7 +6,6 @@ use std::{
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
-use tao::window::WindowId;
 
 #[cfg(macos_platform)]
 use copypasta::osx_clipboard::OSXClipboardContext;
@@ -30,6 +29,7 @@ use tao::{
     event_loop::EventLoop,
     monitor::MonitorHandle,
     platform::run_return::EventLoopExtRunReturn,
+    window::WindowId,
 };
 #[cfg(all(free_unix, feature = "winit"))]
 use winit::platform::wayland::EventLoopWindowTargetExtWayland;
@@ -43,11 +43,49 @@ use winit::{
     event_loop::EventLoopBuilder,
     monitor::MonitorHandle,
     platform::run_return::EventLoopExtRunReturn,
+    window::WindowId,
 };
 
 use emacs::bindings::{inhibit_window_system, make_timespec, thread_select};
 
 pub type GUIEvent = Event<'static, i32>;
+
+#[cfg(feature = "tao")]
+pub struct WindowClipboard {
+    clipboard: tao::clipboard::Clipboard,
+}
+
+#[cfg(feature = "tao")]
+impl WindowClipboard {
+    pub fn write(&mut self, content: String) {
+        self.clipboard.write_text(content);
+    }
+
+    pub fn read(&mut self) -> String {
+        match &self.clipboard.read_text() {
+            Some(s) => s.to_string(),
+            None => String::from(""),
+        }
+    }
+}
+#[cfg(feature = "winit")]
+pub struct WindowClipboard {
+    clipboard: Box<dyn ClipboardProvider>,
+}
+
+#[cfg(feature = "winit")]
+impl WindowClipboard {
+    pub fn write(&mut self, content: String) {
+        self.clipboard.set_contents(content);
+    }
+
+    pub fn read(&mut self) -> String {
+        match &self.clipboard.get_contents() {
+            Ok(s) => s.to_string(),
+            Err(_) => String::from(""),
+        }
+    }
+}
 
 #[allow(dead_code)]
 #[derive(Clone, Copy)]
@@ -61,7 +99,7 @@ pub enum Platform {
 unsafe impl Send for Platform {}
 
 pub struct WrEventLoop {
-    clipboard: tao::clipboard::Clipboard,
+    clipboard: WindowClipboard,
     el: EventLoop<i32>,
 }
 
@@ -83,17 +121,52 @@ impl WrEventLoop {
             .unwrap_or_else(|| -> MonitorHandle { self.get_available_monitors().next().unwrap() })
     }
 
-    pub fn get_clipboard(&mut self) -> &mut tao::clipboard::Clipboard {
+    pub fn get_clipboard(&mut self) -> &mut WindowClipboard {
         &mut self.clipboard
     }
 }
 
+#[cfg(feature = "winit")]
+fn build_clipboard(_event_loop: &EventLoop<i32>) -> Box<dyn ClipboardProvider> {
+    #[cfg(free_unix)]
+    {
+        if _event_loop.is_wayland() {
+            let wayland_display = _event_loop
+                .wayland_display()
+                .expect("Fetch Wayland display failed");
+            let (_, clipboard) = unsafe { create_clipboards_from_external(wayland_display) };
+            Box::new(clipboard)
+        } else {
+            Box::new(X11ClipboardContext::<Clipboard>::new().unwrap())
+        }
+    }
+    #[cfg(windows_platform)]
+    {
+        return Box::new(WindowsClipboardContext::new().unwrap());
+    }
+    #[cfg(macos_platform)]
+    {
+        return Box::new(OSXClipboardContext::new().unwrap());
+    }
+}
 pub static EVENT_LOOP: Lazy<Arc<Mutex<WrEventLoop>>> = Lazy::new(|| {
     #[cfg(feature = "winit")]
-    let el = EventLoopBuilder::<i32>::with_user_event().build();
+    let (el, clipboard) = {
+        let el = EventLoopBuilder::<i32>::with_user_event().build();
+        let clipboard = WindowClipboard {
+            clipboard: build_clipboard(&el),
+        };
+        (el, clipboard)
+    };
     #[cfg(feature = "tao")]
-    let el = EventLoop::<i32>::with_user_event();
-    let clipboard = tao::clipboard::Clipboard::new();
+    let (el, clipboard) = {
+        (
+            EventLoop::<i32>::with_user_event(),
+            WindowClipboard {
+                clipboard: tao::clipboard::Clipboard::new(),
+            },
+        )
+    };
 
     Arc::new(Mutex::new(WrEventLoop { clipboard, el }))
 });
@@ -184,11 +257,39 @@ pub extern "C" fn winit_select(
             log::trace!("{:?}", event);
         }
 
+        let keyboard_event =
+            |nfds_result: &RefCell<i32>, control_flow: &mut ControlFlow, e: Event<'_, i32>| {
+                if let Ok(mut event_buffer) = EVENT_BUFFER.try_lock() {
+                    event_buffer.push(e.to_static().unwrap());
+                    // notify emacs's code that a keyboard event arrived.
+                    match signal::raise(Signal::SIGIO) {
+                        Ok(_) => {}
+                        Err(err) => log::error!("sigio err: {err:?}"),
+                    };
+                    let _is_x11 = false;
+
+                    #[cfg(x11_platform)]
+                    let _is_x11 = _target.is_x11();
+
+                    if _is_x11 {
+                        nfds_result.replace(1);
+                    } else {
+                        /* Pretend that `select' is interrupted by a signal.  */
+                        set_errno(Errno(libc::EINTR));
+                        debug_assert_eq!(nix::errno::errno(), libc::EINTR);
+                        nfds_result.replace(-1);
+                    }
+                } else {
+                    log::debug!("Failed to grab a lock for EVENT_BUFFER");
+                }
+
+                *control_flow = ControlFlow::Exit;
+            };
+
         match e {
             Event::WindowEvent { ref event, .. } => match event {
                 WindowEvent::Resized(_)
                 | WindowEvent::KeyboardInput { .. }
-                | WindowEvent::ReceivedImeText(_)
                 | WindowEvent::ModifiersChanged(_)
                 | WindowEvent::MouseInput { .. }
                 | WindowEvent::CursorMoved { .. }
@@ -196,31 +297,16 @@ pub extern "C" fn winit_select(
                 | WindowEvent::Focused(_)
                 | WindowEvent::MouseWheel { .. }
                 | WindowEvent::CloseRequested => {
-                    if let Ok(mut event_buffer) = EVENT_BUFFER.try_lock() {
-                        event_buffer.push(e.to_static().unwrap());
-                        // notify emacs's code that a keyboard event arrived.
-                        match signal::raise(Signal::SIGIO) {
-                            Ok(_) => {}
-                            Err(err) => log::error!("sigio err: {err:?}"),
-                        };
-                        let _is_x11 = false;
+                    keyboard_event(&nfds_result, control_flow, e);
+                }
+                #[cfg(feature = "winit")]
+                WindowEvent::ReceivedCharacter(_) => {
+                    keyboard_event(&nfds_result, control_flow, e);
+                }
 
-                        #[cfg(x11_platform)]
-                        let _is_x11 = _target.is_x11();
-
-                        if _is_x11 {
-                            nfds_result.replace(1);
-                        } else {
-                            /* Pretend that `select' is interrupted by a signal.  */
-                            set_errno(Errno(libc::EINTR));
-                            debug_assert_eq!(nix::errno::errno(), libc::EINTR);
-                            nfds_result.replace(-1);
-                        }
-                    } else {
-                        log::debug!("Failed to grab a lock for EVENT_BUFFER");
-                    }
-
-                    *control_flow = ControlFlow::Exit;
+                #[cfg(feature = "tao")]
+                WindowEvent::ReceivedImeText(_) => {
+                    keyboard_event(&nfds_result, control_flow, e);
                 }
                 _ => {}
             },
@@ -273,13 +359,24 @@ pub fn poll_a_event(timeout: Duration) -> Option<GUIEvent> {
             Event::WindowEvent { ref event, .. } => match event {
                 WindowEvent::Resized(_)
                 | WindowEvent::KeyboardInput { .. }
-                | WindowEvent::ReceivedImeText(_)
                 | WindowEvent::ModifiersChanged(_)
                 | WindowEvent::MouseInput { .. }
                 | WindowEvent::CursorMoved { .. }
                 | WindowEvent::Focused(_)
                 | WindowEvent::MouseWheel { .. }
                 | WindowEvent::CloseRequested => {
+                    result.replace(Some(e.to_static().unwrap()));
+                    *control_flow = ControlFlow::Exit;
+                }
+
+                #[cfg(feature = "tao")]
+                WindowEvent::ReceivedImeText(_) => {
+                    result.replace(Some(e.to_static().unwrap()));
+                    *control_flow = ControlFlow::Exit;
+                }
+
+                #[cfg(feature = "winit")]
+                WindowEvent::ReceivedCharacter(_) => {
                     result.replace(Some(e.to_static().unwrap()));
                     *control_flow = ControlFlow::Exit;
                 }

@@ -12,9 +12,12 @@ use emacs::{
     lisp::LispObject,
 };
 use raw_window_handle::HasRawWindowHandle;
+#[cfg(feature = "tao")]
 use tao::window::WindowId;
 use webrender_bindings::frame::LispFrameExt;
 use webrender_bindings::output::Output;
+#[cfg(feature = "winit")]
+use winit::window::WindowId;
 
 #[cfg(feature = "tao")]
 use tao::{dpi::PhysicalPosition, window::WindowBuilder};

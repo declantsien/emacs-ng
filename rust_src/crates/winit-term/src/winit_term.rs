@@ -15,12 +15,21 @@ use emacs::bindings::output_method;
 use webrender_bindings::frame::LispFrameExt;
 use webrender_bindings::register_ttf_parser_font_driver;
 
+#[cfg(feature = "tao")]
 use tao::{
     event::{Event, WindowEvent},
     event_loop::ControlFlow,
     event_loop::EventLoop,
     platform::run_return::EventLoopExtRunReturn,
 };
+#[cfg(feature = "winit")]
+use winit::{
+    event::{Event, WindowEvent},
+    event_loop::ControlFlow,
+    event_loop::EventLoop,
+    platform::run_return::EventLoopExtRunReturn,
+};
+
 #[cfg(feature = "tao")]
 use tao::{
     keyboard::KeyCode as VirtualKeyCode, monitor::MonitorHandle, window::Window as WinitWindow,
@@ -691,7 +700,7 @@ pub fn x_own_selection_internal(
 
     let content = value.force_string().to_utf8();
 
-    clipboard.write_text(content);
+    clipboard.write(content);
 
     value
 }
@@ -719,9 +728,7 @@ pub fn x_get_selection_internal(
     let mut event_loop = EVENT_LOOP.try_lock().unwrap();
 
     let clipboard = event_loop.get_clipboard();
-
-    let contents: &str = &clipboard.read_text().unwrap_or("".to_owned());
-
+    let contents: &str = &clipboard.read();
     contents.into()
 }
 

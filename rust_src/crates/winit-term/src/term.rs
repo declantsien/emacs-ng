@@ -267,6 +267,15 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
                 let frame: LispObject = frame.into();
 
                 match event {
+                    #[cfg(feature = "winit")]
+                    WindowEvent::ReceivedCharacter(key_code) => {
+                        if let Some(mut iev) = input_processor.receive_char(key_code, frame) {
+                            unsafe { kbd_buffer_store_event_hold(&mut iev, hold_quit) };
+                            count += 1;
+                        }
+                    }
+
+                    #[cfg(feature = "tao")]
                     WindowEvent::ReceivedImeText(text) => {
                         // for (_i, key_code) in text.chars().enumerate() {
                         //     if let Some(mut iev) = input_processor.receive_char(key_code, frame) {
@@ -280,6 +289,7 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
                         input_processor.change_modifiers(state);
                     }
 
+                    #[cfg(feature = "tao")]
                     WindowEvent::KeyboardInput { event, .. } => match event.state {
                         ElementState::Pressed => {
                             if let Some(mut iev) =
@@ -306,6 +316,32 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
                         }
                         _ => todo!(),
                     },
+
+                    #[cfg(feature = "winit")]
+                    WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                state,
+                                virtual_keycode: Some(key_code),
+                                ..
+                            },
+                        ..
+                    } => match state {
+                        ElementState::Pressed => {
+                            if let Some(mut iev) = input_processor.key_pressed(key_code, frame) {
+                                unsafe { kbd_buffer_store_event_hold(&mut iev, hold_quit) };
+                                count += 1;
+                            }
+                        }
+                        ElementState::Released => input_processor.key_released(),
+                    },
+
+                    WindowEvent::MouseInput { state, button, .. } => {
+                        if let Some(mut iev) = input_processor.mouse_pressed(button, state, frame) {
+                            unsafe { kbd_buffer_store_event_hold(&mut iev, hold_quit) };
+                            count += 1;
+                        }
+                    }
 
                     WindowEvent::MouseInput { state, button, .. } => {
                         if let Some(mut iev) = input_processor.mouse_pressed(button, state, frame) {
