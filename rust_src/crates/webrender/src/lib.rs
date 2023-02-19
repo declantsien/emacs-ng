@@ -26,6 +26,7 @@ mod renderer;
 mod texture;
 pub mod util;
 mod wrterm;
+mod gl;
 
 pub use crate::font::*;
 pub use crate::term::*;
