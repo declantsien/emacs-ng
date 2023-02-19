@@ -31,7 +31,7 @@ errno = "0.2"
 spin_sleep = "1.1"
 winit = { package = "tao", version = "0.18", default-features = false, optional = true }
 tracing = "0.1"
-surfman = { version = "0.4.4", features = ["sm-raw-window-handle","sm-winit"], optional = true }
+surfman = { version = "0.4.4", features = ["sm-raw-window-handle"], optional = true }
 glutin = { version = "0.30.6", optional = true }
 euclid = "0.22.7"
 
@@ -48,6 +48,7 @@ default-features = false
 [dependencies.webrender_surfman]
 git = "https://github.com/declantsien/webrender_surfman.git"
 rev = "e90a4e8696afe9b5301ad9cdeaf618801e0c2567"
+optional = true
 
 [build-dependencies]
 ng-bindgen = { path = "../../ng-bindgen" }
@@ -64,7 +65,7 @@ gdkwayland-sys = { version = "0.16", optional = true }
 core-foundation = "0.9.2"
 
 [features]
-default = ["std"]
+default = ["std", "winit", "surfman"]
 winit = ["dep:winit"]
 pgtk = ["dep:gtk", "dep:gtk-sys", "dep:gdk-sys", "dep:gdkwayland-sys"]
 capture=["webrender/capture", "webrender/serialize_program"]
@@ -77,3 +78,5 @@ std = [
   "fontdb/std",
   "rustybuzz/std",
 ]
+surfman = ["dep:surfman", "dep:webrender_surfman"]
+glutin = ["dep:glutin"]
