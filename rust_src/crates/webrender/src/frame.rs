@@ -77,9 +77,9 @@ impl LispFrameExt for LispFrameRef {
 
         #[cfg(window_system = "pgtk")]
         {
+            use gtk::prelude::WidgetExt;
             use raw_window_handle::WaylandWindowHandle;
             use std::ptr;
-            use gtk::prelude::WidgetExt;
             let mut output = self.output();
             // let wtop = output.as_raw().widget;
             // let wvbox = output.as_raw().vbox_widget;
@@ -89,12 +89,15 @@ impl LispFrameExt for LispFrameRef {
                 gtk_sys::gtk_widget_set_opacity(widget, 0.0);
             }
 
-            let transparent = gdk_sys::GdkRGBA{
+            let transparent = gdk_sys::GdkRGBA {
                 red: 0.0,
                 green: 0.0,
                 blue: 0.0,
-                alpha: 0.0};
-            unsafe { gtk_sys::gtk_widget_override_background_color (widget, 0, &transparent); }
+                alpha: 0.0,
+            };
+            unsafe {
+                gtk_sys::gtk_widget_override_background_color(widget, 0, &transparent);
+            }
             // if wfixed != ptr::null_mut() {
             //     unsafe { gtk_sys::gtk_widget_destroy(wfixed) }
             // }

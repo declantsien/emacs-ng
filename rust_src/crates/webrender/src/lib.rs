@@ -22,6 +22,7 @@ pub mod term;
 mod cursor;
 mod font_db;
 mod fringe;
+mod gl;
 mod renderer;
 mod texture;
 pub mod util;

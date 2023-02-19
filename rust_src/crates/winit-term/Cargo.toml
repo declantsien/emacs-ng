@@ -28,7 +28,6 @@ raw-window-handle = "0.5"
 fontdb = "0.11"
 errno = "0.2"
 spin_sleep = "1.1"
-surfman = { version = "0.4.4", features = ["sm-raw-window-handle","sm-winit"] }
 
 [dependencies.nix]
 version = "0.26"
@@ -39,10 +38,6 @@ features = ["signal"]
 git = "https://github.com/servo/webrender.git"
 rev = "91fdbacc15263e738efeb3ff9d4bf8befbeae88e"
 default-features = false
-
-[dependencies.webrender_surfman]
-git = "https://github.com/declantsien/webrender_surfman.git"
-rev = "e90a4e8696afe9b5301ad9cdeaf618801e0c2567"
 
 [build-dependencies]
 ng-bindgen = { path = "../../ng-bindgen" }

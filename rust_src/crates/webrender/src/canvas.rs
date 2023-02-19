@@ -4,17 +4,10 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 use tracing::instrument;
 
 use crate::frame::LispFrameExt;
+use crate::gl::GlContext;
 use crate::WRFontRef;
-use euclid::default::Size2D;
 use gleam::gl;
-use log::warn;
 use std::collections::HashMap;
-
-use surfman::GLApi;
-use webrender_surfman::WebrenderSurfman;
-
-use surfman::Connection;
-use surfman::SurfaceType;
 
 use webrender::{self, api::units::*, api::*, RenderApi, Renderer, Transaction};
 
@@ -54,8 +47,7 @@ pub struct Canvas {
     // Need to droppend before window context
     renderer: Renderer,
 
-    webrender_surfman: WebrenderSurfman,
-    gl: Rc<dyn gl::Gl>,
+    gl_context: GlContext,
 
     frame: LispFrameRef,
 }
@@ -75,54 +67,25 @@ impl Canvas {
             .window_handle()
             .expect("Failed to get raw window handle from frame");
         let size = frame.size();
+        let gl_context = GlContext::new(size, display_handle, window_handle);
 
-        let connection = match Connection::from_raw_display_handle(display_handle) {
-            Ok(connection) => connection,
-            Err(error) => panic!("Device not open {:?}", error),
-        };
-
-        let adapter = connection
-            .create_adapter()
-            .expect("Failed to create adapter");
-
-        let native_widget = connection
-            .create_native_widget_from_rwh(window_handle)
-            .expect("Failed to create native widget");
-
-        let surface_type = SurfaceType::Widget { native_widget };
-
-        let webrender_surfman = WebrenderSurfman::create(&connection, &adapter, surface_type)
-            .expect("Failed to create WR surfman");
-
-        webrender_surfman
-            .resize(Size2D::new(size.width as i32, size.height as i32))
-            .unwrap();
-
-        // Get GL bindings
-        let gl = match webrender_surfman.connection().gl_api() {
-            GLApi::GL => unsafe { gl::GlFns::load_with(|s| webrender_surfman.get_proc_address(s)) },
-            GLApi::GLES => unsafe {
-                gl::GlesFns::load_with(|s| webrender_surfman.get_proc_address(s))
-            },
-        };
-
-        let gl = gl::ErrorCheckingGl::wrap(gl);
-
-        // Make sure the gl context is made current.
-        webrender_surfman.make_gl_context_current().unwrap();
-
+        // webrender
         let webrender_opts = webrender::WebRenderOptions {
             clear_color: ColorF::new(1.0, 1.0, 1.0, 1.0),
             ..webrender::WebRenderOptions::default()
         };
 
         let notifier = Box::new(Notifier::new());
-        let (mut renderer, sender) =
-            webrender::create_webrender_instance(gl.clone(), notifier, webrender_opts, None)
-                .unwrap();
+        let (mut renderer, sender) = webrender::create_webrender_instance(
+            gl_context.get_gl(),
+            notifier,
+            webrender_opts,
+            None,
+        )
+        .unwrap();
 
         let texture_resources = Rc::new(RefCell::new(TextureResourceManager::new(
-            gl.clone(),
+            gl_context.get_gl(),
             sender.create_api(),
         )));
 
@@ -145,12 +108,11 @@ impl Canvas {
             render_api: api,
             document_id,
             pipeline_id,
-            gl,
             epoch,
             display_list_builder: None,
             previous_frame_image: None,
             renderer,
-            webrender_surfman,
+            gl_context,
             texture_resources,
             frame,
         }
@@ -178,7 +140,8 @@ impl Canvas {
             need_flip,
         );
 
-        let gl = &self.gl;
+        // let gl = &self.gl_context.gl;
+        let gl = self.gl_context.get_gl();
         gl.bind_texture(gl::TEXTURE_2D, texture_id);
 
         gl.copy_tex_sub_image_2d(
@@ -259,19 +222,12 @@ impl Canvas {
             f(builder, space_and_clip);
         }
 
-        self.assert_no_gl_error();
-    }
-
-    fn ensure_context_is_current(&mut self) {
-        // Make sure the gl context is made current.
-        if let Err(err) = self.webrender_surfman.make_gl_context_current() {
-            warn!("Failed to make GL context current: {:?}", err);
-        }
-        self.assert_no_gl_error();
+        self.gl_context.assert_no_gl_error();
     }
 
     pub fn flush(&mut self) {
-        self.assert_no_gl_error();
+        self.gl_context.assert_no_gl_error();
+        self.gl_context.ensure_context_is_current();
 
         let builder = std::mem::replace(&mut self.display_list_builder, None);
 
@@ -293,22 +249,11 @@ impl Canvas {
 
             let device_size = self.device_size();
 
-            // Bind the webrender framebuffer
-            self.ensure_context_is_current();
-
-            let framebuffer_object = self
-                .webrender_surfman
-                .context_surface_info()
-                .unwrap_or(None)
-                .map(|info| info.framebuffer_object)
-                .unwrap_or(0);
-            self.gl
-                .bind_framebuffer(gleam::gl::FRAMEBUFFER, framebuffer_object);
-            self.assert_gl_framebuffer_complete();
+            self.gl_context.bind_framebuffer();
 
             self.renderer.update();
 
-            self.assert_no_gl_error();
+            self.gl_context.assert_no_gl_error();
 
             self.renderer.render(device_size, 0).unwrap();
             let _ = self.renderer.flush_pipeline_info();
@@ -318,27 +263,8 @@ impl Canvas {
             let image_key = self.copy_framebuffer_to_texture(DeviceIntRect::from_size(device_size));
             self.previous_frame_image = Some(image_key);
 
-            // Perform the page flip. This will likely block for a while.
-            if let Err(err) = self.webrender_surfman.present() {
-                warn!("Failed to present surface: {:?}", err);
-            }
+            self.gl_context.swap_buffers();
         }
-    }
-
-    #[track_caller]
-    fn assert_no_gl_error(&self) {
-        debug_assert_eq!(self.gl.get_error(), gleam::gl::NO_ERROR);
-    }
-
-    #[track_caller]
-    fn assert_gl_framebuffer_complete(&self) {
-        debug_assert_eq!(
-            (
-                self.gl.get_error(),
-                self.gl.check_frame_buffer_status(gleam::gl::FRAMEBUFFER)
-            ),
-            (gleam::gl::NO_ERROR, gleam::gl::FRAMEBUFFER_COMPLETE)
-        );
     }
 
     pub fn get_previous_frame(&self) -> Option<ImageKey> {
@@ -568,15 +494,11 @@ impl Canvas {
         txn.set_document_view(device_rect);
         self.render_api.send_transaction(self.document_id, txn);
 
-        self.webrender_surfman
-            .resize(Size2D::new(size.width as i32, size.height as i32))
-            .unwrap();
+        self.gl_context.resize(*size);
     }
 
-    pub fn deinit(self) {
-        if let Err(err) = self.webrender_surfman.make_gl_context_current() {
-            warn!("Failed to make GL context current: {:?}", err);
-        }
+    pub fn deinit(mut self) {
+        self.gl_context.ensure_context_is_current();
         self.renderer.deinit();
     }
 }
