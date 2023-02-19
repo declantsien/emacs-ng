@@ -21,8 +21,6 @@ pub struct DisplayInfoInner {
 
     pub fringe_bitmap_caches: HashMap<i32, FringeBitmap>,
 
-    pub connection: Option<surfman::Connection>,
-
     pub raw_display_handle: Option<RawDisplayHandle>,
 
     pub scale_factor: f32,
@@ -40,7 +38,6 @@ impl Default for DisplayInfoInner {
             }),
 
             fringe_bitmap_caches: HashMap::new(),
-            connection: None,
             raw_display_handle: None,
             scale_factor: 1.0,
         }
