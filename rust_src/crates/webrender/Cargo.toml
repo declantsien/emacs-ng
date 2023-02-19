@@ -30,8 +30,10 @@ ouroboros = "0.15.5"
 errno = "0.2"
 spin_sleep = "1.1"
 winit = { package = "tao", version = "0.18", default-features = false, optional = true }
-surfman = { version = "0.4.4", features = ["sm-raw-window-handle","sm-winit"] }
 tracing = "0.1"
+surfman = { version = "0.4.4", features = ["sm-raw-window-handle","sm-winit"], optional = true }
+glutin = { version = "0.30.6", optional = true }
+euclid = "0.22.7"
 
 [dependencies.nix]
 version = "0.26"
