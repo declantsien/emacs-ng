@@ -42,7 +42,7 @@ features = ["signal"]
 
 [dependencies.webrender]
 git = "https://github.com/servo/webrender.git"
-rev = "91fdbacc15263e738efeb3ff9d4bf8befbeae88e"
+rev = "cb2b55394892ef9ea1e89dbe41fd3a8cebd61468"
 default-features = false
 
 [dependencies.webrender_surfman]
