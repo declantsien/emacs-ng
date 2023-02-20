@@ -1,4 +1,6 @@
-#[cfg(feature = "glutin")]
+use crate::frame::LispFrameExt;
+use emacs::frame::LispFrameRef;
+
 use glutin::{
     config::{Api, ConfigTemplateBuilder, GlConfig},
     context::{
@@ -9,44 +11,37 @@ use glutin::{
     prelude::GlSurface,
     surface::{Surface, SurfaceAttributesBuilder, WindowSurface},
 };
-use log::warn;
 
-#[cfg(feature = "glutin")]
 use std::{ffi::CString, num::NonZeroU32};
-
-#[cfg(feature = "surfman")]
-use surfman::{Connection, GLApi, SurfaceType};
-
-#[cfg(feature = "surfman")]
-use webrender_surfman::WebrenderSurfman;
 
 use euclid::Size2D;
 
-use raw_window_handle::{RawDisplayHandle, RawWindowHandle};
 use webrender::api::units::DevicePixel;
 
 use std::rc::Rc;
 
 use gleam::gl::{ErrorCheckingGl, Gl, GlFns, GlesFns};
 
-#[cfg(feature = "glutin")]
 pub struct GlContext {
     context: PossiblyCurrentContext,
     surface: Surface<WindowSurface>,
     gl: Rc<dyn Gl>,
 }
 
-#[cfg(feature = "glutin")]
 impl GlContext {
-    pub fn new(
-        size: Size2D<i32, DevicePixel>,
-        display_handle: RawDisplayHandle,
-        window_handle: RawWindowHandle,
-    ) -> Self {
+    pub fn new(frame: LispFrameRef) -> Self {
+        let display_handle = frame
+            .display_handle()
+            .expect("Failed to raw display handle from frame");
+        let window_handle = frame
+            .window_handle()
+            .expect("Failed to get raw window handle from frame");
+        let size = frame.size();
+
         let width = NonZeroU32::new(size.width as u32).unwrap();
         let height = NonZeroU32::new(size.height as u32).unwrap();
 
-        // TODO proper preference logic here.
+        // glutin
         let preference = DisplayApiPreference::Egl;
         let gl_display = unsafe { Display::new(display_handle, preference) }.unwrap();
         let template = ConfigTemplateBuilder::new().build(); // TODO do we need to do anything to this?
@@ -151,7 +146,7 @@ impl GlContext {
     pub fn ensure_context_is_current(&mut self) {
         // Make sure the gl context is made current.
         if let Err(err) = self.context.make_current(&self.surface) {
-            warn!("Failed to make GL context current: {:?}", err);
+            log::error!("Failed to make GL context current: {:?}", err);
         }
         self.assert_no_gl_error();
     }
@@ -172,106 +167,6 @@ impl GlContext {
         );
     }
 
-    pub fn get_gl(&self) -> Rc<dyn Gl> {
-        ErrorCheckingGl::wrap(self.gl.clone())
-    }
-}
-#[cfg(feature = "surfman")]
-pub struct GlContext {
-    webrender_surfman: WebrenderSurfman,
-    gl: Rc<dyn Gl>,
-}
-
-#[cfg(feature = "surfman")]
-impl GlContext {
-    pub fn new(
-        size: Size2D<i32, DevicePixel>,
-        display_handle: RawDisplayHandle,
-        window_handle: RawWindowHandle,
-    ) -> Self {
-        let connection = match Connection::from_raw_display_handle(display_handle) {
-            Ok(connection) => connection,
-            Err(error) => panic!("Device not open {:?}", error),
-        };
-
-        let adapter = connection
-            .create_adapter()
-            .expect("Failed to create adapter");
-
-        let native_widget = connection
-            .create_native_widget_from_rwh(window_handle)
-            .expect("Failed to create native widget");
-
-        let surface_type = SurfaceType::Widget { native_widget };
-
-        let webrender_surfman = WebrenderSurfman::create(&connection, &adapter, surface_type)
-            .expect("Failed to create WR surfman");
-
-        webrender_surfman
-            .resize(Size2D::new(size.width as i32, size.height as i32))
-            .unwrap();
-
-        // Get GL bindings
-        let gl = match webrender_surfman.connection().gl_api() {
-            GLApi::GL => unsafe { GlFns::load_with(|s| webrender_surfman.get_proc_address(s)) },
-            GLApi::GLES => unsafe { GlesFns::load_with(|s| webrender_surfman.get_proc_address(s)) },
-        };
-        webrender_surfman.make_gl_context_current().unwrap();
-
-        GlContext {
-            webrender_surfman,
-            gl,
-        }
-    }
-
-    pub fn bind_framebuffer(&mut self) {
-        // Bind the webrender framebuffer
-        self.ensure_context_is_current();
-
-        let framebuffer_object = self
-            .webrender_surfman
-            .context_surface_info()
-            .unwrap_or(None)
-            .map(|info| info.framebuffer_object)
-            .unwrap_or(0);
-        self.gl
-            .bind_framebuffer(gleam::gl::FRAMEBUFFER, framebuffer_object);
-        self.assert_gl_framebuffer_complete();
-    }
-
-    pub fn swap_buffers(&self) {
-        // Perform the page flip. This will likely block for a while.
-        if let Err(err) = self.webrender_surfman.present() {
-            warn!("Failed to present surface: {:?}", err);
-        }
-    }
-
-    #[track_caller]
-    pub fn assert_gl_framebuffer_complete(&self) {
-        debug_assert_eq!(
-            (
-                self.gl.get_error(),
-                self.gl.check_frame_buffer_status(gleam::gl::FRAMEBUFFER)
-            ),
-            (gleam::gl::NO_ERROR, gleam::gl::FRAMEBUFFER_COMPLETE)
-        );
-    }
-
-    pub fn resize(&self, size: Size2D<i32, DevicePixel>) {
-        self.webrender_surfman
-            .resize(Size2D::new(size.width as i32, size.height as i32))
-            .unwrap();
-    }
-
-    pub fn ensure_context_is_current(&mut self) {
-        self.webrender_surfman.make_gl_context_current();
-    }
-
-    #[track_caller]
-    pub fn assert_no_gl_error(&self) {
-        debug_assert_eq!(self.gl.get_error(), gleam::gl::NO_ERROR);
-    }
-    // TODO move duplicate stuff to trait
     pub fn get_gl(&self) -> Rc<dyn Gl> {
         ErrorCheckingGl::wrap(self.gl.clone())
     }

@@ -34,6 +34,22 @@ pub use crate::wrterm::*;
 
 pub use webrender::api::units::DeviceIntSize;
 
+pub mod gl {
+    #[cfg(feature = "glutin")]
+    pub use crate::gl::glutin::*;
+    #[cfg(feature = "gtk3")]
+    pub use crate::gl::gtk3::*;
+    #[cfg(feature = "surfman")]
+    pub use crate::gl::surfman::*;
+
+    #[cfg(feature = "glutin")]
+    pub mod glutin;
+    #[cfg(feature = "gtk3")]
+    pub mod gtk3;
+    #[cfg(feature = "surfman")]
+    pub mod surfman;
+}
+
 // pub use crate::wrterm::{wr_can_use_native_image_api, wr_load_image, wr_transform_image};
 
 #[cfg(not(test))]

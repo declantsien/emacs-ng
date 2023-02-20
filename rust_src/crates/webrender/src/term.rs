@@ -115,8 +115,6 @@ pub extern "C" fn wr_draw_fringe_bitmap(
     let window: LispWindowRef = window.into();
     let mut frame: LispFrameRef = window.get_frame();
 
-    let output = frame.output();
-
     let row_rect: LayoutRect = unsafe {
         let (window_x, window_y, window_width, _) = window.area_box(glyph_row_area::ANY_AREA);
 

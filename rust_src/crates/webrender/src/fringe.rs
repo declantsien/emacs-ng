@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use crate::frame::LispFrameExt;
-use crate::output::OutputRef;
 use bit_vec::BitVec;
 use emacs::frame::LispFrameRef;
 use image::{DynamicImage, GenericImageView, Rgba, RgbaImage};

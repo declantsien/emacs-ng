@@ -60,14 +60,8 @@ impl fmt::Debug for Canvas {
 
 impl Canvas {
     pub fn build(frame: LispFrameRef) -> Self {
-        let display_handle = frame
-            .display_handle()
-            .expect("Failed to raw display handle from frame");
-        let window_handle = frame
-            .window_handle()
-            .expect("Failed to get raw window handle from frame");
         let size = frame.size();
-        let gl_context = GlContext::new(size, display_handle, window_handle);
+        let gl_context = GlContext::new(frame);
 
         // webrender
         let webrender_opts = webrender::WebRenderOptions {
