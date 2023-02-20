@@ -125,6 +125,8 @@ impl GlContext {
         }
     }
 
+    pub fn bind_framebuffer(&self) {}
+
     pub fn swap_buffers(&self) {
         self.surface.swap_buffers(&self.context).ok();
     }
@@ -211,7 +213,10 @@ impl GlContext {
         }
     }
 
-    pub fn swap_buffers(&self) {
+    pub fn bind_framebuffer(&mut self) {
+	// Bind the webrender framebuffer
+        self.ensure_context_is_current();
+
         let framebuffer_object = self
             .webrender_surfman
             .context_surface_info()
@@ -221,7 +226,10 @@ impl GlContext {
         self.gl
             .bind_framebuffer(gleam::gl::FRAMEBUFFER, framebuffer_object);
         self.assert_gl_framebuffer_complete();
+    }
 
+    pub fn swap_buffers(&self) {
+	// Perform the page flip. This will likely block for a while.
         if let Err(err) = self.webrender_surfman.present() {
             warn!("Failed to present surface: {:?}", err);
         }

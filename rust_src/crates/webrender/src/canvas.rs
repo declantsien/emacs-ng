@@ -246,6 +246,8 @@ impl Canvas {
 
             let device_size = self.device_size();
 
+	    self.gl_context.bind_framebuffer();
+
             self.renderer.update();
 
             self.gl_context.assert_no_gl_error();
@@ -253,12 +255,12 @@ impl Canvas {
             self.renderer.render(device_size, 0).unwrap();
             let _ = self.renderer.flush_pipeline_info();
 
-            self.gl_context.swap_buffers();
-
             self.texture_resources.borrow_mut().clear();
 
             let image_key = self.copy_framebuffer_to_texture(DeviceIntRect::from_size(device_size));
             self.previous_frame_image = Some(image_key);
+
+	    self.gl_context.swap_buffers();
         }
     }
 
