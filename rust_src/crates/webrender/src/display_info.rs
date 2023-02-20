@@ -9,7 +9,7 @@ use crate::{fringe::FringeBitmap, term::TerminalRef};
 #[cfg(window_system = "winit")]
 pub type FrameID = winit::window::WindowId;
 #[cfg(window_system = "pgtk")]
-pub type output = u64;
+pub type FrameID = u64;
 
 pub struct DisplayInfoInner {
     pub terminal: TerminalRef,

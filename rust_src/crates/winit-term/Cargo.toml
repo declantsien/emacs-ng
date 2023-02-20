@@ -37,7 +37,7 @@ features = ["signal"]
 
 [dependencies.webrender]
 git = "https://github.com/servo/webrender.git"
-rev = "da3fba3c4751c0bf4098309ecb4329110b062146"
+rev = "91fdbacc15263e738efeb3ff9d4bf8befbeae88e"
 default-features = false
 
 [dependencies.webrender_surfman]
@@ -61,6 +61,7 @@ optional = true
 core-foundation = "0.9.2"
 
 [features]
-default = ["x11", "wayland", "wr-renderer/winit"]
-x11 = ["dep:x11", "surfman/sm-x11"]
-wayland = []
+default = ["winit"]
+winit = ["wr-renderer"]
+capture=["webrender/capture", "webrender/serialize_program"]
+sw_compositor=["webrender/sw_compositor"]

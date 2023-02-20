@@ -155,7 +155,7 @@ pub extern "C" fn wr_draw_fringe_bitmap(
         LayoutRect::zero()
     };
 
-    let image = get_or_create_fringe_bitmap(output, which, p);
+    let image = get_or_create_fringe_bitmap(frame, which, p);
 
     let face = unsafe { (*p).face };
 

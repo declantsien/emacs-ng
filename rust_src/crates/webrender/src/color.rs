@@ -5,12 +5,14 @@ use emacs::bindings::Emacs_Color;
 pub fn pixel_to_color(pixel: u64) -> ColorF {
     let pixel_array: [u16; 4] = unsafe { std::mem::transmute(pixel) };
 
-    ColorF::new(
+    let color = ColorF::new(
         pixel_array[0] as f32 / 65535.0, // red
         pixel_array[1] as f32 / 65535.0, // green
         pixel_array[2] as f32 / 65535.0, // blue
         1.0,
-    )
+    );
+    log::trace!("pixel_to_color {pixel:?} {color:?};");
+    color
 }
 
 pub fn color_to_pixel(color: ColorF) -> u64 {

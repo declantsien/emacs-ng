@@ -7041,6 +7041,7 @@ case "${window_system}" in
         CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-winit\", "
     ;;
     pgtk)
+        CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-pgtk\", "
     ;;
 esac
 if test "${with_webrender}" = "yes" ; then

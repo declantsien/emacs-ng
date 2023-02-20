@@ -53,14 +53,18 @@ cfg_aliases = "0.1"
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
 font-loader = "0.11"
+gtk = { version = "0.16", optional = true }
+gtk-sys = { version = "0.16", optional = true }
+gdk-sys = { version = "0.16", optional = true }
+gdkwayland-sys = { version = "0.16", optional = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation = "0.9.2"
 
 [features]
-default = ["std", "winit"]
+default = ["std"]
 winit = ["dep:winit"]
-pgtk = []
+pgtk = ["dep:gtk", "dep:gtk-sys", "dep:gdk-sys", "dep:gdkwayland-sys"]
 capture=["webrender/capture", "webrender/serialize_program"]
 sw_compositor=["webrender/sw_compositor"]
 no_std = [

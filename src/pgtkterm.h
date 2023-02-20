@@ -163,11 +163,7 @@ struct pgtk_display_info
   /* Minimum font height over all fonts in font_table.  */
   int smallest_font_height;
 
-#ifdef USE_WEBRENDER
-  struct wr_bitmap_record *bitmaps;
-#else
   struct pgtk_bitmap_record *bitmaps;
-#endif /*USE_WEBRENDER*/
 
   ptrdiff_t bitmaps_size;
   ptrdiff_t bitmaps_last;
