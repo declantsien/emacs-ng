@@ -78,9 +78,35 @@ impl LispFrameExt for LispFrameRef {
         #[cfg(window_system = "pgtk")]
         {
             use raw_window_handle::WaylandWindowHandle;
+            use std::ptr;
+            use gtk::prelude::WidgetExt;
             let mut output = self.output();
+            // let wtop = output.as_raw().widget;
+            // let wvbox = output.as_raw().vbox_widget;
+            // let whbox = output.as_raw().hbox_widget;
             let widget = output.as_raw().edit_widget;
-            if !widget.is_null() {
+            unsafe {
+                gtk_sys::gtk_widget_set_opacity(widget, 0.0);
+            }
+
+            let transparent = gdk_sys::GdkRGBA{
+                red: 0.0,
+                green: 0.0,
+                blue: 0.0,
+                alpha: 0.0};
+            unsafe { gtk_sys::gtk_widget_override_background_color (widget, 0, &transparent); }
+            // if wfixed != ptr::null_mut() {
+            //     unsafe { gtk_sys::gtk_widget_destroy(wfixed) }
+            // }
+            // if wvbox != ptr::null_mut() {
+            //     log::debug!("wvbox {:?}", wvbox);
+            //     unsafe { gtk_sys::gtk_widget_destroy(wvbox) }
+            // }
+            // if whbox != ptr::null_mut() {
+            //     log::debug!("whbox {:?}", whbox);
+            //     // unsafe { gtk_sys::gtk_widget_destroy(whbox) }
+            // }
+            if widget != ptr::null_mut() {
                 let gwin = unsafe { gtk_sys::gtk_widget_get_window(widget) };
                 let surface = unsafe {
                     gdk_wayland_sys::gdk_wayland_window_get_wl_surface(
@@ -145,6 +171,10 @@ impl LispFrameExt for LispFrameRef {
 
     #[cfg(not(window_system = "winit"))]
     fn uuid(&self) -> u64 {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::Hash;
+        use std::hash::Hasher;
+
         let mut hasher = DefaultHasher::new();
         self.window_handle().hash(&mut hasher);
         hasher.finish()

@@ -63,7 +63,8 @@ libgit = ["git", "ng-bindgen/libgit"]
 # Use the webrender renderer
 webrender = ["wr-renderer"]
 webrender-capture = ["wr-renderer/capture"]
-window-system-winit = ["dep:winit-term", "webrender"]
+window-system-winit = ["dep:winit-term", "webrender", "wr-renderer/winit"]
+window-system-pgtk = ["emacs/pgtk", "wr-renderer/pgtk"]
 # Treat warnings as a build error on Travis.
 strict = []
 # Use JavaScript and Deno

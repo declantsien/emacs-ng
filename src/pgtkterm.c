@@ -927,7 +927,6 @@ pgtk_display_pixel_width (struct pgtk_display_info *dpyinfo)
   return gdk_screen_get_width (gscr);
 }
 
-#ifndef USE_WEBRENDER
 void
 pgtk_set_parent_frame (struct frame *f, Lisp_Object new_value,
 		       Lisp_Object old_value)
@@ -1032,7 +1031,6 @@ pgtk_set_parent_frame (struct frame *f, Lisp_Object new_value,
       fset_parent_frame (f, new_value);
     }
 }
-#endif
 
 /* Doesn't work on wayland.  */
 void
@@ -3143,6 +3141,7 @@ pgtk_scroll_run (struct window *w, struct run *run)
 
   unblock_input ();
 }
+#endif
 
 /* Icons.  */
 
@@ -3230,7 +3229,6 @@ pgtk_text_icon (struct frame *f, const char *icon_name)
 
   return false;
 }
-#endif
 
 /***********************************************************************
 		    Starting and ending an update
@@ -4836,12 +4834,12 @@ pgtk_create_terminal (struct pgtk_display_info *dpyinfo)
   terminal->delete_terminal_hook = pgtk_delete_terminal;
   terminal->query_frame_background_color = pgtk_query_frame_background_color;
   terminal->defined_color_hook = pgtk_defined_color;
-  #ifndef USE_WEBRENDER
+#ifndef USE_WEBRENDER
   terminal->set_new_font_hook = pgtk_new_font;
-  terminal->set_bitmap_icon_hook = pgtk_bitmap_icon;
-  #else
+#else
   terminal->set_new_font_hook = wr_new_font;
-  #endif
+#endif
+  terminal->set_bitmap_icon_hook = pgtk_bitmap_icon;
   terminal->implicit_set_name_hook = pgtk_implicitly_set_name;
   terminal->iconify_frame_hook = pgtk_iconify_frame;
   terminal->set_scroll_bar_default_width_hook
@@ -5036,7 +5034,6 @@ pgtk_clear_under_internal_border (struct frame *f)
     }
 }
 
-#ifndef USE_WEBRENDER
 static gboolean
 pgtk_handle_draw (GtkWidget *widget, cairo_t *cr, gpointer *data)
 {
@@ -5046,8 +5043,11 @@ pgtk_handle_draw (GtkWidget *widget, cairo_t *cr, gpointer *data)
 
   if (win != NULL)
     {
-      cairo_surface_t *src = NULL;
       f = pgtk_any_window_to_frame (win);
+#ifdef USE_WEBRENDER
+    redraw_frame (f);
+#else
+      cairo_surface_t *src = NULL;
       if (f != NULL)
 	{
 	  src = FRAME_X_OUTPUT (f)->cr_surface_visible_bell;
@@ -5059,10 +5059,11 @@ pgtk_handle_draw (GtkWidget *widget, cairo_t *cr, gpointer *data)
 	  cairo_set_source_surface (cr, src, 0, 0);
 	  cairo_paint (cr);
 	}
+#endif
     }
   return FALSE;
 }
-#endif
+
 
 static void
 size_allocate (GtkWidget *widget, GtkAllocation *alloc,
@@ -6519,14 +6520,12 @@ static gboolean pgtk_selection_event (GtkWidget *, GdkEvent *, gpointer);
 void
 pgtk_set_event_handler (struct frame *f)
 {
-  #ifndef USE_WEBRENDER
   if (f->tooltip)
     {
       g_signal_connect (G_OBJECT (FRAME_GTK_WIDGET (f)), "draw",
 			G_CALLBACK (pgtk_handle_draw), NULL);
       return;
     }
-  #endif
 
   gtk_drag_dest_set (FRAME_GTK_WIDGET (f), 0, NULL, 0,
 		     (GDK_ACTION_MOVE | GDK_ACTION_COPY
@@ -6577,10 +6576,8 @@ pgtk_set_event_handler (struct frame *f)
 		    G_CALLBACK (drag_motion), NULL);
   g_signal_connect (G_OBJECT (FRAME_GTK_WIDGET (f)), "drag-drop",
 		    G_CALLBACK (drag_drop), NULL);
-#ifndef USE_WEBRENDER
   g_signal_connect (G_OBJECT (FRAME_GTK_WIDGET (f)), "draw",
 		    G_CALLBACK (pgtk_handle_draw), NULL);
-#endif
   g_signal_connect (G_OBJECT (FRAME_GTK_WIDGET (f)), "property-notify-event",
 		    G_CALLBACK (pgtk_selection_event), NULL);
   g_signal_connect (G_OBJECT (FRAME_GTK_WIDGET (f)), "selection-clear-event",
