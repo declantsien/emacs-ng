@@ -225,6 +225,7 @@ impl Canvas {
 
     pub fn flush(&mut self) {
         self.gl_context.assert_no_gl_error();
+        self.gl_context.ensure_context_is_current();
 
         let builder = std::mem::replace(&mut self.display_list_builder, None);
 
