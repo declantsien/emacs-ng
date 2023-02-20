@@ -103,7 +103,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8619b80c242aa7bd638b5c7ddd952addeecb71f69c75e33f1d47b2804f8f883a"
 dependencies = [
  "android_log-sys",
- "env_logger 0.10.0",
+ "env_logger",
  "log",
  "once_cell",
 ]
@@ -230,17 +230,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "atty"
-version = "0.2.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9b39be18770d11421cdb1b9947a45dd3f37e93092cbf377614828a319d5fee8"
-dependencies = [
- "hermit-abi",
- "libc",
- "winapi",
-]
-
-[[package]]
 name = "autocfg"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -257,12 +246,6 @@ name = "base64"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
-
-[[package]]
-name = "binary-space-partition"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88ceb0d16c4fd0e42876e298d7d3ce3780dd9ebdcbe4199816a32c77e08597ff"
 
 [[package]]
 name = "bincode"
@@ -449,19 +432,6 @@ dependencies = [
 
 [[package]]
 name = "cargo_metadata"
-version = "0.14.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4acbb09d9ee8e23699b9634375c72795d095bf268439da88562cf9b501f181fa"
-dependencies = [
- "camino",
- "cargo-platform",
- "semver 1.0.16",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "cargo_metadata"
 version = "0.15.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08a1ec454bc3eead8719cb56e15dbbfecdbc14e4b3a3ae4936cc6e31f5fc0d07"
@@ -569,45 +539,6 @@ dependencies = [
  "glob",
  "libc",
  "libloading 0.7.4",
-]
-
-[[package]]
-name = "clap"
-version = "3.2.23"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71655c45cb9845d3270c9d6df84ebe72b4dad3c2ba3f7023ad47c144e4e473a5"
-dependencies = [
- "atty",
- "bitflags",
- "clap_derive",
- "clap_lex",
- "indexmap",
- "once_cell",
- "strsim",
- "termcolor",
- "textwrap",
-]
-
-[[package]]
-name = "clap_derive"
-version = "3.2.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea0c8bce528c4be4da13ea6fead8965e95b6073585a2f05204bd8f4119f82a65"
-dependencies = [
- "heck",
- "proc-macro-error",
- "proc-macro2 1.0.49",
- "quote 1.0.23",
- "syn 1.0.107",
-]
-
-[[package]]
-name = "clap_lex"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2850f2f5a82cbf437dd5af4d49848fbdfc27c157c3d010345776f952765261c5"
-dependencies = [
- "os_str_bytes",
 ]
 
 [[package]]
@@ -1169,18 +1100,6 @@ dependencies = [
 
 [[package]]
 name = "env_logger"
-version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a12e6657c4c97ebab115a42dcee77225f7f482cdd841cf7088c657a42e9e00e7"
-dependencies = [
- "atty",
- "humantime",
- "log",
- "termcolor",
-]
-
-[[package]]
-name = "env_logger"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85cdab6a89accf66733ad5a1693a4dcced6aeff64602b634530dd73c1f3ee9f0"
@@ -1700,33 +1619,13 @@ dependencies = [
 
 [[package]]
 name = "glean"
-version = "51.8.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02b5c3d99df7451db541b0aa133a91719c056cfff3ae34949e2261ed6371875b"
-dependencies = [
- "chrono",
- "crossbeam-channel",
- "glean-core 51.8.3",
- "inherent",
- "log",
- "once_cell",
- "serde",
- "serde_json",
- "thiserror",
- "time",
- "uuid 0.8.2",
- "whatsys 0.1.2",
-]
-
-[[package]]
-name = "glean"
 version = "52.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3dea54c0198181ff3bd8c7d39bdc69f22a4c0504da5dd9138666edef084e26be"
 dependencies = [
  "chrono",
  "crossbeam-channel",
- "glean-core 52.2.0",
+ "glean-core",
  "inherent",
  "log",
  "once_cell",
@@ -1734,37 +1633,8 @@ dependencies = [
  "serde_json",
  "thiserror",
  "time",
- "uuid 1.3.0",
- "whatsys 0.3.1",
-]
-
-[[package]]
-name = "glean-core"
-version = "51.8.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3143186e43fb88f6d088f0026ed93ce43f39e0e2f15d24089f5dc394a9bfed11"
-dependencies = [
- "android_logger",
- "bincode",
- "chrono",
- "crossbeam-channel",
- "env_logger 0.9.3",
- "flate2",
- "log",
- "once_cell",
- "oslog",
- "remove_dir_all",
- "rkv",
- "serde",
- "serde_json",
- "thiserror",
- "time",
- "uniffi 0.21.1",
- "uniffi_build 0.21.1",
- "uniffi_macros 0.21.1",
- "uuid 0.8.2",
- "whatsys 0.1.2",
- "zeitstempel",
+ "uuid",
+ "whatsys",
 ]
 
 [[package]]
@@ -1787,8 +1657,8 @@ dependencies = [
  "serde_json",
  "thiserror",
  "time",
- "uniffi 0.23.0",
- "uuid 1.3.0",
+ "uniffi",
+ "uuid",
  "zeitstempel",
 ]
 
@@ -1884,17 +1754,6 @@ dependencies = [
 
 [[package]]
 name = "goblin"
-version = "0.5.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7666983ed0dd8d21a6f6576ee00053ca0926fb281a5522577a4dbd0f1b54143"
-dependencies = [
- "log",
- "plain",
- "scroll",
-]
-
-[[package]]
-name = "goblin"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "572564d6cba7d09775202c8e7eebc4d534d5ae36578ab402fb21e182a0ac9505"
@@ -1979,12 +1838,6 @@ checksum = "5aca5565f760fb5b220e499d72710ed156fdb74e631659e99377d9ebfbd13ae8"
 dependencies = [
  "libc",
 ]
-
-[[package]]
-name = "humantime"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
 name = "iana-time-zone"
@@ -2933,12 +2786,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "os_str_bytes"
-version = "6.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b7820b9daea5457c9f21c69448905d723fbd21136ccf521748f23fd49e723ee"
-
-[[package]]
 name = "oslog"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3066,34 +2913,13 @@ version = "0.3.0"
 source = "git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e#91fdbacc15263e738efeb3ff9d4bf8befbeae88e"
 dependencies = [
  "euclid",
- "peek-poke-derive 0.3.0 (git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e)",
-]
-
-[[package]]
-name = "peek-poke"
-version = "0.3.0"
-source = "git+https://github.com/servo/webrender.git?rev=da3fba3c4751c0bf4098309ecb4329110b062146#da3fba3c4751c0bf4098309ecb4329110b062146"
-dependencies = [
- "euclid",
- "peek-poke-derive 0.3.0 (git+https://github.com/servo/webrender.git?rev=da3fba3c4751c0bf4098309ecb4329110b062146)",
+ "peek-poke-derive",
 ]
 
 [[package]]
 name = "peek-poke-derive"
 version = "0.3.0"
 source = "git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e#91fdbacc15263e738efeb3ff9d4bf8befbeae88e"
-dependencies = [
- "proc-macro2 1.0.49",
- "quote 1.0.23",
- "syn 1.0.107",
- "synstructure",
- "unicode-xid 0.2.1",
-]
-
-[[package]]
-name = "peek-poke-derive"
-version = "0.3.0"
-source = "git+https://github.com/servo/webrender.git?rev=da3fba3c4751c0bf4098309ecb4329110b062146#da3fba3c4751c0bf4098309ecb4329110b062146"
 dependencies = [
  "proc-macro2 1.0.49",
  "quote 1.0.23",
@@ -3147,18 +2973,6 @@ name = "plain"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
-
-[[package]]
-name = "plane-split"
-version = "0.17.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3f7075ec146b897b6e0faca47adeb7ed3d4f6eaa8145bf19db17311081b3f63"
-dependencies = [
- "binary-space-partition",
- "euclid",
- "log",
- "num-traits",
-]
 
 [[package]]
 name = "plane-split"
@@ -3577,7 +3391,7 @@ dependencies = [
  "serde_derive",
  "thiserror",
  "url",
- "uuid 1.3.0",
+ "uuid",
 ]
 
 [[package]]
@@ -3993,12 +3807,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9df65f20698aeed245efdde3628a6b559ea1239bbb871af1b6e3b58c413b2bd1"
 
 [[package]]
-name = "strsim"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
-
-[[package]]
 name = "surfman"
 version = "0.4.4"
 source = "git+https://github.com/declantsien/surfman.git?rev=caddee293e1f6ec8b33caec6170585a89c2674b8#caddee293e1f6ec8b33caec6170585a89c2674b8"
@@ -4025,7 +3833,6 @@ dependencies = [
  "winapi",
  "winit 0.27.5",
  "wio",
- "x11",
 ]
 
 [[package]]
@@ -4061,7 +3868,7 @@ dependencies = [
  "cc",
  "gleam 0.13.1",
  "glsl-to-cxx",
- "webrender_build 0.0.2 (git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e)",
+ "webrender_build",
 ]
 
 [[package]]
@@ -4171,7 +3978,7 @@ dependencies = [
  "scopeguard",
  "tao-macros",
  "unicode-segmentation",
- "uuid 1.3.0",
+ "uuid",
  "windows",
  "windows-implement",
  "x11-dl",
@@ -4213,12 +4020,6 @@ checksum = "bab24d30b911b2376f3a13cc2cd443142f0c81dda04c118693e35b3835757755"
 dependencies = [
  "winapi-util",
 ]
-
-[[package]]
-name = "textwrap"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "222a222a5bfe1bba4a77b45ec488a741b3cb8872e5e499451fd7d0129c9c7c3d"
 
 [[package]]
 name = "thiserror"
@@ -4564,54 +4365,14 @@ checksum = "f7fe0bb3479651439c9112f72b6c505038574c9fbb575ed1bf3b797fa39dd564"
 
 [[package]]
 name = "uniffi"
-version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b983553c0d1ad73547c65fa0c399aa800bee4a70ad330198e1c7a523212da5ee"
-dependencies = [
- "anyhow",
- "bytes",
- "camino",
- "cargo_metadata 0.14.2",
- "log",
- "once_cell",
- "paste",
- "static_assertions",
- "uniffi_macros 0.21.1",
-]
-
-[[package]]
-name = "uniffi"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f71cc01459bc34cfe43fabf32b39f1228709bc6db1b3a664a92940af3d062376"
 dependencies = [
  "anyhow",
- "uniffi_build 0.23.0",
+ "uniffi_build",
  "uniffi_core",
- "uniffi_macros 0.23.0",
-]
-
-[[package]]
-name = "uniffi_bindgen"
-version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d46080a4840abccf7c0cce21931dae53215cbd7dd969b5e63c486235ce91a2a"
-dependencies = [
- "anyhow",
- "askama",
- "bincode",
- "camino",
- "clap",
- "fs-err",
- "goblin 0.5.4",
- "heck",
- "once_cell",
- "paste",
- "serde",
- "serde_json",
- "toml",
- "uniffi_meta 0.21.1",
- "weedle2",
+ "uniffi_macros",
 ]
 
 [[package]]
@@ -4626,27 +4387,16 @@ dependencies = [
  "camino",
  "fs-err",
  "glob",
- "goblin 0.6.0",
+ "goblin",
  "heck",
  "once_cell",
  "paste",
  "serde",
  "serde_json",
  "toml",
- "uniffi_meta 0.23.0",
+ "uniffi_meta",
  "uniffi_testing",
  "weedle2",
-]
-
-[[package]]
-name = "uniffi_build"
-version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d035e50433ee3d52ab0dcdcf3b9b26f2cc2ec39294b3c07d95865a518709455f"
-dependencies = [
- "anyhow",
- "camino",
- "uniffi_bindgen 0.21.1",
 ]
 
 [[package]]
@@ -4657,17 +4407,7 @@ checksum = "0ee1a28368ff3d83717e3d3e2e15a66269c43488c3f036914131bb68892f29fb"
 dependencies = [
  "anyhow",
  "camino",
- "uniffi_bindgen 0.23.0",
-]
-
-[[package]]
-name = "uniffi_checksum_derive"
-version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78b6e16d46caf942016997af8bbdf4b163bf8ae3deb0b667d9643de7b7ffd4c9"
-dependencies = [
- "quote 1.0.23",
- "syn 1.0.107",
+ "uniffi_bindgen",
 ]
 
 [[package]]
@@ -4689,30 +4429,11 @@ dependencies = [
  "anyhow",
  "bytes",
  "camino",
- "cargo_metadata 0.15.3",
+ "cargo_metadata",
  "log",
  "once_cell",
  "paste",
  "static_assertions",
-]
-
-[[package]]
-name = "uniffi_macros"
-version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c96a574677566f83ea8458dac1dd7792fd63e7c3f9dbcd865f0e8d6f8057b127"
-dependencies = [
- "bincode",
- "camino",
- "fs-err",
- "once_cell",
- "proc-macro2 1.0.49",
- "quote 1.0.23",
- "serde",
- "syn 1.0.107",
- "toml",
- "uniffi_build 0.21.1",
- "uniffi_meta 0.21.1",
 ]
 
 [[package]]
@@ -4730,19 +4451,8 @@ dependencies = [
  "serde",
  "syn 1.0.107",
  "toml",
- "uniffi_build 0.23.0",
- "uniffi_meta 0.23.0",
-]
-
-[[package]]
-name = "uniffi_meta"
-version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "729835442da829c9b6f7c111c76cf87b2498e129101203bec94f0c39a3296a38"
-dependencies = [
- "serde",
- "siphasher",
- "uniffi_checksum_derive 0.21.1",
+ "uniffi_build",
+ "uniffi_meta",
 ]
 
 [[package]]
@@ -4753,7 +4463,7 @@ checksum = "66fdab2c436aed7a6391bec64204ec33948bfed9b11b303235740771f85c4ea6"
 dependencies = [
  "serde",
  "siphasher",
- "uniffi_checksum_derive 0.23.0",
+ "uniffi_checksum_derive",
 ]
 
 [[package]]
@@ -4764,7 +4474,7 @@ checksum = "92b0570953ec41d97ce23e3b92161ac18231670a1f97523258a6d2ab76d7f76c"
 dependencies = [
  "anyhow",
  "camino",
- "cargo_metadata 0.15.3",
+ "cargo_metadata",
  "fs-err",
  "once_cell",
  "serde",
@@ -4794,15 +4504,6 @@ name = "utf8-ranges"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4ae116fef2b7fea257ed6440d3cfcff7f190865f170cdad00bb6465bf18ecba"
-
-[[package]]
-name = "uuid"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
-dependencies = [
- "getrandom 0.2.1",
-]
 
 [[package]]
 name = "uuid"
@@ -5128,13 +4829,13 @@ dependencies = [
  "euclid",
  "fxhash",
  "gleam 0.13.1",
- "glean 52.2.0",
+ "glean",
  "glslopt",
  "lazy_static",
  "log",
  "malloc_size_of_derive",
  "num-traits",
- "plane-split 0.18.0",
+ "plane-split",
  "rayon",
  "ron",
  "serde",
@@ -5144,49 +4845,10 @@ dependencies = [
  "time",
  "topological-sort",
  "tracy-rs",
- "webrender_api 0.62.0 (git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e)",
- "webrender_build 0.0.2 (git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e)",
+ "webrender_api",
+ "webrender_build",
  "wr_glyph_rasterizer",
- "wr_malloc_size_of 0.0.2 (git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e)",
-]
-
-[[package]]
-name = "webrender"
-version = "0.62.0"
-source = "git+https://github.com/servo/webrender.git?rev=da3fba3c4751c0bf4098309ecb4329110b062146#da3fba3c4751c0bf4098309ecb4329110b062146"
-dependencies = [
- "bincode",
- "bitflags",
- "build-parallel",
- "byteorder",
- "core-foundation 0.9.3",
- "core-graphics 0.22.3",
- "core-text",
- "derive_more",
- "dwrote",
- "etagere",
- "euclid",
- "freetype",
- "fxhash",
- "gleam 0.13.1",
- "glean 51.8.3",
- "glslopt",
- "lazy_static",
- "libc",
- "log",
- "malloc_size_of_derive",
- "num-traits",
- "objc",
- "plane-split 0.17.1",
- "rayon",
- "smallvec",
- "svg_fmt",
- "time",
- "topological-sort",
- "tracy-rs",
- "webrender_api 0.62.0 (git+https://github.com/servo/webrender.git?rev=da3fba3c4751c0bf4098309ecb4329110b062146)",
- "webrender_build 0.0.2 (git+https://github.com/servo/webrender.git?rev=da3fba3c4751c0bf4098309ecb4329110b062146)",
- "wr_malloc_size_of 0.0.2 (git+https://github.com/servo/webrender.git?rev=da3fba3c4751c0bf4098309ecb4329110b062146)",
+ "wr_malloc_size_of",
 ]
 
 [[package]]
@@ -5200,31 +4862,12 @@ dependencies = [
  "crossbeam-channel",
  "euclid",
  "malloc_size_of_derive",
- "peek-poke 0.3.0 (git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e)",
+ "peek-poke",
  "serde",
  "serde_bytes",
  "serde_derive",
  "time",
- "wr_malloc_size_of 0.0.2 (git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e)",
-]
-
-[[package]]
-name = "webrender_api"
-version = "0.62.0"
-source = "git+https://github.com/servo/webrender.git?rev=da3fba3c4751c0bf4098309ecb4329110b062146#da3fba3c4751c0bf4098309ecb4329110b062146"
-dependencies = [
- "app_units",
- "bitflags",
- "byteorder",
- "crossbeam-channel",
- "euclid",
- "malloc_size_of_derive",
- "peek-poke 0.3.0 (git+https://github.com/servo/webrender.git?rev=da3fba3c4751c0bf4098309ecb4329110b062146)",
- "serde",
- "serde_bytes",
- "serde_derive",
- "time",
- "wr_malloc_size_of 0.0.2 (git+https://github.com/servo/webrender.git?rev=da3fba3c4751c0bf4098309ecb4329110b062146)",
+ "wr_malloc_size_of",
 ]
 
 [[package]]
@@ -5235,15 +4878,6 @@ dependencies = [
  "bitflags",
  "lazy_static",
  "serde",
-]
-
-[[package]]
-name = "webrender_build"
-version = "0.0.2"
-source = "git+https://github.com/servo/webrender.git?rev=da3fba3c4751c0bf4098309ecb4329110b062146#da3fba3c4751c0bf4098309ecb4329110b062146"
-dependencies = [
- "bitflags",
- "lazy_static",
 ]
 
 [[package]]
@@ -5270,17 +4904,6 @@ name = "weezl"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8b77fdfd5a253be4ab714e4ffa3c49caf146b4de743e97510c0656cf90f1e8e"
-
-[[package]]
-name = "whatsys"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c24fff5aa1e0973964ba23a995e8b10fa2cdeae507e0cbbbd36f8403242a765d"
-dependencies = [
- "cc",
- "cfg-if 1.0.0",
- "libc",
-]
 
 [[package]]
 name = "whatsys"
@@ -5544,7 +5167,7 @@ dependencies = [
  "surfman",
  "ttf-parser 0.17.1",
  "wayland-sys 0.30.1",
- "webrender 0.62.0 (git+https://github.com/servo/webrender.git?rev=da3fba3c4751c0bf4098309ecb4329110b062146)",
+ "webrender",
  "webrender_surfman",
  "wr-renderer",
  "x11",
@@ -5574,7 +5197,11 @@ dependencies = [
  "font-loader",
  "fontdb 0.12.0",
  "futures",
+ "gdk-sys",
+ "gdkwayland-sys",
  "gleam 0.13.1",
+ "gtk",
+ "gtk-sys",
  "image 0.23.14",
  "lazy_static",
  "libc",
@@ -5591,7 +5218,7 @@ dependencies = [
  "surfman",
  "tracing",
  "ttf-parser 0.17.1",
- "webrender 0.62.0 (git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e)",
+ "webrender",
  "webrender_surfman",
 ]
 
@@ -5616,23 +5243,14 @@ dependencies = [
  "serde",
  "smallvec",
  "tracy-rs",
- "webrender_api 0.62.0 (git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e)",
- "wr_malloc_size_of 0.0.2 (git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e)",
+ "webrender_api",
+ "wr_malloc_size_of",
 ]
 
 [[package]]
 name = "wr_malloc_size_of"
 version = "0.0.2"
 source = "git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e#91fdbacc15263e738efeb3ff9d4bf8befbeae88e"
-dependencies = [
- "app_units",
- "euclid",
-]
-
-[[package]]
-name = "wr_malloc_size_of"
-version = "0.0.2"
-source = "git+https://github.com/servo/webrender.git?rev=da3fba3c4751c0bf4098309ecb4329110b062146#da3fba3c4751c0bf4098309ecb4329110b062146"
 dependencies = [
  "app_units",
  "euclid",

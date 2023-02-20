@@ -7054,6 +7054,7 @@ case "${window_system}" in
 	fi
     ;;
     pgtk)
+        CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-pgtk\", "
     ;;
 esac
 if test "${with_webrender}" = "yes" ; then

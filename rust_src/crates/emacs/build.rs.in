@@ -239,7 +239,7 @@ fn generate_bindings() {
 
     #[cfg(all(use_webrender, window_system = "pgtk"))]
     {
-        builder = builder.blacklist_item("GtkWidget");
+        builder = builder.blocklist_item("GtkWidget");
     }
 
     builder = builder

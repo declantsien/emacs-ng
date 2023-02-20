@@ -70,7 +70,7 @@ window-system-w32 = []
 webrender = ["wr-renderer"]
 window-system-winit = ["dep:winit-term", "webrender", "emacs/winit"]
 window-system-tao = ["dep:winit-term", "webrender", "emacs/tao"]
-window-system-pgtk = ["emacs/pgtk"]
+window-system-pgtk = ["emacs/pgtk", "wr-renderer?/pgtk"]
 # Treat warnings as a build error on Travis.
 strict = []
 # Use JavaScript and Deno

@@ -30,6 +30,7 @@ impl Default for OutputInner {
             cursor_color: ColorF::BLACK,
             cursor_foreground_color: ColorF::WHITE,
             window_handle: None,
+            #[cfg(window_system = "winit")]
             window: None,
             #[cfg(all(window_system = "winit", not(use_tao)))]
             cursor_position: emacs::windowing::dpi::PhysicalPosition::new(0.0, 0.0),
@@ -113,8 +114,8 @@ impl Output {
         self.0.fontset
     }
 
-    pub fn get_canvas(&self) -> CanvasRef {
-        OutputInnerRef::new(self.0.inner as *mut OutputInner).canvas
+    pub fn get_canvas(&mut self) -> CanvasRef {
+        self.get_inner().canvas
     }
 
     pub fn get_inner(&mut self) -> OutputInnerRef {

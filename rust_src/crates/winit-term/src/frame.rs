@@ -73,6 +73,8 @@ pub fn create_frame(
     build_mouse_cursors(&mut output.as_mut().as_raw());
 
     // TODO default frame size?
+    log::trace!("frame total_cols {:?}", frame.total_cols);
+    log::trace!("frame line_height {:?}", frame.line_height);
     frame.pixel_width = window.inner_size().width as i32;
     frame.pixel_height = window.inner_size().height as i32;
 

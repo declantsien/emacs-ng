@@ -176,7 +176,6 @@ pgtk_display_info_for_name (Lisp_Object name)
 
    ========================================================================== */
 
-#ifndef USE_WEBRENDER
 static void
 pgtk_set_foreground_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
 {
@@ -255,9 +254,7 @@ pgtk_set_border_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
   FRAME_X_OUTPUT (f)->border_pixel = pix;
   pgtk_frame_rehighlight (FRAME_DISPLAY_INFO (f));
 }
-#endif
 
-#ifndef USE_WEBRENDER
 static void
 pgtk_set_cursor_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
 {
@@ -301,7 +298,6 @@ pgtk_set_cursor_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
 
   update_face_from_frame_parameter (f, Qcursor_color, arg);
 }
-#endif
 
 static void
 pgtk_set_name_internal (struct frame *f, Lisp_Object name)
@@ -620,7 +616,6 @@ pgtk_set_internal_border_width (struct frame *f, Lisp_Object arg,
     }
 }
 
-#ifndef USE_WEBRENDER
 static void
 pgtk_set_icon_type (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
 {
@@ -688,7 +683,6 @@ pgtk_set_cursor_type (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
 {
   set_frame_cursor_types (f, arg);
 }
-#endif
 
 static void
 pgtk_set_mouse_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
@@ -956,61 +950,6 @@ unless TYPE is `png'.  */)
   return pgtk_cr_export_frames (frames, surface_type);
 }
 
-#ifdef USE_WEBRENDER
-frame_parm_handler pgtk_frame_parm_handlers[] =
-  {
-    gui_set_autoraise,		/* generic OK */
-    gui_set_autolower,		/* generic OK */
-    wr_set_background_color,
-    0,
-    gui_set_border_width,
-    wr_set_cursor_color,
-    0,
-    gui_set_font,		/* generic OK */
-    0,
-    NULL,
-    NULL,
-    pgtk_set_child_frame_border_width,
-    pgtk_set_internal_border_width,	/* generic OK */
-    gui_set_right_divider_width,
-    gui_set_bottom_divider_width,
-    pgtk_set_menu_bar_lines,
-    pgtk_set_mouse_color,
-    pgtk_explicitly_set_name,
-    gui_set_scroll_bar_width,	/* generic OK */
-    gui_set_scroll_bar_height,	/* generic OK */
-    pgtk_set_title,
-    gui_set_unsplittable,	/* generic OK */
-    gui_set_vertical_scroll_bars,	/* generic OK */
-    gui_set_horizontal_scroll_bars,	/* generic OK */
-    gui_set_visibility,		/* generic OK */
-    pgtk_set_tab_bar_lines,
-    pgtk_set_tool_bar_lines,
-    pgtk_set_scroll_bar_foreground,
-    pgtk_set_scroll_bar_background,
-    gui_set_screen_gamma,	/* generic OK */
-    gui_set_line_spacing,	/* generic OK, sets f->extra_line_spacing to int */
-    gui_set_left_fringe,	/* generic OK */
-    gui_set_right_fringe,	/* generic OK */
-    0,
-    gui_set_fullscreen,		/* generic OK */
-    gui_set_font_backend,	/* generic OK */
-    gui_set_alpha,
-    pgtk_set_sticky,
-    pgtk_set_tool_bar_position,
-    0,
-    pgtk_set_undecorated,
-    NULL, // set_parent_frame
-    pgtk_set_skip_taskbar,
-    pgtk_set_no_focus_on_map,
-    pgtk_set_no_accept_focus,
-    pgtk_set_z_group,
-    pgtk_set_override_redirect,
-    gui_set_no_special_glyphs,
-    0,
-    NULL,
-  };
-#else
 frame_parm_handler pgtk_frame_parm_handlers[] =
   {
     gui_set_autoraise,		/* generic OK */
@@ -1064,7 +1003,6 @@ frame_parm_handler pgtk_frame_parm_handlers[] =
     pgtk_set_alpha_background,
     NULL,
   };
-#endif
 
 /* Handler for signals raised during x_create_frame and
    x_create_tip_frame.  FRAME is the frame which is partially
