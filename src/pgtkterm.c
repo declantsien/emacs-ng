@@ -5045,7 +5045,7 @@ pgtk_handle_draw (GtkWidget *widget, cairo_t *cr, gpointer *data)
     {
       f = pgtk_any_window_to_frame (win);
 #ifdef USE_WEBRENDER
-    redraw_frame (f);
+    /* redraw_frame (f); */
 #else
       cairo_surface_t *src = NULL;
       if (f != NULL)

@@ -1150,6 +1150,11 @@ xg_frame_resized (struct frame *f, int width, int height)
 
       FRAME_RIF (f)->clear_under_internal_border (f);
       change_frame_size (f, width, height, false, true, false);
+
+      /* gtk_widget_set_size_request (FRAME_CANVAS (f), */
+      /* 				   width, height); */
+      /* gtk_fixed_move (GTK_FIXED (FRAME_GTK_WIDGET (f)), FRAME_CANVAS (f), 0, 0); */
+
       SET_FRAME_GARBAGED (f);
       cancel_mouse_face (f);
     }
@@ -1524,6 +1529,7 @@ xg_create_frame_widgets (struct frame *f)
   GtkWidget *wtop;
   GtkWidget *wvbox, *whbox;
   GtkWidget *wfixed;
+  GtkGLArea *canvas;
 #ifndef HAVE_GTK3
   GtkRcStyle *style;
 #endif
@@ -1579,13 +1585,15 @@ xg_create_frame_widgets (struct frame *f)
 #else
   wfixed = gtk_fixed_new ();
 #endif
+  canvas = gtk_gl_area_new();
 
-  if (! wtop || ! wvbox || ! whbox || ! wfixed)
+  if (! wtop || ! wvbox || ! whbox || ! wfixed || ! canvas)
     {
       if (wtop) gtk_widget_destroy (wtop);
       if (wvbox) gtk_widget_destroy (wvbox);
       if (whbox) gtk_widget_destroy (whbox);
       if (wfixed) gtk_widget_destroy (wfixed);
+      if (canvas) gtk_widget_destroy (canvas);
 
       unblock_input ();
       return 0;
@@ -1595,6 +1603,7 @@ xg_create_frame_widgets (struct frame *f)
   gtk_widget_set_name (wtop, EMACS_CLASS);
   gtk_widget_set_name (wvbox, "pane");
   gtk_widget_set_name (wfixed, SSDATA (Vx_resource_name));
+  gtk_widget_set_name (canvas, "canvas");
 
   /* If this frame has a title or name, set it in the title bar.  */
   if (! NILP (f->title))
@@ -1613,6 +1622,7 @@ xg_create_frame_widgets (struct frame *f)
 
   FRAME_GTK_OUTER_WIDGET (f) = wtop;
   FRAME_GTK_WIDGET (f) = wfixed;
+  FRAME_CANVAS (f) = canvas;
   f->output_data.xp->vbox_widget = wvbox;
   f->output_data.xp->hbox_widget = whbox;
 
@@ -1620,7 +1630,10 @@ xg_create_frame_widgets (struct frame *f)
 
   gtk_container_add (GTK_CONTAINER (wtop), wvbox);
   gtk_box_pack_start (GTK_BOX (wvbox), whbox, TRUE, TRUE, 0);
-  gtk_box_pack_start (GTK_BOX (whbox), wfixed, TRUE, TRUE, 0);
+  /* gtk_box_pack_start (GTK_BOX (whbox), wfixed, TRUE, TRUE, 0); */
+  gtk_box_pack_start (GTK_BOX (whbox), canvas, TRUE, TRUE, 0);
+  /* gtk_widget_set_size_request (canvas, FRAME_PIXEL_WIDTH (f), FRAME_PIXEL_HEIGHT (f)); */
+  /* gtk_fixed_put (GTK_FIXED (wfixed), canvas, 0, 0); */
 
   if (FRAME_EXTERNAL_TOOL_BAR (f))
     update_frame_tool_bar (f);
@@ -1687,11 +1700,13 @@ xg_create_frame_widgets (struct frame *f)
 
   gtk_widget_set_visual (wtop, visual);
   gtk_widget_set_visual (wfixed, visual);
+  gtk_widget_set_visual (canvas, visual);
 
 #ifndef HAVE_PGTK
   /* Must realize the windows so the X window gets created.  It is used
      by callers of this function.  */
   gtk_widget_realize (wfixed);
+  /* gtk_widget_realize (canvas); */
   FRAME_X_WINDOW (f) = GTK_WIDGET_TO_X_WIN (wfixed);
   initial_set_up_x_back_buffer (f);
 #endif
@@ -1699,6 +1714,7 @@ xg_create_frame_widgets (struct frame *f)
   /* Since GTK clears its window by filling with the background color,
      we must keep X and GTK background in sync.  */
   xg_set_widget_bg (f, wfixed, FRAME_BACKGROUND_PIXEL (f));
+  xg_set_widget_bg (f, canvas, FRAME_BACKGROUND_PIXEL (f));
 
 #ifndef HAVE_GTK3
   /* Also, do not let any background pixmap to be set, this looks very

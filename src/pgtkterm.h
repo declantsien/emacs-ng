@@ -368,7 +368,11 @@ struct pgtk_output
   GtkWidget *widget;
   /* The widget of the edit portion of this screen; the window in
      "window_desc" is inside of this.  */
+
   GtkWidget *edit_widget;
+#ifdef USE_WEBRENDER
+  GtkGLArea *canvas;
+#endif
   /* The widget used for laying out widgets vertically.  */
   GtkWidget *vbox_widget;
   /* The widget used for laying out widgets horizontally.  */
@@ -471,6 +475,7 @@ enum
 #endif
 #define FRAME_GTK_OUTER_WIDGET(f) (FRAME_X_OUTPUT (f)->widget)
 #define FRAME_GTK_WIDGET(f)       (FRAME_X_OUTPUT (f)->edit_widget)
+#define FRAME_CANVAS(f)           (FRAME_X_OUTPUT (f)->canvas)
 #define FRAME_WIDGET(f)           (FRAME_GTK_OUTER_WIDGET (f)	\
                                    ? FRAME_GTK_OUTER_WIDGET (f)	\
                                    : FRAME_GTK_WIDGET (f))

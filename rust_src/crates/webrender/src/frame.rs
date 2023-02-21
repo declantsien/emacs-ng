@@ -85,9 +85,9 @@ impl LispFrameExt for LispFrameRef {
             // let wvbox = output.as_raw().vbox_widget;
             // let whbox = output.as_raw().hbox_widget;
             let widget = output.as_raw().edit_widget;
-            unsafe {
-                gtk_sys::gtk_widget_set_opacity(widget, 0.0);
-            }
+            // unsafe {
+            //     gtk_sys::gtk_widget_set_opacity(widget, 0.0);
+            // }
 
             let transparent = gdk_sys::GdkRGBA {
                 red: 0.0,
@@ -95,9 +95,9 @@ impl LispFrameExt for LispFrameRef {
                 blue: 0.0,
                 alpha: 0.0,
             };
-            unsafe {
-                gtk_sys::gtk_widget_override_background_color(widget, 0, &transparent);
-            }
+            // unsafe {
+            //     gtk_sys::gtk_widget_override_background_color(widget, 0, &transparent);
+            // }
             // if wfixed != ptr::null_mut() {
             //     unsafe { gtk_sys::gtk_widget_destroy(wfixed) }
             // }
@@ -110,7 +110,9 @@ impl LispFrameExt for LispFrameRef {
             //     // unsafe { gtk_sys::gtk_widget_destroy(whbox) }
             // }
             if widget != ptr::null_mut() {
-                let gwin = unsafe { gtk_sys::gtk_widget_get_window(widget) };
+                let gwin = unsafe {
+                    gtk_sys::gtk_widget_get_window(widget as *mut _ as *mut gtk_sys::GtkWidget)
+                };
                 let surface = unsafe {
                     gdk_wayland_sys::gdk_wayland_window_get_wl_surface(
                         gwin as *mut _ as *mut gdk_wayland_sys::GdkWaylandWindow,

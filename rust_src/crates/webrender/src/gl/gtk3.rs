@@ -1,69 +1,95 @@
 use crate::frame::LispFrameExt;
 use emacs::frame::LispFrameRef;
-use winit::platform::unix::WindowExtUnix;
-use std::rc::Rc;
 use euclid::Size2D;
 use gleam::gl::ErrorCheckingGl;
+use gleam::gl::GlesFns;
+use std::rc::Rc;
 use webrender::api::units::DevicePixel;
+use winit::platform::unix::WindowExtUnix;
 // use gdk::GLContext;
+use gleam::gl::Gl;
+use gleam::gl::GlFns;
 use gtk::builders::GLAreaBuilder;
 use gtk::prelude::*;
 use gtk::GLArea;
-use gleam::gl::Gl;
-use gleam::gl::GlFns;
 
 use std::marker::PhantomData;
 
 pub struct GlContext {
-    // ctx: gdk::GLContext,
-    area: GLArea,
+    ctx: *mut gdk_sys::GdkGLContext,
+    // // area: GLArea,
+    area: *mut gtk_sys::GtkGLArea,
     gl: Rc<dyn Gl>,
 }
 
 impl GlContext {
     pub fn new(frame: LispFrameRef) -> Self {
-	let frame_inner = frame.output().get_inner();
-	let window = frame_inner.window.as_ref().expect("No window");
+        let mut output = frame.output();
+        let area = output.as_raw().canvas;
+        // let gwin = unsafe { gtk_sys::gtk_widget_get_window(widget) };
+        // let mut error = ptr::null_mut();
+        // let ctx = unsafe { gdk_sys::gdk_window_create_gl_context(gwin, &mut error) };
 
-	let gtkwin = window.gtk_window();
+        // let frame_inner = frame.output().get_inner();
+        // let window = frame_inner.window.as_ref().expect("No window");
 
-        // TODO config of pf_reqs and gl_attr
-        let area = GLAreaBuilder::new().has_alpha(true).build();
-        let vbox = gtkwin.children().pop().unwrap().downcast::<gtk::Box>().unwrap();
-        vbox.pack_start(&area, true, true, 0);
-        area.grab_focus();
-        gtkwin.show_all();
-	// let ctx = area.window().unwrap().create_gl_context().expect("failed to create gdk context");
+        // let gtkwin = window.gtk_window();
 
-	// ctx.realize();
-	// ctx.make_current();
-	// let version = ctx.version();
-	// log::trace!("gl version {:?}", version);
+        // // TODO config of pf_reqs and gl_attr
+        // let area = GLAreaBuilder::new().has_alpha(true).build();
+        // let vbox = gtkwin.children().pop().unwrap().downcast::<gtk::Box>().unwrap();
+        // vbox.pack_start(&area, true, true, 0);
+        // area.grab_focus();
+        // gtkwin.show_all();
+        // let ctx = area.window().unwrap().create_gl_context().expect("failed to create gdk context");
+        // ctx.realize();
+        // ctx.make_current();
+        // let version = ctx.version();
+        // log::trace!("gl version {:?}", version);
 
+        let mut ctx = std::ptr::null_mut();
+        unsafe {
+            // gtk_sys::gtk_gl_area_set_use_es(area, 0);
+            gtk_sys::gtk_gl_area_make_current(area);
+            let window = gtk_sys::gtk_widget_get_window(area as *mut _ as *mut gtk_sys::GtkWidget);
+            let mut err = std::ptr::null_mut();
+            ctx = gdk_sys::gdk_window_create_gl_context(window, err);
+            // gdk_gl_context_set_required_version(ctx,
+            //                                 params->major_ver,
+            //                                 params->minor_ver);
+            gdk_sys::gdk_gl_context_realize(ctx, err);
+        }
+
+        // epoxy::load_with(|s| {
+        //     unsafe {
+        // 	match DynamicLibrary::open(None).unwrap().symbol(s) {
+        // 	    Ok(v) => v,
+        // 	    Err(_) => ptr::null(),
+        // 	}
+        //     }
+        // });
         gl_loader::init_gl();
 
-	area.make_current();
-	let gl = unsafe { GlFns::load_with(|s| gl_loader::get_proc_address(s) as *const _) };
+        // area.make_current();
+        // let gl = unsafe { GlFns::load_with(|s| gl_loader::get_proc_address(s) as *const _) };
+        let gl = unsafe { GlesFns::load_with(|s| gl_loader::get_proc_address(s) as *const _) };
         // TODO detect es
 
-	// area.connect_render(move |_, _| {
+        // area.connect_render(move |_, _| {
         //     // gl.draw_frame([0.0; 4]);
         //     gtk::Inhibit(false)
         // });
 
-        GlContext {
-	    // ctx,
-	    area,
-            gl,
-        }
+        GlContext { ctx, area, gl }
     }
 
     pub fn bind_framebuffer(&self) {}
 
     #[inline]
     pub fn swap_buffers(&self) {
-	// GTK swaps the buffers after each "render" signal itself
-        self.area.queue_render();
+        // GTK swaps the buffers after each "render" signal itself
+        // self.area.queue_render();
+        unsafe { gtk_sys::gtk_gl_area_queue_render(self.area) }
     }
 
     // #[inline]
@@ -74,7 +100,8 @@ impl GlContext {
 
     #[inline]
     pub fn is_current(&self) -> bool {
-        self.area.context() == gdk::GLContext::current()
+        // self.area.context() == gdk::GLContext::current()
+        true
     }
 
     // #[inline]
@@ -89,12 +116,13 @@ impl GlContext {
     }
 
     pub fn resize(&self, size: Size2D<i32, DevicePixel>) {
-	// Ignored because widget will be resized automatically
+        // Ignored because widget will be resized automatically
     }
 
     pub fn ensure_context_is_current(&mut self) {
-	// self.ctx.make_current();
-	self.area.make_current();
+        // self.ctx.make_current();
+        // self.area.make_current();
+        unsafe { gtk_sys::gtk_gl_area_make_current(self.area) };
         self.assert_no_gl_error();
     }
 
