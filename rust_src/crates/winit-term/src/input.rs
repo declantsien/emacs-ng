@@ -1,6 +1,6 @@
 use std::sync::OnceLock;
 use winit::{
-    dpi::PhysicalPosition,
+    dpi::{LogicalPosition, PhysicalPosition},
     event::{ElementState, MouseButton, MouseScrollDelta, TouchPhase},
     keyboard::{KeyCode as VirtualKeyCode, ModifiersState},
 };
@@ -160,7 +160,7 @@ impl InputProcessor {
             _ => todo!(),
         };
 
-        let mut pos = PhysicalPosition::new(0, 0);
+        let mut pos = LogicalPosition::new(0, 0);
 
         if let Some(frame) = top_frame.as_frame() {
             pos = frame.cursor_position();
@@ -244,7 +244,7 @@ impl InputProcessor {
 
         let (kind, is_upper, lines) = event_meta.unwrap();
 
-        let mut pos = PhysicalPosition::new(0, 0);
+        let mut pos = LogicalPosition::new(0, 0);
 
         if let Some(frame) = top_frame.as_frame() {
             pos = frame.cursor_position();
@@ -316,8 +316,7 @@ pub fn winit_keycode_emacs_key_name(keycode: VirtualKeyCode) -> *const libc::c_c
         VirtualKeyCode::Escape => kn!("escape"),
         VirtualKeyCode::Backspace => kn!("backspace"),
         VirtualKeyCode::Delete => kn!("deletechar"),
-        VirtualKeyCode::Enter
-            |VirtualKeyCode::NumpadEnter=> kn!("return"),
+        VirtualKeyCode::Enter | VirtualKeyCode::NumpadEnter => kn!("return"),
         VirtualKeyCode::Tab => kn!("tab"),
 
         VirtualKeyCode::Home => kn!("home"),
