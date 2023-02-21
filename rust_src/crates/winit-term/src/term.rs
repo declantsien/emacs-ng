@@ -213,6 +213,7 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
 
     for e in events.iter() {
         let e = e.clone();
+        log::trace!("Handling event {:?}", e);
 
         match e {
             Event::RedrawRequested(window_id) => {
@@ -275,7 +276,7 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
                         ElementState::Released => {
                             InputProcessor::handle_key_released();
                         }
-                        _ => todo!(),
+                        e => todo!("Unhandled event {:?}", e),
                     },
 
                     WindowEvent::MouseInput { state, button, .. } => {

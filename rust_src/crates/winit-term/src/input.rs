@@ -315,7 +315,9 @@ pub fn winit_keycode_emacs_key_name(keycode: VirtualKeyCode) -> *const libc::c_c
     match keycode {
         VirtualKeyCode::Escape => kn!("escape"),
         VirtualKeyCode::Backspace => kn!("backspace"),
-        VirtualKeyCode::Enter => kn!("return"),
+        VirtualKeyCode::Delete => kn!("deletechar"),
+        VirtualKeyCode::Enter
+            |VirtualKeyCode::NumpadEnter=> kn!("return"),
         VirtualKeyCode::Tab => kn!("tab"),
 
         VirtualKeyCode::Home => kn!("home"),
