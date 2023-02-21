@@ -349,3 +349,4 @@ lib-src/seccomp-filter-exec.pfc
 _gdb_history
 /.cargo/config.toml
 /.cargo/config
+/aur/
