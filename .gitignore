@@ -348,3 +348,4 @@ lib-src/seccomp-filter-exec.pfc
 .gdb_history
 _gdb_history
 /.cargo/config
+/aur/
