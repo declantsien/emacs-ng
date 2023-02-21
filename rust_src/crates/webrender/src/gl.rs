@@ -56,7 +56,7 @@ impl GlContext {
         let height = NonZeroU32::new(size.height as u32).unwrap();
 
 
-        // glutin
+        // TODO proper preference logic here.
         let preference = DisplayApiPreference::Egl;
         let gl_display = unsafe {Display::new(display_handle, preference) }.unwrap();
         let template = ConfigTemplateBuilder::new().build(); // TODO do we need to do anything to this?
