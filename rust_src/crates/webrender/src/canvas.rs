@@ -3,8 +3,8 @@ use std::fmt;
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 use tracing::instrument;
 
-use crate::gl::GlContext;
 use crate::frame::LispFrameExt;
+use crate::gl::GlContext;
 use crate::WRFontRef;
 use gleam::gl;
 use std::collections::HashMap;
@@ -69,7 +69,6 @@ impl Canvas {
         let size = frame.size();
         let gl_context = GlContext::new(size, display_handle, window_handle);
 
-
         // webrender
         let webrender_opts = webrender::WebRenderOptions {
             clear_color: ColorF::new(1.0, 1.0, 1.0, 1.0),
@@ -77,9 +76,13 @@ impl Canvas {
         };
 
         let notifier = Box::new(Notifier::new());
-        let (mut renderer, sender) =
-            webrender::create_webrender_instance(gl_context.get_gl(), notifier, webrender_opts, None)
-                .unwrap();
+        let (mut renderer, sender) = webrender::create_webrender_instance(
+            gl_context.get_gl(),
+            notifier,
+            webrender_opts,
+            None,
+        )
+        .unwrap();
 
         let texture_resources = Rc::new(RefCell::new(TextureResourceManager::new(
             gl_context.get_gl(),
@@ -222,7 +225,6 @@ impl Canvas {
         self.gl_context.assert_no_gl_error();
     }
 
-
     pub fn flush(&mut self) {
         self.gl_context.assert_no_gl_error();
         self.gl_context.ensure_context_is_current();
@@ -247,7 +249,7 @@ impl Canvas {
 
             let device_size = self.device_size();
 
-	    self.gl_context.bind_framebuffer();
+            self.gl_context.bind_framebuffer();
 
             self.renderer.update();
 
@@ -261,10 +263,9 @@ impl Canvas {
             let image_key = self.copy_framebuffer_to_texture(DeviceIntRect::from_size(device_size));
             self.previous_frame_image = Some(image_key);
 
-	    self.gl_context.swap_buffers();
+            self.gl_context.swap_buffers();
         }
     }
-
 
     pub fn get_previous_frame(&self) -> Option<ImageKey> {
         self.previous_frame_image
@@ -495,7 +496,6 @@ impl Canvas {
 
         self.gl_context.resize(*size);
     }
-
 
     pub fn deinit(mut self) {
         self.gl_context.ensure_context_is_current();

@@ -22,11 +22,11 @@ pub mod term;
 mod cursor;
 mod font_db;
 mod fringe;
+mod gl;
 mod renderer;
 mod texture;
 pub mod util;
 mod wrterm;
-mod gl;
 
 pub use crate::font::*;
 pub use crate::term::*;

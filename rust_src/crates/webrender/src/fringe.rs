@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
+use crate::frame::LispFrameExt;
 use crate::output::OutputRef;
 use bit_vec::BitVec;
-use image::{DynamicImage, GenericImageView, Rgba, RgbaImage};
 use emacs::frame::LispFrameRef;
-use crate::frame::LispFrameExt;
+use image::{DynamicImage, GenericImageView, Rgba, RgbaImage};
 
 use emacs::bindings::draw_fringe_bitmap_params;
 use webrender::api::ImageKey;

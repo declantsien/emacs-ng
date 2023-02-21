@@ -1,64 +1,54 @@
-use log::warn;
-#[cfg(feature="glutin")]
+#[cfg(feature = "glutin")]
 use glutin::{
-    surface::{Surface, WindowSurface, SurfaceAttributesBuilder},
-    context::{
-        ContextApi, ContextAttributesBuilder, Version,PossiblyCurrentContext,
-        PossiblyCurrentContextGlSurfaceAccessor,
-        NotCurrentGlContextSurfaceAccessor,
-    },
-    display::{Display, DisplayApiPreference, GlDisplay, GetGlDisplay},
     config::{Api, ConfigTemplateBuilder, GlConfig},
-    prelude::GlSurface
+    context::{
+        ContextApi, ContextAttributesBuilder, NotCurrentGlContextSurfaceAccessor,
+        PossiblyCurrentContext, PossiblyCurrentContextGlSurfaceAccessor, Version,
+    },
+    display::{Display, DisplayApiPreference, GetGlDisplay, GlDisplay},
+    prelude::GlSurface,
+    surface::{Surface, SurfaceAttributesBuilder, WindowSurface},
 };
+use log::warn;
 
-#[cfg(feature="glutin")]
-use std::{
-    num::NonZeroU32,
-    ffi::CString,
-};
+#[cfg(feature = "glutin")]
+use std::{ffi::CString, num::NonZeroU32};
 
-#[cfg(feature="surfman")]
-use surfman::{
-    GLApi,
-    Connection,
-    SurfaceType,
-};
+#[cfg(feature = "surfman")]
+use surfman::{Connection, GLApi, SurfaceType};
 
-#[cfg(feature="surfman")]
+#[cfg(feature = "surfman")]
 use webrender_surfman::WebrenderSurfman;
 
 use euclid::Size2D;
 
-use raw_window_handle::{
-    RawWindowHandle,
-    RawDisplayHandle,
-};
+use raw_window_handle::{RawDisplayHandle, RawWindowHandle};
 use webrender::api::units::DevicePixel;
 
 use std::rc::Rc;
 
-use gleam::gl::{
-    Gl, GlFns, GlesFns, ErrorCheckingGl
-};
+use gleam::gl::{ErrorCheckingGl, Gl, GlFns, GlesFns};
 
-#[cfg(feature="glutin")]
+#[cfg(feature = "glutin")]
 pub struct GlContext {
     context: PossiblyCurrentContext,
     surface: Surface<WindowSurface>,
-    gl: Rc<dyn Gl>
+    gl: Rc<dyn Gl>,
 }
 
-#[cfg(feature="glutin")]
+#[cfg(feature = "glutin")]
 impl GlContext {
-    pub fn new(size: Size2D<i32, DevicePixel>, display_handle: RawDisplayHandle, window_handle: RawWindowHandle) -> Self {
+    pub fn new(
+        size: Size2D<i32, DevicePixel>,
+        display_handle: RawDisplayHandle,
+        window_handle: RawWindowHandle,
+    ) -> Self {
         let width = NonZeroU32::new(size.width as u32).unwrap();
         let height = NonZeroU32::new(size.height as u32).unwrap();
 
-
         // TODO proper preference logic here.
         let preference = DisplayApiPreference::Egl;
-        let gl_display = unsafe {Display::new(display_handle, preference) }.unwrap();
+        let gl_display = unsafe { Display::new(display_handle, preference) }.unwrap();
         let template = ConfigTemplateBuilder::new().build(); // TODO do we need to do anything to this?
         let gl_config = unsafe {
             let configs = gl_display.find_configs(template).unwrap();
@@ -88,21 +78,26 @@ impl GlContext {
             .build(Some(window_handle));
 
         let mut context = Some(unsafe {
-            gl_display.create_context(&gl_config, &context_attributes).unwrap_or_else(|_| {
-                gl_display.create_context(&gl_config, &fallback_context_attributes).unwrap_or_else(
-                    |_| {
-                        gl_display
-                            .create_context(&gl_config, &legacy_context_attributes)
-                            .expect("failed to create context")
-                    },
-                )
-            })
+            gl_display
+                .create_context(&gl_config, &context_attributes)
+                .unwrap_or_else(|_| {
+                    gl_display
+                        .create_context(&gl_config, &fallback_context_attributes)
+                        .unwrap_or_else(|_| {
+                            gl_display
+                                .create_context(&gl_config, &legacy_context_attributes)
+                                .expect("failed to create context")
+                        })
+                })
         });
 
-        let attrs = SurfaceAttributesBuilder::<WindowSurface>::new().build(
-            window_handle, width, height
-        );
-        let surface = unsafe { gl_display.create_window_surface(&gl_config, &attrs).unwrap()};
+        let attrs =
+            SurfaceAttributesBuilder::<WindowSurface>::new().build(window_handle, width, height);
+        let surface = unsafe {
+            gl_display
+                .create_window_surface(&gl_config, &attrs)
+                .unwrap()
+        };
         let context = context.take().unwrap().make_current(&surface).unwrap();
         // TODO haven't we done this above?
         surface.resize(&context, width, height);
@@ -110,9 +105,23 @@ impl GlContext {
         let gl = {
             let flags = gl_config.api();
             if flags.contains(Api::OPENGL) {
-                unsafe {GlFns::load_with(|symbol| gl_config.display().get_proc_address(&CString::new(symbol).unwrap()) as *const _)}
-            } else if flags.intersects(Api::GLES1 | Api::GLES2 | Api::GLES3 ) {
-                unsafe {GlesFns::load_with(|symbol| gl_config.display().get_proc_address(&CString::new(symbol).unwrap()) as *const _)}
+                unsafe {
+                    GlFns::load_with(|symbol| {
+                        gl_config
+                            .display()
+                            .get_proc_address(&CString::new(symbol).unwrap())
+                            as *const _
+                    })
+                }
+            } else if flags.intersects(Api::GLES1 | Api::GLES2 | Api::GLES3) {
+                unsafe {
+                    GlesFns::load_with(|symbol| {
+                        gl_config
+                            .display()
+                            .get_proc_address(&CString::new(symbol).unwrap())
+                            as *const _
+                    })
+                }
             } else {
                 unimplemented!();
             }
@@ -132,11 +141,11 @@ impl GlContext {
     }
 
     pub fn resize(&self, size: Size2D<i32, DevicePixel>) {
-        self.surface
-            .resize(
-                &self.context,
-                NonZeroU32::new(size.width as u32).unwrap(),
-                NonZeroU32::new(size.height as u32).unwrap());
+        self.surface.resize(
+            &self.context,
+            NonZeroU32::new(size.width as u32).unwrap(),
+            NonZeroU32::new(size.height as u32).unwrap(),
+        );
     }
 
     pub fn ensure_context_is_current(&mut self) {
@@ -167,15 +176,19 @@ impl GlContext {
         ErrorCheckingGl::wrap(self.gl.clone())
     }
 }
-#[cfg(feature="surfman")]
+#[cfg(feature = "surfman")]
 pub struct GlContext {
     webrender_surfman: WebrenderSurfman,
-    gl: Rc<dyn Gl>
+    gl: Rc<dyn Gl>,
 }
 
-#[cfg(feature="surfman")]
+#[cfg(feature = "surfman")]
 impl GlContext {
-    pub fn new(size: Size2D<i32, DevicePixel>, display_handle: RawDisplayHandle, window_handle: RawWindowHandle) -> Self {
+    pub fn new(
+        size: Size2D<i32, DevicePixel>,
+        display_handle: RawDisplayHandle,
+        window_handle: RawWindowHandle,
+    ) -> Self {
         let connection = match Connection::from_raw_display_handle(display_handle) {
             Ok(connection) => connection,
             Err(error) => panic!("Device not open {:?}", error),
@@ -201,9 +214,7 @@ impl GlContext {
         // Get GL bindings
         let gl = match webrender_surfman.connection().gl_api() {
             GLApi::GL => unsafe { GlFns::load_with(|s| webrender_surfman.get_proc_address(s)) },
-            GLApi::GLES => unsafe {
-                GlesFns::load_with(|s| webrender_surfman.get_proc_address(s))
-            },
+            GLApi::GLES => unsafe { GlesFns::load_with(|s| webrender_surfman.get_proc_address(s)) },
         };
         webrender_surfman.make_gl_context_current().unwrap();
 
@@ -214,7 +225,7 @@ impl GlContext {
     }
 
     pub fn bind_framebuffer(&mut self) {
-	// Bind the webrender framebuffer
+        // Bind the webrender framebuffer
         self.ensure_context_is_current();
 
         let framebuffer_object = self
@@ -229,7 +240,7 @@ impl GlContext {
     }
 
     pub fn swap_buffers(&self) {
-	// Perform the page flip. This will likely block for a while.
+        // Perform the page flip. This will likely block for a while.
         if let Err(err) = self.webrender_surfman.present() {
             warn!("Failed to present surface: {:?}", err);
         }
