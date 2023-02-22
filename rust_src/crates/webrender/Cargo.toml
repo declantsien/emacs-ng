@@ -67,7 +67,7 @@ epoxy = "0.1.0"
 core-foundation = "0.9.2"
 
 [features]
-default = ["std", "winit", "gtk3"]
+default = ["std", "winit", "surfman"]
 winit = ["dep:gtk", "dep:gdk", "dep:gl_loader"]
 pgtk = ["dep:gtk", "dep:gtk-sys", "dep:gdk-sys", "dep:gdkwayland-sys"]
 capture=["webrender/capture", "webrender/serialize_program"]

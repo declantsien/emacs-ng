@@ -107,7 +107,7 @@ impl LispFrameWinitExt for LispFrameRef {
     fn set_window(&self, window: emacs::windowing::window::Window) {
         self.output().get_inner().set_window(window);
     }
-
+    #[cfg(not(use_tao))]
     fn set_cursor_position(&self, pos: PhysicalPosition<f64>) {
         self.output().get_inner().set_cursor_position(pos);
     }

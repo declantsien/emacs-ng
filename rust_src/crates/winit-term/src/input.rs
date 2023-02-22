@@ -14,7 +14,7 @@ use emacs::{
     globals::{Qnil, Qt},
     lisp::LispObject,
     sys::EmacsModifiers::{
-        ctrl_modifier, down_modifier, meta_modifier, shift_modifier, super_modifier, up_modifier,
+         down_modifier, up_modifier,
     },
 };
 use std::sync::OnceLock;

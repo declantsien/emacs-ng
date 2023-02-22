@@ -1108,6 +1108,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "epoxy"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b96028ce3ff03972312fd8243281858e80fc0f9838b1f035676b6c199214d9e"
+dependencies = [
+ "gl_generator 0.9.0",
+ "libc",
+ "pkg-config",
+ "shared_library",
+]
+
+[[package]]
 name = "errno"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1141,9 +1153,9 @@ dependencies = [
 
 [[package]]
 name = "euclid"
-version = "0.22.6"
+version = "0.22.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da96828553a086d7b18dcebfc579bd9628b016f86590d7453c115e490fa74b80"
+checksum = "b52c2ef4a78da0ba68fbe1fd920627411096d2ac478f7f4c9f3a54ba6705bade"
 dependencies = [
  "num-traits",
  "serde",
@@ -1579,13 +1591,24 @@ dependencies = [
 
 [[package]]
 name = "gl_generator"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a795170cbd85b5a7baa58d6d7525cae6a03e486859860c220f7ebbbdd379d0a"
+dependencies = [
+ "khronos_api 2.2.0",
+ "log",
+ "xml-rs 0.7.0",
+]
+
+[[package]]
+name = "gl_generator"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca98bbde17256e02d17336a6bdb5a50f7d0ccacee502e191d3e3d0ec2f96f84a"
 dependencies = [
- "khronos_api",
+ "khronos_api 3.1.0",
  "log",
- "xml-rs",
+ "xml-rs 0.8.3",
 ]
 
 [[package]]
@@ -1594,9 +1617,19 @@ version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a95dfc23a2b4a9a2f5ab41d194f8bfda3cabec42af4e39f08c339eb2a0c124d"
 dependencies = [
- "khronos_api",
+ "khronos_api 3.1.0",
  "log",
- "xml-rs",
+ "xml-rs 0.8.3",
+]
+
+[[package]]
+name = "gl_loader"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e32d96dd5f881490e537041d5532320812ba096097f07fccb4626578da0b99d3"
+dependencies = [
+ "cc",
+ "libc",
 ]
 
 [[package]]
@@ -1727,7 +1760,7 @@ dependencies = [
 [[package]]
 name = "glsl-to-cxx"
 version = "0.1.0"
-source = "git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e#91fdbacc15263e738efeb3ff9d4bf8befbeae88e"
+source = "git+https://github.com/servo/webrender.git?rev=cb2b55394892ef9ea1e89dbe41fd3a8cebd61468#cb2b55394892ef9ea1e89dbe41fd3a8cebd61468"
 dependencies = [
  "glsl",
 ]
@@ -1739,6 +1772,58 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74a3f5c04450dfdadb4b08f6e5ee6f5110f674de1acbd6199bfec68392a8cbaf"
 dependencies = [
  "cc",
+]
+
+[[package]]
+name = "glutin"
+version = "0.30.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68dc39a51f661324ea93bf87066d62ee6e83439c4260332695478186ec318cac"
+dependencies = [
+ "bitflags",
+ "cfg_aliases",
+ "cgl",
+ "core-foundation 0.9.3",
+ "dispatch",
+ "glutin_egl_sys",
+ "glutin_glx_sys",
+ "glutin_wgl_sys",
+ "libloading 0.7.4",
+ "objc2",
+ "once_cell",
+ "raw-window-handle",
+ "wayland-sys 0.30.1",
+ "windows-sys 0.45.0",
+ "x11-dl",
+]
+
+[[package]]
+name = "glutin_egl_sys"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5aaf0abb5c4148685b33101ae326a207946b4d3764d6cdc79f8316cdaa8367d"
+dependencies = [
+ "gl_generator 0.14.0",
+ "windows-sys 0.45.0",
+]
+
+[[package]]
+name = "glutin_glx_sys"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b53cb5fe568964aa066a3ba91eac5ecbac869fb0842cd0dc9e412434f1a1494"
+dependencies = [
+ "gl_generator 0.14.0",
+ "x11-dl",
+]
+
+[[package]]
+name = "glutin_wgl_sys"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef89398e90033fc6bc65e9bd42fd29bbbfd483bda5b56dc5562f455550618165"
+dependencies = [
+ "gl_generator 0.14.0",
 ]
 
 [[package]]
@@ -2034,6 +2119,12 @@ checksum = "c3fac17f7123a73ca62df411b1bf727ccc805daa070338fda671c86dac1bdc27"
 dependencies = [
  "wasm-bindgen",
 ]
+
+[[package]]
+name = "khronos_api"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "037ab472c33f67b5fbd3e9163a2645319e5356fcd355efa6d4eb7fff4bbcb554"
 
 [[package]]
 name = "khronos_api"
@@ -2913,13 +3004,34 @@ version = "0.3.0"
 source = "git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e#91fdbacc15263e738efeb3ff9d4bf8befbeae88e"
 dependencies = [
  "euclid",
- "peek-poke-derive",
+ "peek-poke-derive 0.3.0 (git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e)",
+]
+
+[[package]]
+name = "peek-poke"
+version = "0.3.0"
+source = "git+https://github.com/servo/webrender.git?rev=cb2b55394892ef9ea1e89dbe41fd3a8cebd61468#cb2b55394892ef9ea1e89dbe41fd3a8cebd61468"
+dependencies = [
+ "euclid",
+ "peek-poke-derive 0.3.0 (git+https://github.com/servo/webrender.git?rev=cb2b55394892ef9ea1e89dbe41fd3a8cebd61468)",
 ]
 
 [[package]]
 name = "peek-poke-derive"
 version = "0.3.0"
 source = "git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e#91fdbacc15263e738efeb3ff9d4bf8befbeae88e"
+dependencies = [
+ "proc-macro2 1.0.49",
+ "quote 1.0.23",
+ "syn 1.0.107",
+ "synstructure",
+ "unicode-xid 0.2.1",
+]
+
+[[package]]
+name = "peek-poke-derive"
+version = "0.3.0"
+source = "git+https://github.com/servo/webrender.git?rev=cb2b55394892ef9ea1e89dbe41fd3a8cebd61468#cb2b55394892ef9ea1e89dbe41fd3a8cebd61468"
 dependencies = [
  "proc-macro2 1.0.49",
  "quote 1.0.23",
@@ -3669,6 +3781,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "shared_library"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a9e7e0f2bfae24d8a5b5a66c5b257a83c7412304311512a0c054cd5e619da11"
+dependencies = [
+ "lazy_static",
+ "libc",
+]
+
+[[package]]
 name = "shlex"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3863,12 +3985,12 @@ checksum = "8fb1df15f412ee2e9dfc1c504260fa695c1c3f10fe9f4a6ee2d2184d7d6450e2"
 [[package]]
 name = "swgl"
 version = "0.1.0"
-source = "git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e#91fdbacc15263e738efeb3ff9d4bf8befbeae88e"
+source = "git+https://github.com/servo/webrender.git?rev=cb2b55394892ef9ea1e89dbe41fd3a8cebd61468#cb2b55394892ef9ea1e89dbe41fd3a8cebd61468"
 dependencies = [
  "cc",
  "gleam 0.13.1",
  "glsl-to-cxx",
- "webrender_build",
+ "webrender_build 0.0.2 (git+https://github.com/servo/webrender.git?rev=cb2b55394892ef9ea1e89dbe41fd3a8cebd61468)",
 ]
 
 [[package]]
@@ -4737,7 +4859,7 @@ checksum = "7010ba5767b3fcd350decc59055390b4ebe6bd1b9279a9feb1f1888987f1133d"
 dependencies = [
  "proc-macro2 1.0.49",
  "quote 1.0.23",
- "xml-rs",
+ "xml-rs 0.8.3",
 ]
 
 [[package]]
@@ -4748,7 +4870,7 @@ checksum = "8f4303d8fa22ab852f789e75a967f0a2cdc430a607751c0499bada3e451cbd53"
 dependencies = [
  "proc-macro2 1.0.49",
  "quote 1.0.23",
- "xml-rs",
+ "xml-rs 0.8.3",
 ]
 
 [[package]]
@@ -4837,6 +4959,39 @@ dependencies = [
  "num-traits",
  "plane-split",
  "rayon",
+ "smallvec",
+ "svg_fmt",
+ "time",
+ "topological-sort",
+ "tracy-rs",
+ "webrender_api 0.62.0 (git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e)",
+ "webrender_build 0.0.2 (git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e)",
+ "wr_glyph_rasterizer 0.1.0 (git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e)",
+ "wr_malloc_size_of 0.0.2 (git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e)",
+]
+
+[[package]]
+name = "webrender"
+version = "0.62.0"
+source = "git+https://github.com/servo/webrender.git?rev=cb2b55394892ef9ea1e89dbe41fd3a8cebd61468#cb2b55394892ef9ea1e89dbe41fd3a8cebd61468"
+dependencies = [
+ "bincode",
+ "bitflags",
+ "build-parallel",
+ "byteorder",
+ "derive_more",
+ "etagere",
+ "euclid",
+ "fxhash",
+ "gleam 0.13.1",
+ "glean",
+ "glslopt",
+ "lazy_static",
+ "log",
+ "malloc_size_of_derive",
+ "num-traits",
+ "plane-split",
+ "rayon",
  "ron",
  "serde",
  "smallvec",
@@ -4845,10 +5000,10 @@ dependencies = [
  "time",
  "topological-sort",
  "tracy-rs",
- "webrender_api",
- "webrender_build",
- "wr_glyph_rasterizer",
- "wr_malloc_size_of",
+ "webrender_api 0.62.0 (git+https://github.com/servo/webrender.git?rev=cb2b55394892ef9ea1e89dbe41fd3a8cebd61468)",
+ "webrender_build 0.0.2 (git+https://github.com/servo/webrender.git?rev=cb2b55394892ef9ea1e89dbe41fd3a8cebd61468)",
+ "wr_glyph_rasterizer 0.1.0 (git+https://github.com/servo/webrender.git?rev=cb2b55394892ef9ea1e89dbe41fd3a8cebd61468)",
+ "wr_malloc_size_of 0.0.2 (git+https://github.com/servo/webrender.git?rev=cb2b55394892ef9ea1e89dbe41fd3a8cebd61468)",
 ]
 
 [[package]]
@@ -4862,18 +5017,46 @@ dependencies = [
  "crossbeam-channel",
  "euclid",
  "malloc_size_of_derive",
- "peek-poke",
+ "peek-poke 0.3.0 (git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e)",
  "serde",
  "serde_bytes",
  "serde_derive",
  "time",
- "wr_malloc_size_of",
+ "wr_malloc_size_of 0.0.2 (git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e)",
+]
+
+[[package]]
+name = "webrender_api"
+version = "0.62.0"
+source = "git+https://github.com/servo/webrender.git?rev=cb2b55394892ef9ea1e89dbe41fd3a8cebd61468#cb2b55394892ef9ea1e89dbe41fd3a8cebd61468"
+dependencies = [
+ "app_units",
+ "bitflags",
+ "byteorder",
+ "crossbeam-channel",
+ "euclid",
+ "malloc_size_of_derive",
+ "peek-poke 0.3.0 (git+https://github.com/servo/webrender.git?rev=cb2b55394892ef9ea1e89dbe41fd3a8cebd61468)",
+ "serde",
+ "serde_bytes",
+ "serde_derive",
+ "time",
+ "wr_malloc_size_of 0.0.2 (git+https://github.com/servo/webrender.git?rev=cb2b55394892ef9ea1e89dbe41fd3a8cebd61468)",
 ]
 
 [[package]]
 name = "webrender_build"
 version = "0.0.2"
 source = "git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e#91fdbacc15263e738efeb3ff9d4bf8befbeae88e"
+dependencies = [
+ "bitflags",
+ "lazy_static",
+]
+
+[[package]]
+name = "webrender_build"
+version = "0.0.2"
+source = "git+https://github.com/servo/webrender.git?rev=cb2b55394892ef9ea1e89dbe41fd3a8cebd61468#cb2b55394892ef9ea1e89dbe41fd3a8cebd61468"
 dependencies = [
  "bitflags",
  "lazy_static",
@@ -5164,11 +5347,9 @@ dependencies = [
  "once_cell",
  "raw-window-handle",
  "spin_sleep",
- "surfman",
  "ttf-parser 0.17.1",
  "wayland-sys 0.30.1",
- "webrender",
- "webrender_surfman",
+ "webrender 0.62.0 (git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e)",
  "wr-renderer",
  "x11",
 ]
@@ -5193,13 +5374,18 @@ dependencies = [
  "copypasta",
  "core-foundation 0.9.3",
  "emacs",
+ "epoxy",
  "errno",
+ "euclid",
  "font-loader",
  "fontdb 0.12.0",
  "futures",
+ "gdk",
  "gdk-sys",
  "gdkwayland-sys",
+ "gl_loader",
  "gleam 0.13.1",
+ "glutin",
  "gtk",
  "gtk-sys",
  "image 0.23.14",
@@ -5218,7 +5404,7 @@ dependencies = [
  "surfman",
  "tracing",
  "ttf-parser 0.17.1",
- "webrender",
+ "webrender 0.62.0 (git+https://github.com/servo/webrender.git?rev=cb2b55394892ef9ea1e89dbe41fd3a8cebd61468)",
  "webrender_surfman",
 ]
 
@@ -5240,17 +5426,50 @@ dependencies = [
  "malloc_size_of_derive",
  "objc",
  "rayon",
+ "smallvec",
+ "tracy-rs",
+ "webrender_api 0.62.0 (git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e)",
+ "wr_malloc_size_of 0.0.2 (git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e)",
+]
+
+[[package]]
+name = "wr_glyph_rasterizer"
+version = "0.1.0"
+source = "git+https://github.com/servo/webrender.git?rev=cb2b55394892ef9ea1e89dbe41fd3a8cebd61468#cb2b55394892ef9ea1e89dbe41fd3a8cebd61468"
+dependencies = [
+ "core-foundation 0.9.3",
+ "core-graphics 0.22.3",
+ "core-text",
+ "dwrote",
+ "euclid",
+ "freetype",
+ "fxhash",
+ "lazy_static",
+ "libc",
+ "log",
+ "malloc_size_of_derive",
+ "objc",
+ "rayon",
  "serde",
  "smallvec",
  "tracy-rs",
- "webrender_api",
- "wr_malloc_size_of",
+ "webrender_api 0.62.0 (git+https://github.com/servo/webrender.git?rev=cb2b55394892ef9ea1e89dbe41fd3a8cebd61468)",
+ "wr_malloc_size_of 0.0.2 (git+https://github.com/servo/webrender.git?rev=cb2b55394892ef9ea1e89dbe41fd3a8cebd61468)",
 ]
 
 [[package]]
 name = "wr_malloc_size_of"
 version = "0.0.2"
 source = "git+https://github.com/servo/webrender.git?rev=91fdbacc15263e738efeb3ff9d4bf8befbeae88e#91fdbacc15263e738efeb3ff9d4bf8befbeae88e"
+dependencies = [
+ "app_units",
+ "euclid",
+]
+
+[[package]]
+name = "wr_malloc_size_of"
+version = "0.0.2"
+source = "git+https://github.com/servo/webrender.git?rev=cb2b55394892ef9ea1e89dbe41fd3a8cebd61468#cb2b55394892ef9ea1e89dbe41fd3a8cebd61468"
 dependencies = [
  "app_units",
  "euclid",
@@ -5310,6 +5529,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a9a231574ae78801646617cefd13bfe94be907c0e4fa979cfd8b770aa3c5d08"
 dependencies = [
  "nom 6.0.1",
+]
+
+[[package]]
+name = "xml-rs"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c1cb601d29fe2c2ac60a2b2e5e293994d87a1f6fa9687a31a15270f909be9c2"
+dependencies = [
+ "bitflags",
 ]
 
 [[package]]

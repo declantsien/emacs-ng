@@ -1,3 +1,14 @@
+use emacs::windowing::keyboard::{KeyCode as VirtualKeyCode, ModifiersState};
+
+use emacs::{
+    bindings::{event_kind, input_event, scroll_bar_part},
+    globals::{Qnil, Qt},
+    lisp::LispObject,
+    sys::EmacsModifiers::{
+        ctrl_modifier, down_modifier, meta_modifier, shift_modifier, super_modifier, up_modifier,
+    },
+};
+
 pub fn virtual_keycode(code: VirtualKeyCode) -> u32 {
     let code = unsafe { std::mem::transmute::<VirtualKeyCode, i64>(code) };
     u32::try_from(code).unwrap()

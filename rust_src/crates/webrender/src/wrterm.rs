@@ -4,7 +4,6 @@ use crate::output::OutputRef;
 use emacs::bindings::Fprovide;
 use emacs::globals::Qwr;
 use emacs::multibyte::LispStringRef;
-use std::ffi::CString;
 
 use lisp_macros::lisp_fn;
 

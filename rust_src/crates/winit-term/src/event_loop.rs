@@ -185,7 +185,7 @@ pub extern "C" fn winit_select(
                     };
                     let _is_x11 = false;
 
-                    #[cfg(x11_platform)]
+                    #[cfg(all(not(use_tao), x11_platform))]
                     let _is_x11 = _target.is_x11();
 
                     if _is_x11 {

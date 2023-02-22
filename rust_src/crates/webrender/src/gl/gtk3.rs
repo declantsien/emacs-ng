@@ -5,7 +5,7 @@ use gleam::gl::ErrorCheckingGl;
 use gleam::gl::GlesFns;
 use std::rc::Rc;
 use webrender::api::units::DevicePixel;
-use winit::platform::unix::WindowExtUnix;
+use emacs::windowing::platform::unix::WindowExtUnix;
 // use gdk::GLContext;
 use gleam::gl::Gl;
 use gleam::gl::GlFns;

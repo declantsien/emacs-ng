@@ -14,8 +14,6 @@ use wr_renderer::register_ttf_parser_font_driver;
 
 #[cfg(not(use_tao))]
 use emacs::windowing::event::VirtualKeyCode;
-#[cfg(use_tao)]
-use emacs::windowing::keyboard::KeyCode as VirtualKeyCode;
 use emacs::windowing::monitor::MonitorHandle;
 
 use lisp_macros::lisp_fn;
