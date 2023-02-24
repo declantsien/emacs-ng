@@ -536,9 +536,12 @@ otherwise for the first of 'inotify', 'kqueue' or 'gfile' that is usable.])
 OPTION_DEFAULT_OFF([xwidgets],
   [enable use of xwidgets in Emacs buffers (requires gtk3 or macOS Cocoa)])
 
-OPTION_DEFAULT_OFF([webrender],
-  [enable use of webrender(written in Rust) as GUI backend on
+OPTION_DEFAULT_OFF([winit],
+  [enable use of winit(written in Rust) as GUI backend on
 multiple platforms(Linux, Windows and MacOS) (experimental)])
+
+OPTION_DEFAULT_OFF([webrender],
+  [enable use of webrender(written in Rust) as rendering engine (experimental)])
 
 ## Based on Deno 1.9.1
 ## Update the above when upgrading Deno
@@ -1315,16 +1318,10 @@ AC_ARG_ENABLE(rust-debug,
 Useful for debugging rust component of emacs-ng.])],
 [ac_enable_rust_debug="${enableval}"],[])
 
-AC_ARG_ENABLE(webrender-self-contained,
-[AS_HELP_STRING([--disable-webrender-self-contained],
-                [disable self contained Webrender build under NeXTstep])],
-   EN_NS_SELF_CONTAINED=$enableval,
-   EN_NS_SELF_CONTAINED=yes)
-
-AC_ARG_ENABLE(webrender-capture,
-[AS_HELP_STRING([--enable-webrender-capture],
-		[enable Webrender capture infrastructure.])],
-[ac_enable_webrender_capture="${enableval}"],[])
+AC_ARG_ENABLE(winit-tao,
+[AS_HELP_STRING([--enable-winit-tao],
+[use winit tao fork.])],
+[ac_enable_tao="${enableval}"],[])
 
 AC_ARG_ENABLE(webrender-x11,
 [AS_HELP_STRING([--disable-webrender-x11],
@@ -2023,10 +2020,11 @@ AC_SUBST([AUTO_DEPEND])
 
 window_system=none
 
-if test "${with_webrender}" = "yes"; then
+if test "${with_winit}" = "yes"; then
   no_x=yes
   with_ns=no
-  window_system=webrender
+  window_system=winit
+  with_webrender=yes
 fi
 
 if test "${with_pgtk}" = "yes"; then
@@ -2036,6 +2034,10 @@ fi
 AC_PATH_X
 if test "$no_x" != yes && test "${with_pgtk}" != "yes"; then
   window_system=x11
+fi
+
+if test "${with_webrender}" = "yes" ; then
+  with_cairo=no
 fi
 
 LD_SWITCH_X_SITE_RPATH=
@@ -2244,6 +2246,26 @@ if test "${HAVE_NS}" = yes; then
   fi
 
   window_system=nextstep
+
+  NS_OBJC_OBJ="nsterm.o nsfns.o nsmenu.o nsselect.o nsimage.o $ns_fontfile"
+fi
+
+if test "${window_system}" = "nextstep" || test "${window_system}" = "winit"; then
+
+  if test "${window_system}" = "winit"; then
+    if test "${opsys}" != darwin; then
+        EN_NS_SELF_CONTAINED=no
+    fi
+    AC_DEFINE([WINIT_IMPL_COCOA], [1],
+         [Define to 1 if you are using Winit NS windowing under macOS.])
+    ns_appdir=`pwd`/nextstep/Emacs.app
+    ns_appbindir=${ns_appdir}/Contents/MacOS
+    ns_applibexecdir=${ns_appdir}/Contents/MacOS/libexec
+    ns_applibdir=${ns_appdir}/Contents/Frameworks
+    ns_appresdir=${ns_appdir}/Contents/Resources
+    ns_appsrc=Cocoa/Emacs.base
+  fi
+
   # set up packaging dirs
   if test "${EN_NS_SELF_CONTAINED}" = yes; then
      AC_DEFINE([NS_SELF_CONTAINED], [1], [Build an NS bundled app])
@@ -2264,9 +2286,8 @@ if test "${HAVE_NS}" = yes; then
      test "$locallisppathset" = no && locallisppath="\${ns_appresdir}/site-lisp"
      INSTALL_ARCH_INDEP_EXTRA=
   fi
-
-  NS_OBJC_OBJ="nsterm.o nsfns.o nsmenu.o nsselect.o nsimage.o $ns_fontfile"
 fi
+
 CFLAGS="$tmp_CFLAGS"
 CPPFLAGS="$tmp_CPPFLAGS"
 AC_SUBST([INSTALL_ARCH_INDEP_EXTRA])
@@ -2517,7 +2538,7 @@ dnl use the toolkit if we have gtk, or X11R5 or newer.
   w32 )
     term_header=w32term.h
   ;;
-  webrender )
+  winit )
     term_header=wrterm.h
   ;;
   pgtk )
@@ -6293,9 +6314,50 @@ AC_SUBST([XMENU_OBJ])
 AC_SUBST([XOBJ])
 AC_SUBST([FONT_OBJ])
 
+WINIT_LIBS=
+if test "${window_system}" = "winit" ; then
+
+  AC_DEFINE(HAVE_WINIT, 1,
+	    [Define to 1 if you want to use the Winit.])
+
+  if test "${opsys}" = gnu-linux; then
+    EMACS_CHECK_MODULES([XCB], [xcb >= 1.0.0])
+    test "$HAVE_XCB" = "no" && AC_MSG_ERROR(Winit Unix build requires libxcb)
+    WINIT_LIBS="$XCB_LIBS $WINIT_LIBS"
+
+    if test X$ac_enable_tao = Xyes; then
+       GLIB_REQUIRED=2.37.5
+       GTK_REQUIRED=3.22.23
+       GTK_MODULES="gtk+-3.0 >= $GTK_REQUIRED glib-2.0 >= $GLIB_REQUIRED"
+       EMACS_CHECK_MODULES([GTK], [$GTK_MODULES])
+       test "$HAVE_GTK" = "no" &&  AC_MSG_ERROR(tao requires gtk)
+       WINIT_LIBS="$GTK_LIBS $WINIT_LIBS"
+
+       CAIRO_REQUIRED=1.8.0
+       CAIRO_MODULE="cairo >= $CAIRO_REQUIRED"
+       EMACS_CHECK_MODULES([CAIRO], [$CAIRO_MODULE])
+       test $HAVE_CAIRO = "no" && AC_MSG_WARN([tao requires cairo but not found.])
+       WINIT_LIBS="$CAIRO_LIBS $WINIT_LIBS"
+    fi
+
+    WINIT_LIBS="$WINIT_LIBS -lxcb -lxcb-xfixes -lxcb-shape -lxcb-render"
+
+    if test X$ac_enable_webrender_x11 != Xno; then
+      WINIT_LIBS="-lX11 -lX11-xcb $WINIT_LIBS"
+    fi
+  fi
+fi
+AC_SUBST(WINIT_OBJ)
+AC_SUBST(WINIT_LIBS)
+
 WEBRENDER_LIBS=
-WEBRENDER_IMPL_COCOA=no
-if test "${window_system}" = "webrender" ; then
+if test "${with_webrender}" = "yes" ; then
+
+  if test "${window_system}" != "winit" ; then
+     AC_MSG_ERROR(Webrender currently only support winit window system
+     Current window system detection is $window_system. Please explicitly
+     provide --with-winit.)
+  fi
 
   AC_DEFINE(USE_WEBRENDER, 1,
 	    [Define to 1 if you want to use the webrender.])
@@ -6309,51 +6371,9 @@ if test "${window_system}" = "webrender" ; then
 
     EMACS_CHECK_MODULES([FONTCONFIG], [fontconfig >= 2.2.0])
     test "$HAVE_FONTCONFIG" = "no" && AC_MSG_ERROR(webrender requires libfontconfig)
-
-    EMACS_CHECK_MODULES([XCB], [xcb >= 1.0.0])
-    test "$HAVE_XCB" = "no" && AC_MSG_ERROR(WebRender Unix build requires libxcb)
-
-    WEBRENDER_LIBS="$WEBRENDER_LIBS -lxcb -lxcb-xfixes -lxcb-shape -lxcb-render"
-
-    if test X$ac_enable_webrender_x11 != Xno; then
-      WEBRENDER_LIBS="-lX11 -lX11-xcb $WEBRENDER_LIBS"
-    fi
   fi
-
-  if test "${opsys}" = darwin; then
-     WEBRENDER_IMPL_COCOA=yes
-  fi
-
-  if test "${EN_NS_SELF_CONTAINED}" = yes && test "${opsys}" = darwin; then
-     AC_DEFINE(NS_SELF_CONTAINED, 1, [Build an Webrender NS bundled app])
-     ns_self_contained=yes
-     ns_appdir=`pwd`/nextstep/Emacs.app
-     ns_appbindir=${ns_appdir}/Contents/MacOS
-     ns_applibexecdir=${ns_appdir}/Contents/MacOS/libexec
-     ns_applibdir=${ns_appdir}/Contents/Frameworks
-     ns_appresdir=${ns_appdir}/Contents/Resources
-     OTHER_FILES=ns-app
-     ns_appsrc=Cocoa/Emacs.base
-     prefix=${ns_appresdir}
-     exec_prefix=${ns_appbindir}
-     dnl This one isn't really used, only archlibdir is.
-     libexecdir="\${ns_applibexecdir}"
-     archlibdir="\${ns_applibexecdir}"
-     etcdocdir="\${ns_appresdir}/etc"
-     etcdir="\${ns_appresdir}/etc"
-     dnl FIXME maybe set datarootdir instead.
-     dnl That would also get applications, icons, man.
-     infodir="\${ns_appresdir}/info"
-     mandir="\${ns_appresdir}/man"
-     lispdir="\${ns_appresdir}/lisp"
-     lispdirrel="\${ns_appresdir}/lisp"
-     test "$locallisppathset" = no && locallisppath="\${ns_appresdir}/site-lisp"
-     INSTALL_ARCH_INDEP_EXTRA=
-  fi
-
 fi
 AC_SUBST(WEBRENDER_LIBS)
-AC_SUBST(WEBRENDER_IMPL_COCOA)
 
 WIDGET_OBJ=
 MOTIF_LIBW=
@@ -6537,8 +6557,6 @@ LIBS=$SAVE_LIBS
 # Add Rust variables, libs and utilities
 
 RUSTFLAGS=$RUSTFLAGS
-
-AC_SUBST(RUSTFLAGS)
 
 CARGO="cargo"
 CARGO_BUILD="$CARGO build"
@@ -6915,7 +6933,7 @@ fi
 
 echo
 
-if test "$HAVE_NS" = "yes" || test "${window_system}" = "webrender"; then
+if test "$HAVE_NS" = "yes" || test "${window_system}" = "winit"; then
    echo
    AS_ECHO(["Run '${MAKE-make}' to build Emacs, then run 'src/emacs' to test it.
 Run '${MAKE-make} install' in order to build an application bundle.
@@ -7018,7 +7036,7 @@ AC_CONFIG_COMMANDS([src/epaths.h], [
 if test "${opsys}" = "mingw32"; then
   ${MAKE-make} MAKEFILE_NAME=do-not-make-Makefile epaths-force-w32
 elif (test "$HAVE_NS" = "yes" || \
-     (test "${window_system}" = "webrender" && test "${opsys}" = darwin)) && \
+     (test "${window_system}" = "winit" && test "${opsys}" = darwin)) && \
       test "$EN_NS_SELF_CONTAINED" = "yes"; then
   ${MAKE-make} MAKEFILE_NAME=do-not-make-Makefile epaths-force-ns-self-contained
 else
@@ -7028,14 +7046,12 @@ fi || AC_MSG_ERROR(['src/epaths.h' could not be made.])
     window_system="$window_system" EN_NS_SELF_CONTAINED="$EN_NS_SELF_CONTAINED"])
 
 CARGO_DEFAULT_FEATURES=""
-WEBRENDER_DEFAULT_FEATURES=""
+WEBRENDER_EXTRA_FEATURES=""
 if test "$HAVE_LIBXML2" = "yes"; then
     CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"use-xml2\", "
 fi
-if test "$window_system" != "none"; then
-    CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system\", "
-fi
-case "$window_system" in
+
+case "${window_system}" in
     x11)
         CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-x11\", "
     ;;
@@ -7045,24 +7061,37 @@ case "$window_system" in
     w32)
         CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-w32\", "
     ;;
-    webrender)
-        CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-webrender\", "
+    winit)
+        CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-winit\", "
 	if test x$ac_enable_webrender_capture != x ; then
-	   WEBRENDER_DEFAULT_FEATURES="\"capture\", ${WEBRENDER_DEFAULT_FEATURES}"
+	   WEBRENDER_EXTRA_FEATURES="\"wrterm/capture\", ${WEBRENDER_EXTRA_FEATURES}"
 	fi
 	if test x$ac_enable_wr_pselect != x || test $opsys = darwin; then
-	   WEBRENDER_DEFAULT_FEATURES="\"pselect\", ${WEBRENDER_DEFAULT_FEATURES}"
+	   WEBRENDER_EXTRA_FEATURES="\"wrterm/pselect\", ${WEBRENDER_EXTRA_FEATURES}"
+	else
+	   WEBRENDER_EXTRA_FEATURES="\"wrterm/tokio\", ${WEBRENDER_EXTRA_FEATURES}"
 	fi
 	if test x$ac_enable_wr_glutin != x ; then
-	   WEBRENDER_DEFAULT_FEATURES="\"glutin\", ${WEBRENDER_DEFAULT_FEATURES}"
+	   WEBRENDER_EXTRA_FEATURES="\"wrterm/glutin\", ${WEBRENDER_EXTRA_FEATURES}"
 	else
-	   WEBRENDER_DEFAULT_FEATURES="\"surfman\", ${WEBRENDER_DEFAULT_FEATURES}"
+	   WEBRENDER_EXTRA_FEATURES="\"wrterm/surfman\", ${WEBRENDER_EXTRA_FEATURES}"
 	fi
 	if test X$ac_enable_webrender_x11 != Xno ; then
-	   WEBRENDER_DEFAULT_FEATURES="\"x11\", ${WEBRENDER_DEFAULT_FEATURES}"
+	   WEBRENDER_EXTRA_FEATURES="\"wrterm/x11\", ${WEBRENDER_EXTRA_FEATURES}"
+	fi
+	if test X$ac_enable_tao = Xyes; then
+	   WEBRENDER_EXTRA_FEATURES="\"wrterm/tao\", ${WEBRENDER_EXTRA_FEATURES}"
+        else
+	   WEBRENDER_EXTRA_FEATURES="\"wrterm/winit\", ${WEBRENDER_EXTRA_FEATURES}"
 	fi
     ;;
+    pgtk)
+        CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-pgtk\", "
+    ;;
 esac
+if test "${with_webrender}" = "yes" ; then
+   CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"webrender\", "
+fi
 if test "$HAVE_LIBGIT" = "yes"; then
    CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"libgit\", "
 fi
@@ -7073,11 +7102,12 @@ fi
 if test "${HAVE_MODULES}" = "yes"; then
   CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"ng-module\", "
 fi
+
+AC_SUBST(RUSTFLAGS)
 AC_SUBST(CARGO_DEFAULT_FEATURES)
-AC_SUBST(WEBRENDER_DEFAULT_FEATURES)
+AC_SUBST(WEBRENDER_EXTRA_FEATURES)
 AC_CONFIG_FILES([Cargo.toml:Cargo.in])
-webrender_src=$srcdir/rust_src/crates/webrender
-AC_CONFIG_FILES([$webrender_src/Cargo.toml:$webrender_src/Cargo.in])
+dnl AC_CONFIG_FILES([$srcdir/.cargo/config:$srcdir/.cargo/config.in])
 AC_CONFIG_FILES([$srcdir/rust_src/crates/emacs/build.rs])
 
 dnl NB we have to cheat and use the ac_... version because abs_top_srcdir

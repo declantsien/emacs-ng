@@ -28,6 +28,15 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #if defined HAVE_PNG
 # include <png.h>
 #endif
+#if defined HAVE_PGTK && defined USE_WEBRENDER
+#undef HAVE_PGTK
+#endif
+#if defined HAVE_NS && defined USE_WEBRENDER
+#undef HAVE_NS
+#endif
+#if defined USE_CAIRO && defined USE_WEBRENDER
+#undef USE_CAIRO
+#endif
 
 #include <setjmp.h>
 
