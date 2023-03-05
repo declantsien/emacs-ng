@@ -4,6 +4,7 @@ use crate::event_loop::WrEventLoop;
 use crate::frame::LispFrameExt;
 use crate::output::OutputRef;
 use crate::window_system::api::monitor::MonitorHandle;
+use emacs::bindings::do_pending_window_change;
 use emacs::globals::Qfullscreen;
 use emacs::globals::Qmaximized;
 use emacs::{
@@ -18,6 +19,7 @@ use emacs::{
 };
 use raw_window_handle::RawDisplayHandle;
 use raw_window_handle::RawWindowHandle;
+use webrender::api::units::DeviceIntSize;
 use webrender::api::ColorF;
 
 use crate::frame::LispFrameWindowSystemExt;
@@ -48,6 +50,7 @@ pub trait LispFrameWinitExt {
     fn iconify(&mut self);
     fn current_monitor(&self) -> Option<MonitorHandle>;
     fn cursor_position(&self) -> PhysicalPosition<i32>;
+    fn handle_size_change(&mut self, size: DeviceIntSize, scale_factor: f64);
 }
 
 impl LispFrameWindowSystemExt for LispFrameRef {
@@ -59,7 +62,7 @@ impl LispFrameWindowSystemExt for LispFrameRef {
         self.output().inner().cursor_color
     }
 
-    fn scale_factor(&mut self) -> f64 {
+    fn scale_factor(&self) -> f64 {
         if let Some(monitor) = self.current_monitor() {
             return monitor.scale_factor();
         }
@@ -308,5 +311,21 @@ impl LispFrameWinitExt for LispFrameRef {
 
     fn cursor_position(&self) -> PhysicalPosition<i32> {
         self.output().inner().cursor_position.cast::<i32>()
+    }
+
+    fn handle_size_change(&mut self, size: DeviceIntSize, _scale_factor: f64) {
+        self.change_size(
+            size.width as i32,
+            size.height as i32 - self.menu_bar_height,
+            false,
+            true,
+            false,
+        );
+
+        // resize after frame size been set
+        // canvas read size from frame
+        self.canvas().resize(&size);
+
+        unsafe { do_pending_window_change(false) };
     }
 }

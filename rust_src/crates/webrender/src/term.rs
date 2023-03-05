@@ -1,3 +1,4 @@
+use super::font::{WRFont, WRFontRef};
 use crate::frame::LispFrameWindowSystemExt;
 use crate::output::OutputRef;
 use std::ptr;
@@ -313,8 +314,10 @@ pub extern "C" fn wr_new_font(
 
     frame.set_font(font.into());
 
-    frame.line_height = unsafe { (*font).height };
-    frame.column_width = unsafe { (*font).average_width };
+    let wr_font = WRFontRef::new(font as *mut WRFont);
+
+    frame.line_height = wr_font.height();
+    frame.column_width = wr_font.average_width();
 
     font_object
 }

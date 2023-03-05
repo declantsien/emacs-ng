@@ -483,12 +483,8 @@ impl Canvas {
 
     pub fn resize(&mut self, size: &DeviceIntSize) {
         log::trace!("resize {size:?}");
-        let device_size = DeviceIntSize::new(size.width as i32, size.height as i32);
-        self.frame.pixel_width = size.width;
-        self.frame.pixel_height = size.height;
-
         let device_rect =
-            DeviceIntRect::from_origin_and_size(DeviceIntPoint::new(0, 0), device_size);
+            DeviceIntRect::from_origin_and_size(DeviceIntPoint::new(0, 0), size.clone());
 
         let mut txn = Transaction::new();
         txn.set_document_view(device_rect);
