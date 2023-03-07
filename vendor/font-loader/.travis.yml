@@ -1,0 +1,12 @@
+language: rust
+rust:
+  - stable
+  - nightly
+os:
+  - linux
+  - osx
+#addons:
+#  apt:
+#    packages:
+#      - libfontconfig
+#      - libfontconfig1-dev
