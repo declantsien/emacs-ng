@@ -1,0 +1,40 @@
+[source.crates-io]
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/declantsien/rust-font-loader.git?rev=0a53c767463e13346221ad23fa6dd50cd787cd72"]
+git = "https://github.com/declantsien/rust-font-loader.git"
+rev = "0a53c767463e13346221ad23fa6dd50cd787cd72"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/declantsien/surfman.git?rev=258d5bb99c7285e3e1b0946cb8f6f4482067a7ff"]
+git = "https://github.com/declantsien/surfman.git"
+rev = "258d5bb99c7285e3e1b0946cb8f6f4482067a7ff"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/declantsien/webrender.git?rev=129ff309cc77c17ffae296ffbdf246b6ba61de38"]
+git = "https://github.com/declantsien/webrender.git"
+rev = "129ff309cc77c17ffae296ffbdf246b6ba61de38"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/declantsien/webrender_surfman.git?rev=8b1f8a5e001c3cdabb49c7affda483343a2f792f"]
+git = "https://github.com/declantsien/webrender_surfman.git"
+rev = "8b1f8a5e001c3cdabb49c7affda483343a2f792f"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/image-rs/image.git?rev=5d031ed19b83d876190123cc6fc8b8b203b32814"]
+git = "https://github.com/image-rs/image.git"
+rev = "5d031ed19b83d876190123cc6fc8b8b203b32814"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/servo/surfman-chains.git?rev=57cd1e290205a5459969bfe4cf0852d3bfec189c"]
+git = "https://github.com/servo/surfman-chains.git"
+rev = "57cd1e290205a5459969bfe4cf0852d3bfec189c"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/tauri-apps/tao?rev=28b53f80c49bbf2ae8902b98a2e28f6451a5a8f1"]
+git = "https://github.com/tauri-apps/tao"
+rev = "28b53f80c49bbf2ae8902b98a2e28f6451a5a8f1"
+replace-with = "vendored-sources"
+
+[source.vendored-sources]
+directory = "vendor"

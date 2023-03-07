@@ -1558,9 +1558,9 @@ dependencies = [
 
 [[package]]
 name = "glean"
-version = "52.4.2"
+version = "52.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1bd184ec51a21129cb58a1b7380250d5f71de01b3461ab3b81594e0a2322123"
+checksum = "1ca7a95d864d1302298573c801cb926d7bc4bbf4112545a1e24a0a27c384368b"
 dependencies = [
  "chrono",
  "crossbeam-channel",
@@ -1578,9 +1578,9 @@ dependencies = [
 
 [[package]]
 name = "glean-core"
-version = "52.4.2"
+version = "52.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0e543be303977a73d720ce612a49937d5ba3fac9907d2e13556a32c67293d5e"
+checksum = "2b45b505ad6e7b569135e44dd84ccac982683054e61dfa2a7906b18510b1993c"
 dependencies = [
  "android_logger",
  "bincode",
@@ -1665,7 +1665,7 @@ dependencies = [
 [[package]]
 name = "glsl-to-cxx"
 version = "0.1.0"
-source = "git+https://github.com/declantsien/webrender.git?rev=b62669fee79af050a0b8e0d8a310da4e28e8b896#b62669fee79af050a0b8e0d8a310da4e28e8b896"
+source = "git+https://github.com/declantsien/webrender.git?rev=129ff309cc77c17ffae296ffbdf246b6ba61de38#129ff309cc77c17ffae296ffbdf246b6ba61de38"
 dependencies = [
  "glsl",
 ]
@@ -2874,7 +2874,7 @@ checksum = "9f746c4065a8fa3fe23974dd82f15431cc8d40779821001404d10d2e79ca7d79"
 [[package]]
 name = "peek-poke"
 version = "0.3.0"
-source = "git+https://github.com/declantsien/webrender.git?rev=b62669fee79af050a0b8e0d8a310da4e28e8b896#b62669fee79af050a0b8e0d8a310da4e28e8b896"
+source = "git+https://github.com/declantsien/webrender.git?rev=129ff309cc77c17ffae296ffbdf246b6ba61de38#129ff309cc77c17ffae296ffbdf246b6ba61de38"
 dependencies = [
  "euclid",
  "peek-poke-derive",
@@ -2883,7 +2883,7 @@ dependencies = [
 [[package]]
 name = "peek-poke-derive"
 version = "0.3.0"
-source = "git+https://github.com/declantsien/webrender.git?rev=b62669fee79af050a0b8e0d8a310da4e28e8b896#b62669fee79af050a0b8e0d8a310da4e28e8b896"
+source = "git+https://github.com/declantsien/webrender.git?rev=129ff309cc77c17ffae296ffbdf246b6ba61de38#129ff309cc77c17ffae296ffbdf246b6ba61de38"
 dependencies = [
  "proc-macro2 1.0.52",
  "quote 1.0.26",
@@ -3896,7 +3896,7 @@ dependencies = [
 [[package]]
 name = "swgl"
 version = "0.1.0"
-source = "git+https://github.com/declantsien/webrender.git?rev=b62669fee79af050a0b8e0d8a310da4e28e8b896#b62669fee79af050a0b8e0d8a310da4e28e8b896"
+source = "git+https://github.com/declantsien/webrender.git?rev=129ff309cc77c17ffae296ffbdf246b6ba61de38#129ff309cc77c17ffae296ffbdf246b6ba61de38"
 dependencies = [
  "cc",
  "gleam",
@@ -4832,7 +4832,7 @@ dependencies = [
 [[package]]
 name = "webrender"
 version = "0.62.0"
-source = "git+https://github.com/declantsien/webrender.git?rev=b62669fee79af050a0b8e0d8a310da4e28e8b896#b62669fee79af050a0b8e0d8a310da4e28e8b896"
+source = "git+https://github.com/declantsien/webrender.git?rev=129ff309cc77c17ffae296ffbdf246b6ba61de38#129ff309cc77c17ffae296ffbdf246b6ba61de38"
 dependencies = [
  "bincode",
  "bitflags",
@@ -4869,7 +4869,7 @@ dependencies = [
 [[package]]
 name = "webrender_api"
 version = "0.62.0"
-source = "git+https://github.com/declantsien/webrender.git?rev=b62669fee79af050a0b8e0d8a310da4e28e8b896#b62669fee79af050a0b8e0d8a310da4e28e8b896"
+source = "git+https://github.com/declantsien/webrender.git?rev=129ff309cc77c17ffae296ffbdf246b6ba61de38#129ff309cc77c17ffae296ffbdf246b6ba61de38"
 dependencies = [
  "app_units",
  "bitflags",
@@ -4888,7 +4888,7 @@ dependencies = [
 [[package]]
 name = "webrender_build"
 version = "0.0.2"
-source = "git+https://github.com/declantsien/webrender.git?rev=b62669fee79af050a0b8e0d8a310da4e28e8b896#b62669fee79af050a0b8e0d8a310da4e28e8b896"
+source = "git+https://github.com/declantsien/webrender.git?rev=129ff309cc77c17ffae296ffbdf246b6ba61de38#129ff309cc77c17ffae296ffbdf246b6ba61de38"
 dependencies = [
  "bitflags",
  "lazy_static",
@@ -5137,7 +5137,7 @@ dependencies = [
 [[package]]
 name = "wr_glyph_rasterizer"
 version = "0.1.0"
-source = "git+https://github.com/declantsien/webrender.git?rev=b62669fee79af050a0b8e0d8a310da4e28e8b896#b62669fee79af050a0b8e0d8a310da4e28e8b896"
+source = "git+https://github.com/declantsien/webrender.git?rev=129ff309cc77c17ffae296ffbdf246b6ba61de38#129ff309cc77c17ffae296ffbdf246b6ba61de38"
 dependencies = [
  "core-foundation",
  "core-graphics",
@@ -5170,7 +5170,7 @@ dependencies = [
 [[package]]
 name = "wr_malloc_size_of"
 version = "0.0.2"
-source = "git+https://github.com/declantsien/webrender.git?rev=b62669fee79af050a0b8e0d8a310da4e28e8b896#b62669fee79af050a0b8e0d8a310da4e28e8b896"
+source = "git+https://github.com/declantsien/webrender.git?rev=129ff309cc77c17ffae296ffbdf246b6ba61de38#129ff309cc77c17ffae296ffbdf246b6ba61de38"
 dependencies = [
  "app_units",
  "euclid",
