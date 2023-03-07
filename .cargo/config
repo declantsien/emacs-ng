@@ -1,0 +1,35 @@
+[source.crates-io]
+replace-with = "vendored-sources"
+
+[source."https://github.com/declantsien/rust-font-loader.git"]
+git = "https://github.com/declantsien/rust-font-loader.git"
+rev = "0a53c767463e13346221ad23fa6dd50cd787cd72"
+replace-with = "vendored-sources"
+
+[source."https://github.com/declantsien/surfman.git"]
+git = "https://github.com/declantsien/surfman.git"
+rev = "258d5bb99c7285e3e1b0946cb8f6f4482067a7ff"
+replace-with = "vendored-sources"
+
+[source."https://github.com/declantsien/webrender_surfman.git"]
+git = "https://github.com/declantsien/webrender_surfman.git"
+rev = "8b1f8a5e001c3cdabb49c7affda483343a2f792f"
+replace-with = "vendored-sources"
+
+[source."https://github.com/servo/surfman-chains.git"]
+git = "https://github.com/servo/surfman-chains.git"
+rev = "57cd1e290205a5459969bfe4cf0852d3bfec189c"
+replace-with = "vendored-sources"
+
+[source."https://github.com/servo/webrender.git"]
+git = "https://github.com/servo/webrender.git"
+rev = "23f5f305624bd00f450407180fdef74796bd3964"
+replace-with = "vendored-sources"
+
+[source."https://github.com/tauri-apps/tao"]
+git = "https://github.com/tauri-apps/tao"
+rev = "28b53f80c49bbf2ae8902b98a2e28f6451a5a8f1"
+replace-with = "vendored-sources"
+
+[source.vendored-sources]
+directory = "vendor"
