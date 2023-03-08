@@ -1,0 +1,1028 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A new approach to Emacs - Including TypeScript, Threading, Async I/O, and WebRender.">
+      
+      
+      
+      
+        <link rel="canonical" href="https://emacs-ng.github.io/emacs-ng/js/architecture/">
+      
+      <link rel="shortcut icon" href="../../images/logo.png">
+      <meta name="generator" content="mkdocs-1.1.2, mkdocs-material-7.0.5">
+    
+    
+      
+        <title>Architecture - Emacs NG - A new approach to Emacs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.77f3fd56.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.7fa14f5b.min.css">
+        
+      
+    
+    
+    
+      
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700%7CRoboto+Mono&display=fallback">
+        <style>:root{--md-text-font-family:"Roboto";--md-code-font-family:"Roboto Mono"}</style>
+      
+    
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/layout.css">
+    
+    
+      
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="" data-md-color-primary="none" data-md-color-accent="none">
+      
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#architecture" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="https://emacs-ng.github.io/emacs-ng" title="Emacs NG - A new approach to Emacs" class="md-header__button md-logo" aria-label="Emacs NG - A new approach to Emacs">
+      
+  <img src="../../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Emacs NG - A new approach to Emacs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Architecture
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="md-header__options">
+      
+    </div>
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+      </label>
+      
+<div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" data-md-state="active" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+      </label>
+      <button type="reset" class="md-search__icon md-icon" aria-label="Clear" tabindex="-1">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+      </button>
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        
+<a href="https://github.com/emacs-ng/emacs-ng/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    emacs-ng/emacs-ng
+  </div>
+</a>
+      </div>
+    
+  </nav>
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-tabs__inner md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        Home
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+    
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../using-deno/" class="md-tabs__link md-tabs__link--active">
+        Deno/Javascript
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+
+
+  <li class="md-tabs__item">
+    <a href="../../webrender/" class="md-tabs__link">
+      Webrender
+    </a>
+  </li>
+
+      
+        
+  
+  
+
+
+  <li class="md-tabs__item">
+    <a href="../../ng-module/" class="md-tabs__link">
+      Dynamic modules
+    </a>
+  </li>
+
+      
+        
+  
+  
+
+
+  <li class="md-tabs__item">
+    <a href="../../faq/" class="md-tabs__link">
+      FAQ
+    </a>
+  </li>
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../handbook/getting-started/" class="md-tabs__link">
+        Native Hackers Handbook
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="https://emacs-ng.github.io/emacs-ng" title="Emacs NG - A new approach to Emacs" class="md-nav__button md-logo" aria-label="Emacs NG - A new approach to Emacs">
+      
+  <img src="../../images/logo.png" alt="logo">
+
+    </a>
+    Emacs NG - A new approach to Emacs
+  </label>
+  
+    <div class="md-nav__source">
+      
+<a href="https://github.com/emacs-ng/emacs-ng/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    emacs-ng/emacs-ng
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_1" type="checkbox" id="__nav_1" >
+      
+      <label class="md-nav__link" for="__nav_1">
+        Home
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="Home" data-md-level="1">
+        <label class="md-nav__title" for="__nav_1">
+          <span class="md-nav__icon md-icon"></span>
+          Home
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        Overview
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_1_2" type="checkbox" id="__nav_1_2" >
+      
+      <label class="md-nav__link" for="__nav_1_2">
+        Setup
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="Setup" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_2">
+          <span class="md-nav__icon md-icon"></span>
+          Setup
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../build/building/" class="md-nav__link">
+        Build from source
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../build/docker/" class="md-nav__link">
+        Build with Docker
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../build/release/" class="md-nav__link">
+        Release .deb package
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../build/nix-develop/" class="md-nav__link">
+        Nix Build / Develop
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../package-management/" class="md-nav__link">
+        Package management
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_2" type="checkbox" id="__nav_2" checked>
+      
+      <label class="md-nav__link" for="__nav_2">
+        Deno/Javascript
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="Deno/Javascript" data-md-level="1">
+        <label class="md-nav__title" for="__nav_2">
+          <span class="md-nav__icon md-icon"></span>
+          Deno/Javascript
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../using-deno/" class="md-nav__link">
+        Using Deno
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        Getting started
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../main-features/" class="md-nav__link">
+        Basic features
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adv-features/" class="md-nav__link">
+        Advanced features
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Architecture
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Architecture
+      </a>
+      
+        
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#javascript" class="md-nav__link">
+    JavaScript
+  </a>
+  
+    <nav class="md-nav" aria-label="JavaScript">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#emacsmainjsruntime" class="md-nav__link">
+    EmacsMainJsRuntime
+  </a>
+  
+    <nav class="md-nav" aria-label="EmacsMainJsRuntime">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tokio" class="md-nav__link">
+    Tokio
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mainworker" class="md-nav__link">
+    MainWorker
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-loop" class="md-nav__link">
+    Event Loop
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#proxies-and-garbage-collector-gc-interoperability" class="md-nav__link">
+    Proxies and Garbage Collector (GC) Interoperability
+  </a>
+  
+    <nav class="md-nav" aria-label="Proxies and Garbage Collector (GC) Interoperability">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-lisp-object" class="md-nav__link">
+    The Lisp Object
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gc-usage" class="md-nav__link">
+    GC Usage
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lambda-usage" class="md-nav__link">
+    Lambda Usage
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../webrender/" class="md-nav__link">
+        Webrender
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ng-module/" class="md-nav__link">
+        Dynamic modules
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../faq/" class="md-nav__link">
+        FAQ
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_6" type="checkbox" id="__nav_6" >
+      
+      <label class="md-nav__link" for="__nav_6">
+        Native Hackers Handbook
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="Native Hackers Handbook" data-md-level="1">
+        <label class="md-nav__title" for="__nav_6">
+          <span class="md-nav__icon md-icon"></span>
+          Native Hackers Handbook
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../handbook/getting-started/" class="md-nav__link">
+        Getting started
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../handbook/build/" class="md-nav__link">
+        Build
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../handbook/tests/" class="md-nav__link">
+        Tests
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../handbook/lisp-fn/" class="md-nav__link">
+        lisp-fn
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../handbook/types/" class="md-nav__link">
+        Types
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#javascript" class="md-nav__link">
+    JavaScript
+  </a>
+  
+    <nav class="md-nav" aria-label="JavaScript">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#emacsmainjsruntime" class="md-nav__link">
+    EmacsMainJsRuntime
+  </a>
+  
+    <nav class="md-nav" aria-label="EmacsMainJsRuntime">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tokio" class="md-nav__link">
+    Tokio
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mainworker" class="md-nav__link">
+    MainWorker
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-loop" class="md-nav__link">
+    Event Loop
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#proxies-and-garbage-collector-gc-interoperability" class="md-nav__link">
+    Proxies and Garbage Collector (GC) Interoperability
+  </a>
+  
+    <nav class="md-nav" aria-label="Proxies and Garbage Collector (GC) Interoperability">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-lisp-object" class="md-nav__link">
+    The Lisp Object
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gc-usage" class="md-nav__link">
+    GC Usage
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lambda-usage" class="md-nav__link">
+    Lambda Usage
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content" data-md-component="content">
+            <article class="md-content__inner md-typeset">
+              
+                
+                  <a href="https://github.com/emacs-ng/emacs-ng/edit/master/docs/js/architecture.md" title="Edit this page" class="md-content__button md-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25z"/></svg>
+                  </a>
+                
+                
+                <h1 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">#</a></h1>
+<p>The purpose of this document is to outline how emacs-ng's native changes work.</p>
+<h2 id="javascript">JavaScript<a class="headerlink" href="#javascript" title="Permanent link">#</a></h2>
+<p>The majority of JavaScript related code is located in rust_src/src/javascript.rs. There is a lot to unpack on this file, but we will attempt to unpack the core concepts:</p>
+<h3 id="emacsmainjsruntime">EmacsMainJsRuntime<a class="headerlink" href="#emacsmainjsruntime" title="Permanent link">#</a></h3>
+<p>This is a <em>thread local</em> singleton containing the JavaScript runtime and associated state. The two major fields in this struct are the Tokio runtime and the MainWorker. The choice to make this a thread local struct was due to the fact that Emacs has the ability to spawn threads via (make-thread), but v8 isolates do not like being shared between threads without using a specific API. We lean heavily on Deno's MainWorker class, which is also not designed to be shared between threads, so we made the choice to just stay threadlocal. The oddity here is that in the case of calling make-thread, the lisp threads will have their lisp variables will shared, but not their JavaScript variables.</p>
+<h4 id="tokio">Tokio<a class="headerlink" href="#tokio" title="Permanent link">#</a></h4>
+<p>The Tokio runtime is what is driving all JavaScript Async I/O and timers. Tokio maintains its own threadpool on which tasks are enqueued. This is all "behind the scenes" to any emacs-ng code. The system is designed with the assumption that emacs-ng code will not have to call tokio::spawn or tokio::spawn_blocking.</p>
+<h4 id="mainworker">MainWorker<a class="headerlink" href="#mainworker" title="Permanent link">#</a></h4>
+<p>The "MainWorker" is a Deno concept. It encapsulates Deno's module loader, file cache, and most importantly, the "JsRuntime". The JsRuntime encapsules the v8::Isolate, which can be described as the true, actual "JavaScript Runtime". Interfacing with the v8::Isolate is ultimately how JavaScript will be run. There are few instances where we call execute using the isolate directly. The MainWorker has some key restrictions included by design - if you have a top level module promise rejection, the Worker will panic upon the next attempt to execute JavaScript. The worker cannot handle cases where execute is called "deep" within the callstack. Meaning that if I call lisp -&gt; javascript -&gt; lisp -&gt; JavaScript, I cannot depend on the Worker's execute method. We will have an entire section dedicated to that fact.</p>
+<p>The EmacsMainJsRuntime is thread local because of the MainWorker - it is not Send nor Sync. The v8::Isolate, which is contained within the MainWorker, cannot be shared between threads by design. A quirk of this is that if you spawn a lisp thread, it has its own JavaScript runtime. This means that while the thread shares lisp globals, it does not share javaScript globals.</p>
+<h3 id="event-loop">Event Loop<a class="headerlink" href="#event-loop" title="Permanent link">#</a></h3>
+<p>A core concept to JavaScript is the event loop. All JavaScript invocations in emacs-ng start with a call to "run_module". run_module will eventually call into the MainWorkers execute method, which in turn calls into the v8::Isolate's execute method - are you starting to see the pattern?</p>
+<p>Once you call run_module, you will begin to execute JavaScript. Doing so may enqueue async events, like setTimeout, fetch, etc. These are all things that Deno calls <code>async_ops</code> or <code>sync_ops</code>. Deno provides a system to manage ops. We have a policy that emacs-ng will not add ops, or deal with the ops API. If you want to add native functionality to emacs-ng, you should directly bind the function, like with <code>lisp_callback</code> and friends.</p>
+<p>As these async events execute in the background, we will poll for their completion. In order to integrate with Emacs program loop, we set a timer, calling a function named <code>js-tick-event-loop</code>. This function is really just a wrapper around Deno's <code>poll_event_loop</code>. For performance reasons, <code>js-tick-event-loop</code> can call <code>poll_event_loop</code> multiple times. The user does have control of this behavior via <code>js_set_tick_rate</code>. In general, we want to give the user full control of emacs-ng, including how the JavaScript environment is configured.</p>
+<h3 id="proxies-and-garbage-collector-gc-interoperability">Proxies and Garbage Collector (GC) Interoperability<a class="headerlink" href="#proxies-and-garbage-collector-gc-interoperability" title="Permanent link">#</a></h3>
+<p>JavaScript has a concept of a 'Proxy' object, which we use in emacs-ng, however this section is about our JS &lt;--&gt; elisp marshaling. We refer to that as 'proxying' within internal documentation. </p>
+<p>For example, we will discuss how this code actually works:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span> <span class="nx">buffer</span> <span class="o">=</span> <span class="nx">lisp</span><span class="p">.</span><span class="nx">get_buffer_create</span><span class="p">(</span><span class="s1">&#39;*foo*&#39;</span><span class="p">);</span>
+<span class="nx">lisp</span><span class="p">.</span><span class="nx">set_current_buffer</span><span class="p">(</span><span class="nx">buffer</span><span class="p">);</span>
+<span class="nx">lisp</span><span class="p">.</span><span class="nx">insert</span><span class="p">(</span><span class="s2">&quot;FOOBAR&quot;</span><span class="p">);</span>
+</code></pre></div>
+<h4 id="the-lisp-object">The Lisp Object<a class="headerlink" href="#the-lisp-object" title="Permanent link">#</a></h4>
+<p>The <code>lisp</code> object is a <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy">JavaScript Capital-P Proxy</a>. When you access <code>lisp.get_buffer_create</code>, it returns a function that does something like:</p>
+<div class="highlight"><pre><span></span><code><span class="p">(...</span><span class="nx">args</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="nx">lisp_invoke</span><span class="p">(</span><span class="s1">&#39;get-buffer-create&#39;</span> <span class="p">...</span><span class="nx">args</span><span class="p">);</span>
+</code></pre></div>
+<p><code>lisp_invoke</code> is a native function defined in javascript.rs. It's a wrapper around <code>ffuncall</code> with logic for object translation. It will also catch any lisp errors and translates them to JavaScript errors. <code>lisp_invoke</code> returns a JavaScript object - but this is a 'special object' in that it may have an internal field. Internal fields are data objects that are contained within JavaScript objects that are not accessible by the user. This is because LispObjects are just pointers - if we let the user alter pointers, they could cause SEGFAULTS or read arbitrary memory.</p>
+<p>If we can parse the result of <code>lisp_invoke</code> as JSON, we do not proxy it. Instead we return the JavaScript equivalent (i.e. a JS string or number). However, if we cannot convert it to JSON, like in the case of a buffer, we return a proxy. Functions (i.e. <code>(lambda () (...))</code>) are another special case where additional logic is employed.</p>
+<p>lisp_invoke also works in reverse when being called, it will <code>unproxy</code> the arguments it is passed in order to further pass them to <code>ffuncall</code>.</p>
+<p>We expose a special function called <code>is_proxy</code> in order to tell if an object is a proxy.</p>
+<h4 id="gc-usage">GC Usage<a class="headerlink" href="#gc-usage" title="Permanent link">#</a></h4>
+<p>When we create a proxy, we need to properly manage it in the lisp garbage collector. We do not want lisp to GC an object out from underneath us. In order to do this, we need to make two considerations for each direction of JS -&gt; Lisp and Lisp -&gt; JS</p>
+<p>To prevent the lisp GC from removing objects that JS has a valid reference to, we include them in a special cons called the <code>js-retain-map</code>. The user does not have direct access to this object. Allowing them to access this cons would allow mutation in a way that could lead to use after free bugs.</p>
+<p>When a proxy is created in JavaScript, we create a special JavaScript object called a <code>WeakRef</code>. This is <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakRef">documented here</a>. Once an object has no outstanding references (besides the WeakRef itself) the WeakRef will return undefined once accessed. We maintain a global array of WeakRefs for all proxies that we sweep every time lisp performs its garbage collection. We map this array to the <code>js-retain-map</code>. The end result is that if you have an object in JavaScript that is a proxy, it will always be valid.</p>
+<p>elisp does not have proxies, it will only receive valid lisp objects from JavaScript, so this problem does not exist in the opposite direction.</p>
+<h4 id="lambda-usage">Lambda Usage<a class="headerlink" href="#lambda-usage" title="Permanent link">#</a></h4>
+<p>Users will notice that lambas will auto convert between JS and elisp. Example:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">lisp.run_with_timer</span><span class="p">(</span><span class="mi">1</span><span class="o">,</span> <span class="nv">lisp.symbols.nil,</span> <span class="p">()</span> <span class="nv">=&gt;</span> <span class="nv">console.log</span><span class="p">(</span><span class="ss">&#39;This</span> <span class="nv">works...</span><span class="o">&#39;</span><span class="p">))</span><span class="c1">;</span>
+</code></pre></div>
+<p>How does this work under the hood? When we go to create a proxy, we will test if that object is a function. If so, we will include it in another special array for functions. We will then create the following lisp object representing that lambda:</p>
+<div class="highlight"><pre><span></span><code><span class="p">(</span><span class="k">lambda</span> <span class="p">(</span><span class="nv">&amp;REST</span><span class="p">)</span> <span class="p">(</span><span class="nv">js--reenter</span> <span class="nv">INDEX</span> <span class="p">(</span><span class="nv">make-finalizer</span> <span class="p">(</span><span class="k">lambda</span> <span class="p">()</span> <span class="nv">js--clear</span> <span class="nv">INDEX</span><span class="p">))</span> <span class="nv">REST</span><span class="p">))</span>
+</code></pre></div>
+<p>Index is hard-coded per lambda object, i.e. <code>js--reenter 1 ...</code>. Calling this lambda will call js--reenter, which is just calling the function in the array at INDEX. In order to ensure that function will be garbage collected, we add a lisp finalizer, which will clear the lambda from the array upon GC.</p>
+                
+                  
+                    
+
+<hr>
+<div class="md-source-date">
+  <small>
+    
+      Last update: <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">March 8, 2023</span>
+    
+  </small>
+</div>
+                  
+                
+              
+              
+                
+
+
+              
+            </article>
+          </div>
+        </div>
+      </main>
+      
+        
+<footer class="md-footer">
+  
+    <nav class="md-footer__inner md-grid" aria-label="Footer">
+      
+        <a href="../adv-features/" class="md-footer__link md-footer__link--prev" rel="prev">
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+          </div>
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              Advanced features
+            </div>
+          </div>
+        </a>
+      
+      
+        <a href="../../webrender/" class="md-footer__link md-footer__link--next" rel="next">
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              Webrender
+            </div>
+          </div>
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg>
+          </div>
+        </a>
+      
+    </nav>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-footer-copyright">
+        
+        Made with
+        <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+          Material for MkDocs
+        </a>
+        
+      </div>
+      
+  <div class="md-footer-social">
+    
+      
+      
+        
+        
+      
+      <a href="https://github.com/emacs-ng/emacs-ng" target="_blank" rel="noopener" title="github.com" class="md-footer-social__link">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 512"><path d="M186.1 328.7c0 20.9-10.9 55.1-36.7 55.1s-36.7-34.2-36.7-55.1 10.9-55.1 36.7-55.1 36.7 34.2 36.7 55.1zM480 278.2c0 31.9-3.2 65.7-17.5 95-37.9 76.6-142.1 74.8-216.7 74.8-75.8 0-186.2 2.7-225.6-74.8-14.6-29-20.2-63.1-20.2-95 0-41.9 13.9-81.5 41.5-113.6-5.2-15.8-7.7-32.4-7.7-48.8 0-21.5 4.9-32.3 14.6-51.8 45.3 0 74.3 9 108.8 36 29-6.9 58.8-10 88.7-10 27 0 54.2 2.9 80.4 9.2 34-26.7 63-35.2 107.8-35.2 9.8 19.5 14.6 30.3 14.6 51.8 0 16.4-2.6 32.7-7.7 48.2 27.5 32.4 39 72.3 39 114.2zm-64.3 50.5c0-43.9-26.7-82.6-73.5-82.6-18.9 0-37 3.4-56 6-14.9 2.3-29.8 3.2-45.1 3.2-15.2 0-30.1-.9-45.1-3.2-18.7-2.6-37-6-56-6-46.8 0-73.5 38.7-73.5 82.6 0 87.8 80.4 101.3 150.4 101.3h48.2c70.3 0 150.6-13.4 150.6-101.3zm-82.6-55.1c-25.8 0-36.7 34.2-36.7 55.1s10.9 55.1 36.7 55.1 36.7-34.2 36.7-55.1-10.9-55.1-36.7-55.1z"/></svg>
+      </a>
+    
+  </div>
+
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs"], "translations": {"clipboard.copy": "Copy to clipboard", "clipboard.copied": "Copied to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.placeholder": "Type to start searching", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.term.missing": "Missing"}, "search": "../../assets/javascripts/workers/search.fb4a9340.min.js", "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.5cf3e710.min.js"></script>
+      
+    
+  </body>
+</html>
