@@ -68,6 +68,10 @@ jobs:
                       build: general
                     - os: macos-latest
                       build: webrender
+                    - os: macos-12
+                      build: webrender
+                    - os: macos-11
+                      build: webrender
 
         steps:
             - uses: actions/checkout@v2
