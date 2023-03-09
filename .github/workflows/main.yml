@@ -24,4 +24,4 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GITBOT_EMAIL: "action@github.com"
-        DRY_RUN: true
+        DRY_RUN: false
