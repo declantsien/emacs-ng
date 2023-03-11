@@ -24,7 +24,7 @@ impl Default for OutputInner {
             background_color: ColorF::WHITE,
             cursor_color: ColorF::BLACK,
             cursor_foreground_color: ColorF::WHITE,
-            scale_factor: 1.0,
+            scale_factor: 0.0,
             window_handle: None,
             window: None,
             cursor_position: crate::window_system::api::dpi::PhysicalPosition::new(0.0, 0.0),

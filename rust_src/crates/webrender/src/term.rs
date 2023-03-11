@@ -317,24 +317,25 @@ pub extern "C" fn wr_new_font(
     frame.set_font(font.into());
     let wr_font = WRFontRef::new(font as *mut WRFont);
 
-    frame.line_height = wr_font.height();
-    frame.column_width = wr_font.average_width();
+    frame.line_height = wr_font.font.height;
+    frame.column_width = wr_font.font.average_width;
+
+    let pixel_width = frame.text_cols * frame.column_width;
+    let pixel_height = frame.text_lines * frame.line_height;
 
     /* Now make the frame display the given font.  */
-    #[cfg(window_system_pgtk)]
-    if frame.output().as_raw().edit_widget != ptr::null_mut() {
-        let widget_pixel_width = (frame.text_cols * frame.column_width) as f64;
-        let widget_pixel_height = (frame.text_lines * frame.line_height) as f64;
-        unsafe {
-            emacs::bindings::adjust_frame_size(
-                frame.as_mut(),
-                widget_pixel_width.round() as i32,
-                widget_pixel_height.round() as i32,
-                3,
-                false,
-                emacs::globals::Qfont,
-            )
-        };
+    frame.adjust_size(pixel_width, pixel_height, 3, false, emacs::globals::Qfont);
+
+    #[cfg(window_system_winit)]
+    {
+        use crate::window_system::api::dpi::PhysicalSize;
+        use crate::window_system::frame::LispFrameWinitExt;
+
+        let size = PhysicalSize::new(
+            (pixel_width as f64 * frame.scale_factor()) as u32,
+            (pixel_height as f64 * frame.scale_factor()) as u32,
+        );
+        frame.set_inner_size(size);
     }
 
     font_object
@@ -563,36 +564,6 @@ pub extern "C" fn wr_handle_scale_factor_change(_f: *mut Lisp_Frame, _scale_fact
     {
         let mut frame: LispFrameRef = _f.into();
         frame.handle_scale_factor_change(_scale_factor);
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn wr_adjust_canvas_size(
-    _f: *mut Lisp_Frame,
-    _width: ::libc::c_int,
-    _height: ::libc::c_int,
-) {
-    if unsafe { emacs::bindings::inhibit_window_system } {
-        return;
-    }
-
-    #[cfg(window_system_pgtk)]
-    {
-        use webrender::api::units::DeviceIntSize;
-
-        let frame: LispFrameRef = _f.into();
-        if frame.is_visible()
-            && frame.resized_p()
-            && frame.output_method() == emacs::bindings::output_method::output_pgtk
-        {
-            let size = DeviceIntSize::new(_width as i32, _height as i32);
-            let mut frame: LispFrameRef = frame.into();
-            frame.handle_size_change(size, frame.scale_factor());
-            std::thread::sleep(std::time::Duration::from_millis(16));
-            unsafe { emacs::bindings::Fredisplay(emacs::globals::Qt) };
-            unsafe { emacs::bindings::Fredraw_display() };
-            unsafe { emacs::bindings::Fredraw_frame(frame.into()) };
-        }
     }
 }
 

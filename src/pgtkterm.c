@@ -5088,12 +5088,7 @@ size_allocate (GtkWidget *widget, GtkAllocation *alloc,
 
   if (f)
     {
-#if defined USE_WEBRENDER
-      double scale = FRAME_SCALE_FACTOR (f);
-      xg_frame_resized (f, alloc->width * scale, alloc->height * scale);
-#else
       xg_frame_resized (f, alloc->width, alloc->height);
-#endif
       pgtk_cr_update_surface_desired_size (f, alloc->width, alloc->height, false);
     }
 }

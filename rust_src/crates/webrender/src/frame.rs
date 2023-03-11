@@ -1,4 +1,3 @@
-use super::font::update_wrfonts;
 use super::font::FontRef;
 use crate::gl::context::GLContextTrait;
 use crate::output::Canvas;
@@ -65,7 +64,9 @@ impl LispFrameExt for LispFrameRef {
     }
 
     fn size(&self) -> DeviceIntSize {
-        DeviceIntSize::new(self.pixel_width, self.pixel_height)
+        let size = DeviceIntSize::new(self.pixel_width, self.pixel_height);
+        let scaled = size.to_f32() * euclid::Scale::new(self.scale_factor() as f32);
+        scaled.to_i32()
     }
 
     fn handle_size_change(&mut self, size: DeviceIntSize, scale_factor: f64) {
@@ -82,13 +83,13 @@ impl LispFrameExt for LispFrameRef {
 
         unsafe { do_pending_window_change(false) };
 
-        self.canvas().resize(&size);
+        self.canvas().update();
     }
 
     fn handle_scale_factor_change(&mut self, scale_factor: f64) {
         log::trace!("frame handle_scale_factor_change... {scale_factor:?}");
         self.set_scale_factor(scale_factor);
-        update_wrfonts(self.unique_id(), scale_factor as f32);
+        self.canvas().update();
     }
 
     fn canvas(&self) -> CanvasRef {

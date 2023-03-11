@@ -1,6 +1,7 @@
 use super::display_info::DisplayInfoRef;
 use super::font::FontRef;
 use crate::font_db::FontDB;
+use crate::frame::LispFrameWindowSystemExt;
 use crate::gl::context::GLContextTrait;
 #[cfg(window_system_pgtk)]
 use crate::window_system::frame::LispFramePgtkExt;
@@ -157,6 +158,10 @@ impl Canvas {
         image_key
     }
 
+    pub fn scale(&self) -> f32 {
+        self.frame.scale_factor() as f32
+    }
+
     fn layout_size(&self) -> LayoutSize {
         let device_size = self.device_size();
         LayoutSize::new(device_size.width as f32, device_size.height as f32)
@@ -193,7 +198,7 @@ impl Canvas {
 
     pub fn display<F>(&mut self, f: F)
     where
-        F: Fn(&mut DisplayListBuilder, SpaceAndClipInfo),
+        F: Fn(&mut DisplayListBuilder, SpaceAndClipInfo, f32),
     {
         if self.display_list_builder.is_none() {
             let layout_size = self.layout_size();
@@ -206,11 +211,12 @@ impl Canvas {
         }
 
         let pipeline_id = PipelineId(0, 0);
+        let scale = self.scale();
 
         if let Some(builder) = &mut self.display_list_builder {
             let space_and_clip = SpaceAndClipInfo::root_scroll(pipeline_id);
 
-            f(builder, space_and_clip);
+            f(builder, space_and_clip, scale);
         }
 
         self.assert_no_gl_error();
@@ -408,6 +414,7 @@ impl Canvas {
         None
     }
 
+    // Create font instance with scaled size
     pub fn get_or_create_font_instance(&mut self, font: WRFontRef, size: f32) -> FontInstanceKey {
         #[cfg(not(target_arch = "wasm32"))]
         let now = std::time::Instant::now();
@@ -483,7 +490,7 @@ impl Canvas {
         self.render_api.send_transaction(self.document_id, txn);
     }
 
-    pub fn resize(&mut self, _size: &DeviceIntSize) {
+    pub fn update(&mut self) {
         let size = self.device_size();
         let device_rect =
             DeviceIntRect::from_origin_and_size(DeviceIntPoint::new(0, 0), size.clone());
