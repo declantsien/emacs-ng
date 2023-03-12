@@ -734,6 +734,7 @@ impl Renderer for LispFrameRef {
 
         self.canvas().display(|builder, space_and_clip, scale| {
             let clip_rect = clip_rect * Scale::new(scale);
+            let cursor_rect = cursor_rect * Scale::new(scale);
             builder.push_border(
                 &CommonItemProperties::new(clip_rect, space_and_clip),
                 cursor_rect,
