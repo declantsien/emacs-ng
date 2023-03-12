@@ -39,6 +39,7 @@ pub trait Renderer {
         foreground_color: ColorF,
         face: *mut Face,
         space_and_clip: SpaceAndClipInfo,
+        scale: f32,
     );
 
     fn draw_fringe_bitmap(
@@ -232,7 +233,15 @@ impl Renderer for LispFrameRef {
 
             // draw underline
             if unsafe { (*face).underline() != face_underline_type::FACE_NO_UNDERLINE } {
-                Self::draw_underline(builder, s, font, foreground_color, face, space_and_clip);
+                Self::draw_underline(
+                    builder,
+                    s,
+                    font,
+                    foreground_color,
+                    face,
+                    space_and_clip,
+                    scale,
+                );
             }
 
             // draw foreground
@@ -425,7 +434,15 @@ impl Renderer for LispFrameRef {
 
                 // draw underline
                 if unsafe { (*face).underline() != face_underline_type::FACE_NO_UNDERLINE } {
-                    Self::draw_underline(builder, s, font, foreground_color, face, space_and_clip);
+                    Self::draw_underline(
+                        builder,
+                        s,
+                        font,
+                        foreground_color,
+                        face,
+                        space_and_clip,
+                        scale,
+                    );
                 }
 
                 let visible_rect = (x, y).by(s.width, visible_height) * Scale::new(scale);
@@ -457,6 +474,7 @@ impl Renderer for LispFrameRef {
         foreground_color: ColorF,
         face: *mut Face,
         space_and_clip: SpaceAndClipInfo,
+        scale: f32,
     ) {
         let x = s.x;
         let y = s.y;
@@ -489,10 +507,12 @@ impl Renderer for LispFrameRef {
 
         let visible_height = unsafe { (*s.row).visible_height };
 
-        let info =
-            CommonItemProperties::new((x, y).by(s.width as i32, visible_height), space_and_clip);
+        let info = CommonItemProperties::new(
+            (x, y).by(s.width as i32, visible_height) * Scale::new(scale),
+            space_and_clip,
+        );
 
-        let visible_rect = (x, position).by(s.width as i32, thickness);
+        let visible_rect = (x, position).by(s.width as i32, thickness) * Scale::new(scale);
 
         builder.push_line(
             &info,
