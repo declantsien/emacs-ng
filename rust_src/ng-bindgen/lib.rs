@@ -444,6 +444,8 @@ pub fn generate_include_files(crates_dir: PathBuf) -> Result<(), BuildError> {
         let crate_path = entry?.path();
 
         if build_ignored_crates(&crate_path) {
+            let crate_name = path_as_str(crate_path.file_name()).to_string();
+            write!(out_file, "//{}\n", crate_name)?;
             continue;
         };
         // generate_crate_exports(&crate_path)?;
