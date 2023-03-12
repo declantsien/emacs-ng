@@ -90,7 +90,7 @@ impl Canvas {
         let mut txn = Transaction::new();
         txn.set_root_pipeline(pipeline_id);
         let mut api = sender.create_api();
-        let device_size = frame.size();
+        let device_size = frame.physical_size();
         gl_context.resize(&device_size);
         let document_id = api.add_document(device_size);
         api.send_transaction(document_id, txn);
@@ -193,7 +193,7 @@ impl Canvas {
     }
 
     pub fn device_size(&self) -> DeviceIntSize {
-        self.frame.size()
+        self.frame.physical_size()
     }
 
     pub fn display<F>(&mut self, f: F)

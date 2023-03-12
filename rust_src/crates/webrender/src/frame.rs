@@ -26,7 +26,8 @@ pub trait LispFrameWindowSystemExt {
 
 pub trait LispFrameExt {
     fn canvas(&self) -> CanvasRef;
-    fn size(&self) -> DeviceIntSize;
+    fn logical_size(&self) -> LayoutSize;
+    fn physical_size(&self) -> DeviceIntSize;
     fn font(&self) -> FontRef;
     fn set_font(&mut self, font: FontRef);
     fn fontset(&self) -> i32;
@@ -63,10 +64,13 @@ impl LispFrameExt for LispFrameRef {
         self.output().as_raw().display_info = dpyinfo.get_raw().as_mut();
     }
 
-    fn size(&self) -> DeviceIntSize {
-        let size = DeviceIntSize::new(self.pixel_width, self.pixel_height);
-        let scaled = size.to_f32() * euclid::Scale::new(self.scale_factor() as f32);
-        scaled.to_i32()
+    fn logical_size(&self) -> LayoutSize {
+        LayoutSize::new(self.pixel_width as f32, self.pixel_height as f32)
+    }
+
+    fn physical_size(&self) -> DeviceIntSize {
+        let size = self.logical_size() * euclid::Scale::new(self.scale_factor() as f32);
+        size.to_i32()
     }
 
     fn handle_size_change(&mut self, size: DeviceIntSize, scale_factor: f64) {

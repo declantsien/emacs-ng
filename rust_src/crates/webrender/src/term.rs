@@ -373,7 +373,7 @@ pub extern "C" fn wr_clear_frame(f: *mut Lisp_Frame) {
 
     output.clear_display_list_builder();
 
-    let size = frame.size();
+    let size = frame.canvas().device_size();
 
     wr_clear_frame_area(f, 0, 0, size.width, size.height);
 }

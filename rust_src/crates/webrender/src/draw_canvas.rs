@@ -692,7 +692,7 @@ impl Renderer for LispFrameRef {
         let viewport = (x, to_y).by(width, height);
 
         let diff_y = to_y - from_y;
-        let frame_size = self.canvas().device_size();
+        let frame_size = self.logical_size();
 
         let new_frame_position =
             (0, 0 + diff_y).by(frame_size.width as i32, frame_size.height as i32);
