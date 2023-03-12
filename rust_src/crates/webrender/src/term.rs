@@ -118,6 +118,7 @@ pub extern "C" fn wr_draw_fringe_bitmap(
 ) {
     let window: LispWindowRef = window.into();
     let mut frame: LispFrameRef = window.get_frame();
+    let scale = frame.canvas().scale();
 
     let row_rect: LayoutRect = unsafe {
         let (window_x, window_y, window_width, _) = window.area_box(glyph_row_area::ANY_AREA);
@@ -130,7 +131,7 @@ pub extern "C" fn wr_draw_fringe_bitmap(
         let width = window_width;
         let height = (*row).visible_height;
 
-        (x, y).by(width, height)
+        (x, y).by(width, height, scale)
     };
 
     let which = unsafe { (*p).which };
@@ -145,14 +146,14 @@ pub extern "C" fn wr_draw_fringe_bitmap(
         let height = unsafe { (*p).h };
 
         if which > 0 {
-            (pos_x, pos_y).by(width, height)
+            (pos_x, pos_y).by(width, height, scale)
         } else {
             LayoutRect::zero()
         }
     };
 
     let clear_rect = if unsafe { (*p).bx >= 0 && !(*p).overlay_p() } {
-        unsafe { ((*p).bx, (*p).by).by((*p).nx, (*p).ny) }
+        unsafe { ((*p).bx, (*p).by).by((*p).nx, (*p).ny, scale) }
     } else {
         LayoutRect::zero()
     };
