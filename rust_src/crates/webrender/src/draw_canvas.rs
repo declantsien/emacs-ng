@@ -321,6 +321,8 @@ impl Renderer for LispFrameRef {
                 );
             }
 
+            let clip_bounds = clip_bounds * Scale::new(scale);
+            let bounds = bounds * Scale::new(scale);
             // render image
             builder.push_image(
                 &CommonItemProperties::new(clip_bounds, space_and_clip),
