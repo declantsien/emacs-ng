@@ -24,7 +24,10 @@ use emacs::{
     symbol::LispSymbolRef,
 };
 
-use crate::{font_db::FontDB, font_db::FontDescriptor, frame::LispFrameExt};
+use crate::{
+    font_db::FontDB, font_db::FontDescriptor, frame::LispFrameExt,
+    output::GlyphRasterImageDescriptor,
+};
 
 static mut FONT_DB: OnceLock<FontDB> = OnceLock::new();
 impl FontDB<'static> {
@@ -327,6 +330,8 @@ pub struct WRFont {
     pub face_id: fontdb::ID,
 
     pub instance_keys: HashMap<u64, FontInstanceKey>,
+
+    pub frame: LispFrameRef,
 }
 
 impl WRFont {
@@ -335,6 +340,64 @@ impl WRFont {
             return font.face.glyph_index(character).map(|c| c.0 as u32);
         }
         None
+    }
+
+    pub fn glyph_raster_image(
+        &self,
+        character: char,
+        size: u16,
+        pixels_per_em: u16,
+    ) -> Option<(i16, i16, u16, u16, ImageKey)> {
+        if let Some(font) = FontDB::global().get_font(self.face_id) {
+            if let Some(glyph_id) = font.face.glyph_index(character) {
+                if let Some(glyph_image) = font.face.glyph_raster_image(glyph_id, pixels_per_em) {
+                    let scale = size as f32 / glyph_image.width as f32;
+                    let scaled_x = (glyph_image.x as f32 * scale).round() as i32;
+                    let scaled_y = (glyph_image.y as f32 * scale).round() as i32;
+                    let scaled_width = (glyph_image.width as f32 * scale).round() as i32;
+                    let scaled_height = (glyph_image.height as f32 * scale).round() as i32;
+
+                    match image::load_from_memory_with_format(
+                        glyph_image.data,
+                        image::ImageFormat::Png,
+                    ) {
+                        Ok(image_buffer) => {
+                            let descriptor = GlyphRasterImageDescriptor {
+                                descriptor: ImageDescriptor::new(
+                                    glyph_image.width as i32,
+                                    glyph_image.height as i32,
+                                    ImageFormat::RGBA8,
+                                    ImageDescriptorFlags::empty(),
+                                ),
+                                face_id: self.face_id,
+                                character,
+                            };
+                            let image_key = self
+                                .frame
+                                .canvas()
+                                .add_or_update_glyph_raster_image(descriptor, &image_buffer);
+                            return Some((
+                                scaled_x as i16,
+                                scaled_y as i16,
+                                scaled_width as u16,
+                                scaled_height as u16,
+                                image_key,
+                            ));
+                        }
+                        Err(e) => {
+                            log::warn!("glyph {character:?} raster image loading error: {e:?}");
+                            return None;
+                        }
+                    }
+                }
+                log::warn!("glyph raster image for {character:?} not found");
+                return None;
+            }
+            log::warn!("glyph for {character:?} not found");
+            return None;
+        }
+        log::warn!("face {:?} not found", self.face_id);
+        return None;
     }
 
     pub fn get_glyph_advance_width(&self, glyph_indices: Vec<GlyphIndex>) -> Vec<Option<i32>> {
@@ -349,6 +412,13 @@ impl WRFont {
                 .collect();
         }
         Vec::new()
+    }
+    pub fn too_high_p(&self) -> bool {
+        let pixel_size = self.font.pixel_size;
+        let ascent = self.font.ascent;
+        let descent = self.font.descent;
+
+        pixel_size > 0 && (ascent + descent) > 3 * pixel_size
     }
 }
 
@@ -438,6 +508,7 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
 
     let driver = FontDriver::global();
     wr_font.font.driver = &driver.0;
+    wr_font.frame = frame;
 
     log::trace!("open font done: {:?}", pixel_size);
     font_object.as_lisp_object()

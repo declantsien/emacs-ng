@@ -7,7 +7,9 @@ use crate::window_system::output::output;
 use crate::window_system::output::OutputInner;
 use crate::window_system::output::OutputInnerRef;
 use emacs::lisp::ExternalPtr;
+use image::DynamicImage;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::ptr;
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 
@@ -22,6 +24,37 @@ use emacs::frame::LispFrameRef;
 
 use super::texture::TextureResourceManager;
 
+pub struct GlyphRasterImageDescriptor {
+    pub descriptor: ImageDescriptor,
+    pub face_id: fontdb::ID,
+    pub character: char,
+}
+
+impl PartialEq for GlyphRasterImageDescriptor {
+    fn eq(&self, other: &Self) -> bool {
+        self.face_id == other.face_id
+            && self.character == other.character
+            && self.descriptor.size == other.descriptor.size
+            && self.descriptor.offset == other.descriptor.offset
+            && self.descriptor.flags == other.descriptor.flags
+            && self.descriptor.format == other.descriptor.format
+            && self.descriptor.stride == other.descriptor.stride
+    }
+}
+impl Eq for GlyphRasterImageDescriptor {}
+
+impl Hash for GlyphRasterImageDescriptor {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.face_id.hash(state);
+        self.character.hash(state);
+        self.descriptor.size.hash(state);
+        self.descriptor.offset.hash(state);
+        self.descriptor.flags.hash(state);
+        self.descriptor.format.hash(state);
+        self.descriptor.stride.hash(state);
+    }
+}
+
 pub struct Canvas {
     fonts: HashMap<fontdb::ID, FontKey>,
     font_instances: HashMap<
@@ -34,6 +67,7 @@ pub struct Canvas {
         ),
         FontInstanceKey,
     >,
+    glyph_raster_images: HashMap<GlyphRasterImageDescriptor, ImageKey>,
     font_render_mode: Option<FontRenderMode>,
     allow_mipmaps: bool,
     pub render_api: RenderApi,
@@ -96,6 +130,7 @@ impl Canvas {
         Self {
             fonts: HashMap::new(),
             font_instances: HashMap::new(),
+            glyph_raster_images: HashMap::new(),
             font_render_mode: None,
             allow_mipmaps: false,
             render_api: api,
@@ -445,10 +480,10 @@ impl Canvas {
         key
     }
 
-    pub fn add_image(&mut self, width: i32, height: i32, image_data: Arc<Vec<u8>>) -> ImageKey {
+    pub fn add_image(&mut self, descriptor: ImageDescriptor, image: &DynamicImage) -> ImageKey {
         let image_key = self.render_api.generate_image_key();
 
-        self.update_image(image_key, width, height, image_data);
+        self.update_image(image_key, descriptor, image);
 
         image_key
     }
@@ -456,21 +491,15 @@ impl Canvas {
     pub fn update_image(
         &mut self,
         image_key: ImageKey,
-        width: i32,
-        height: i32,
-        image_data: Arc<Vec<u8>>,
+        image_descriptor: ImageDescriptor,
+        image: &DynamicImage,
     ) {
         let mut txn = Transaction::new();
 
         txn.add_image(
             image_key,
-            ImageDescriptor::new(
-                width,
-                height,
-                ImageFormat::RGBA8,
-                ImageDescriptorFlags::empty(),
-            ),
-            ImageData::Raw(image_data),
+            image_descriptor,
+            ImageData::Raw(Arc::new(image.to_rgba8().to_vec())),
             None,
         );
 
@@ -483,6 +512,22 @@ impl Canvas {
         txn.delete_image(image_key);
 
         self.render_api.send_transaction(self.document_id, txn);
+    }
+
+    // Create glyph raster image instance with scaled size
+    pub fn add_or_update_glyph_raster_image(
+        &mut self,
+        descriptor: GlyphRasterImageDescriptor,
+        image: &DynamicImage,
+    ) -> ImageKey {
+        let image_key = self.glyph_raster_images.get(&descriptor);
+        let GlyphRasterImageDescriptor { descriptor, .. } = descriptor;
+
+        if let Some(key) = image_key {
+            return *key;
+        }
+
+        self.add_image(descriptor, image)
     }
 
     pub fn update(&mut self) {

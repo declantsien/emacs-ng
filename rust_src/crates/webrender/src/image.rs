@@ -2,7 +2,6 @@ use std::{
     ffi::CString,
     io::{BufRead, Cursor, Seek},
     ptr,
-    sync::Arc,
     time::Duration,
 };
 
@@ -24,7 +23,9 @@ use image::{
     AnimationDecoder, DynamicImage, GenericImageView, ImageFormat, ImageResult, Rgba,
 };
 use libc::c_void;
-use webrender::api::{ColorF, ColorU, ImageKey};
+use webrender::api::{
+    ColorF, ColorU, ImageDescriptor, ImageDescriptorFlags, ImageFormat as WrImageFormat, ImageKey,
+};
 
 use crate::frame::LispFrameExt;
 
@@ -179,6 +180,12 @@ fn animation_frame_meta_to_lisp_data(animation_meta: Option<(usize, Duration)>) 
 fn define_image(frame: LispFrameRef, img: *mut Emacs_Image, image_buffer: DynamicImage) {
     let width = image_buffer.width() as i32;
     let height = image_buffer.height() as i32;
+    let descriptor = ImageDescriptor::new(
+        width,
+        height,
+        WrImageFormat::RGBA8,
+        ImageDescriptorFlags::empty(),
+    );
 
     let mut output = frame.canvas();
 
@@ -191,20 +198,14 @@ fn define_image(frame: LispFrameRef, img: *mut Emacs_Image, image_buffer: Dynami
     };
 
     let pixmap = if let Some(image_key) = old_image_key {
-        output.update_image(
-            image_key,
-            width,
-            height,
-            Arc::new(image_buffer.to_rgba8().into_raw()),
-        );
+        output.update_image(image_key, descriptor, &image_buffer);
 
         WrPixmap {
             image_key,
             image_buffer,
         }
     } else {
-        let image_key =
-            output.add_image(width, height, Arc::new(image_buffer.to_rgba8().into_raw()));
+        let image_key = output.add_image(descriptor, &image_buffer);
 
         WrPixmap {
             image_key,
