@@ -461,6 +461,10 @@ impl Renderer for LispFrameRef {
                 }
             });
         } else {
+            let lgstring = s.get_lgstring();
+            // let i = 0;
+            // let glyph = emacs::bindings::AREF(gstring, i + 2);
+            // println!("glyph at 0: {:?}", glyph);
             log::error!("TODO unimplemented! draw_composite_glyph_string.\n");
         }
     }
