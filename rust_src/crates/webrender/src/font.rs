@@ -185,16 +185,13 @@ extern "C" fn get_cache(f: *mut frame) -> LispObject {
 }
 
 extern "C" fn draw(
-    s: *mut glyph_string,
+    _s: *mut glyph_string,
     _from: i32,
     _to: i32,
     _x: i32,
     _y: i32,
     _with_background: bool,
 ) -> i32 {
-    let s: GlyphStringRef = s.into();
-    let frame: LispFrameRef = s.f.into();
-    let font = WRFontRef::new(s.font as *mut WRFont);
     0
 }
 

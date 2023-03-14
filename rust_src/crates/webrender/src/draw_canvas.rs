@@ -1,3 +1,5 @@
+use crate::emacs::lglyph::LGlyph;
+use crate::emacs::lglyph::LGlyphString;
 use crate::frame::LispFrameWindowSystemExt;
 use euclid::Scale;
 use std::cmp::min;
@@ -152,54 +154,10 @@ impl Renderer for LispFrameRef {
     }
 
     fn draw_char_glyph_string(&mut self, s: GlyphStringRef) {
-        let font = WRFontRef::new(s.font as *mut WRFont);
-
-        let x_start = s.x;
-        let y_start = s.y + (font.font.ascent + (s.height - font.font.height) / 2);
-
-        let from = 0 as usize;
-        let to = s.nchars as usize;
+        let font = s.font();
 
         let gc = s.gc;
         self.canvas().display(|builder, space_and_clip, scale| {
-            let font_instance_key = self
-                .canvas()
-                .get_or_create_font_instance(font, font.font.pixel_size as f32 * scale);
-
-            let glyph_indices: Vec<u32> =
-                s.get_chars()[from..to].iter().map(|c| *c as u32).collect();
-
-            let glyph_dimensions = font.get_glyph_advance_width(glyph_indices.clone());
-
-            let mut glyph_instances: Vec<GlyphInstance> = vec![];
-
-            for (i, index) in glyph_indices.into_iter().enumerate() {
-                let previous_char_width = if i == 0 {
-                    0.0
-                } else {
-                    let dimension = glyph_dimensions[i - 1];
-                    match dimension {
-                        Some(d) => d as f32,
-                        None => 0.0,
-                    }
-                };
-
-                let previous_char_start = if i == 0 {
-                    x_start as f32
-                } else {
-                    glyph_instances[i - 1].point.x
-                };
-
-                let start = previous_char_start + previous_char_width;
-
-                let glyph_instance = GlyphInstance {
-                    index,
-                    point: LayoutPoint::new(start, y_start as f32),
-                };
-
-                glyph_instances.push(glyph_instance);
-            }
-
             let mut s = s.clone();
 
             let x = s.x;
@@ -243,10 +201,10 @@ impl Renderer for LispFrameRef {
                 );
             }
 
-            let overstrike = unsafe { (*face).overstrike() };
+            let glyph_instances = s.scaled_glyph_instances();
             // draw foreground
             if !glyph_instances.is_empty() {
-                let glyph_instances = scale_glyph_instances(glyph_instances, scale, overstrike);
+                let font_instance_key = s.font_instance_key();
                 let visible_rect = (x, y).by(s.width as i32, visible_height, scale);
 
                 builder.push_text(
@@ -355,50 +313,10 @@ impl Renderer for LispFrameRef {
             if s.cmp_from == 0 {
                 self.clear_area(self.cursor_color(), s.x, s.y, s.width, s.height);
             }
-        } else if !unsafe { (*s.first_glyph).u.cmp.automatic() } {
-            let font = WRFontRef::new(s.font as *mut WRFont);
-
-            let x = if !s.face.is_null()
-                && unsafe { (*s.face).box_() } != FACE_NO_BOX
-                && unsafe { (*s.first_glyph).left_box_line_p() }
-            {
-                s.x + std::cmp::max(unsafe { (*s.face).box_vertical_line_width }, 0)
-            } else {
-                s.x
-            };
-
-            let y_start = s.y + (font.font.ascent + (s.height - font.font.height) / 2);
-
-            let offsets = s.composite_offsets();
-
-            let glyph_instances: Vec<GlyphInstance> = s
-                .composite_chars()
-                .into_iter()
-                .enumerate()
-                .filter_map(|(n, glyph)| {
-                    // TAB in a composition means display glyphs with padding
-                    // space on the left or right.
-                    if s.composite_glyph(n as usize) == <u8 as Into<i64>>::into(b'\t') {
-                        return None;
-                    }
-
-                    let xx = x + offsets[n as usize * 2] as i32;
-                    let yy = y_start - offsets[n as usize * 2 + 1] as i32;
-
-                    let glyph_instance = GlyphInstance {
-                        index: *glyph,
-                        point: LayoutPoint::new(xx as f32, yy as f32),
-                    };
-
-                    Some(glyph_instance)
-                })
-                .collect();
+        } else {
+            let font = s.font();
 
             let face = s.face;
-            let overstrike = unsafe { (*face).overstrike() };
-
-            let glyph_instances =
-                scale_glyph_instances(glyph_instances, self.canvas().scale(), overstrike);
 
             let gc = s.gc;
 
@@ -449,11 +367,10 @@ impl Renderer for LispFrameRef {
 
                 let visible_rect = (x, y).by(s.width, visible_height, scale);
 
-                let font_instance_key = self
-                    .canvas()
-                    .get_or_create_font_instance(font, font.font.pixel_size as f32 * scale);
+                let glyph_instances = s.scaled_glyph_instances();
                 // draw foreground
                 if !glyph_instances.is_empty() {
+                    let font_instance_key = s.font_instance_key();
                     builder.push_text(
                         &CommonItemProperties::new(visible_rect, space_and_clip),
                         visible_rect,
@@ -464,12 +381,6 @@ impl Renderer for LispFrameRef {
                     );
                 }
             });
-        } else {
-            let lgstring = s.get_lgstring();
-            // let i = 0;
-            // let glyph = emacs::bindings::AREF(gstring, i + 2);
-            // println!("glyph at 0: {:?}", glyph);
-            log::error!("TODO unimplemented! draw_composite_glyph_string.\n");
         }
     }
 
@@ -778,24 +689,265 @@ impl Renderer for LispFrameRef {
     }
 }
 
-fn scale_glyph_instances(
-    instances: Vec<GlyphInstance>,
-    scale: f32,
-    overstrike: bool,
-) -> Vec<GlyphInstance> {
-    let mut scaled: Vec<GlyphInstance> = vec![];
-    for instance in instances.iter() {
-        let cur_point = instance.point;
-        scaled.push(GlyphInstance {
-            point: cur_point * Scale::new(scale),
-            ..*instance
-        });
-        if overstrike {
-            scaled.push(GlyphInstance {
-                point: LayoutPoint::new(cur_point.x + 1.0, cur_point.y) * Scale::new(scale),
-                ..*instance
-            });
+pub trait WrGlyph {
+    fn x(self) -> i32;
+    fn font(self) -> WRFontRef;
+    fn font_instance_key(self) -> FontInstanceKey;
+    fn type_(self) -> glyph_type::Type;
+    fn composite_p(self) -> bool;
+    fn automatic_composite_p(self) -> bool;
+    fn frame(self) -> LispFrameRef;
+    fn glyph_indices(self) -> Vec<u32>;
+    fn scaled_glyph_instances(self) -> Vec<GlyphInstance>;
+    fn glyph_instances(self) -> Vec<GlyphInstance>;
+    fn char_glyph_instances(self) -> Vec<GlyphInstance>;
+    fn composite_glyph_instances(self) -> Vec<GlyphInstance>;
+    fn automatic_composite_glyph_instances(self) -> Vec<GlyphInstance>;
+}
+
+impl WrGlyph for GlyphStringRef {
+    // If first glyph of S has a left box line, start drawing the text
+    // of S to the right of that box line.
+    fn x(self) -> i32 {
+        if !self.face.is_null()
+            && unsafe { (*self.face).box_() } != FACE_NO_BOX
+            && unsafe { (*self.first_glyph).left_box_line_p() }
+        {
+            self.x + std::cmp::max(unsafe { (*self.face).box_vertical_line_width }, 0)
+        } else {
+            self.x
         }
     }
-    scaled
+    fn frame(self) -> LispFrameRef {
+        self.f.into()
+    }
+
+    fn font(self) -> WRFontRef {
+        WRFontRef::new(self.font as *mut WRFont)
+    }
+
+    fn type_(self) -> glyph_type::Type {
+        self.first_glyph().type_()
+    }
+
+    fn composite_p(self) -> bool {
+        self.type_() == glyph_type::COMPOSITE_GLYPH
+    }
+
+    fn automatic_composite_p(self) -> bool {
+        self.composite_p() && unsafe { (*self.first_glyph).u.cmp.automatic() }
+    }
+
+    fn font_instance_key(self) -> FontInstanceKey {
+        let font = self.font();
+        let scale_factor = self.frame().canvas().scale();
+        self.frame()
+            .canvas()
+            .get_or_create_font_instance(font, font.font.pixel_size as f32 * scale_factor)
+    }
+
+    fn glyph_indices(self) -> Vec<u32> {
+        let from = 0 as usize;
+        let to = self.nchars as usize;
+
+        self.get_chars()[from..to]
+            .iter()
+            .map(|c| *c as u32)
+            .collect()
+    }
+
+    fn scaled_glyph_instances(self) -> Vec<GlyphInstance> {
+        let instances = self.glyph_instances();
+
+        let face = self.face;
+        let overstrike = unsafe { (*face).overstrike() };
+        let scale_factor = self.frame().canvas().scale();
+
+        let mut scaled: Vec<GlyphInstance> = vec![];
+        for instance in instances.iter() {
+            let cur_point = instance.point;
+            scaled.push(GlyphInstance {
+                point: cur_point * Scale::new(scale_factor),
+                ..*instance
+            });
+            if overstrike {
+                scaled.push(GlyphInstance {
+                    point: LayoutPoint::new(cur_point.x + 1.0, cur_point.y)
+                        * Scale::new(scale_factor),
+                    ..*instance
+                });
+            }
+        }
+        scaled
+    }
+
+    fn glyph_instances(self) -> Vec<GlyphInstance> {
+        let type_ = self.type_();
+
+        match type_ {
+            glyph_type::CHAR_GLYPH => self.char_glyph_instances(),
+            glyph_type::COMPOSITE_GLYPH => {
+                if self.automatic_composite_p() {
+                    self.automatic_composite_glyph_instances()
+                } else {
+                    self.composite_glyph_instances()
+                }
+            }
+            _ => vec![],
+        }
+    }
+
+    fn char_glyph_instances(self) -> Vec<GlyphInstance> {
+        let font = self.font();
+
+        let x_start = self.x();
+        let y_start = self.y + (font.font.ascent + (self.height - font.font.height) / 2);
+
+        let glyph_indices = self.glyph_indices();
+
+        let glyph_dimensions = font.get_glyph_advance_width(glyph_indices.clone());
+
+        let mut glyph_instances: Vec<GlyphInstance> = vec![];
+
+        for (i, index) in glyph_indices.into_iter().enumerate() {
+            let previous_char_width = if i == 0 {
+                0.0
+            } else {
+                let dimension = glyph_dimensions[i - 1];
+                match dimension {
+                    Some(d) => d as f32,
+                    None => 0.0,
+                }
+            };
+
+            let previous_char_start = if i == 0 {
+                x_start as f32
+            } else {
+                glyph_instances[i - 1].point.x
+            };
+
+            let start = previous_char_start + previous_char_width;
+
+            let glyph_instance = GlyphInstance {
+                index,
+                point: LayoutPoint::new(start, y_start as f32),
+            };
+
+            glyph_instances.push(glyph_instance);
+        }
+        glyph_instances
+    }
+
+    fn composite_glyph_instances(self) -> Vec<GlyphInstance> {
+        let font = self.font();
+
+        let x = self.x();
+
+        let y_start = self.y + (font.font.ascent + (self.height - font.font.height) / 2);
+
+        let offsets = self.composite_offsets();
+
+        let glyph_instances: Vec<GlyphInstance> = self
+            .composite_chars()
+            .into_iter()
+            .enumerate()
+            .filter_map(|(n, glyph)| {
+                // TAB in a composition means display glyphs with padding
+                // space on the left or right.
+                if self.composite_glyph(n as usize) == <u8 as Into<i64>>::into(b'\t') {
+                    return None;
+                }
+
+                let xx = x + offsets[n as usize * 2] as i32;
+                let yy = y_start - offsets[n as usize * 2 + 1] as i32;
+
+                let glyph_instance = GlyphInstance {
+                    index: *glyph,
+                    point: LayoutPoint::new(xx as f32, yy as f32),
+                };
+
+                Some(glyph_instance)
+            })
+            .collect();
+        glyph_instances
+    }
+
+    fn automatic_composite_glyph_instances(self) -> Vec<GlyphInstance> {
+        let mut instances: Vec<GlyphInstance> = vec![];
+        let lgstring = self.get_lgstring();
+        let mut x = self.x() as u32;
+
+        // Lisp_Object glyph;
+        let y = self.ybase;
+        let mut width = 0;
+
+        let cmp_from = self.cmp_from;
+        let cmp_to = self.cmp_to;
+
+        let mut i = cmp_from;
+        let mut j = cmp_from;
+
+        for n in cmp_from..cmp_to {
+        //     let lglyph = lgstring.lglyph(n as u32);
+        //     if lglyph.adjustment().is_nil() {
+        //         width += lglyph.width();
+        //     } else {
+        //         let index: u32 = lglyph.code().into();
+        //         if j < i {
+        //             let glyph_instance = GlyphInstance {
+        //                 index,
+        //                 point: LayoutPoint::new(x as f32, y as f32),
+        //             };
+
+        //             instances.push(glyph_instance);
+        //             x += width;
+        //         }
+        //         let xoff: u32 = lglyph.xoff().into();
+        //         let yoff: u32 = lglyph.yoff().into();
+        //         let wadjust: u32 = lglyph.wadjust().into();
+
+        //         let glyph_instance = GlyphInstance {
+        //             index,
+        //             point: LayoutPoint::new((x + xoff) as f32, (y as u32 + yoff) as f32),
+        //         };
+        //         instances.push(glyph_instance);
+        //         x += wadjust;
+        //         j = i + 1;
+        //         width = 0;
+        //     }
+        //     i = i + 1;
+        // }
+        // if j < i {
+        //     for n in j..i {
+        //         let lglyph = lgstring.lglyph(n as u32);
+        //         let code: u32 = lglyph.code().into();
+        //         let lfont = lgstring.font();
+        //         let c: u32 = lglyph.char().into();
+        //         let c = char::from_u32(165 as u32).unwrap();
+        //         let font = self.font();
+        //         let face_info = font.face_info().unwrap();
+
+        //         log::error!(
+        //             "face_info: {:?}", face_info.post_script_name
+        //         );
+        //         // if let Some(index) = self.font().glyph_for_char(c) {
+        //             let glyph_instance = GlyphInstance {
+        //                 index: code,
+        //                 point: LayoutPoint::new(x as f32, y as f32),
+        //             };
+        //             instances.push(glyph_instance);
+        //         // } else {
+        //         //     log::error!(
+        //         //         "char: {c:?}, code:{code:?} not found! {lfont:?}"
+        //         //     );
+        //         // }
+        //         x += lglyph.width();
+        //         // log::error!(
+        //         //     "index: {index:?}, j:{j:?}, lgstring: {lgstring:?} lglyph: {lglyph:?} "
+        //         // );
+        //     }
+        }
+
+        instances
+    }
 }
