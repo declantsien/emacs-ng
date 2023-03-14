@@ -26,10 +26,10 @@ pub fn to_emacs_modifiers(modifiers: ModifiersState) -> u32 {
 }
 
 pub fn keysym_to_emacs_key_name(keysym: i32) -> *const libc::c_char {
-    keycode_to_emacs_key_name(unsafe { std::mem::transmute::<i64, VirtualKeyCode>(keysym.into()) })
+    keycode_to_emacs_key_name(unsafe { &std::mem::transmute::<i64, VirtualKeyCode>(keysym.into()) })
 }
 
-pub fn keycode_to_emacs_key_name(keycode: VirtualKeyCode) -> *const libc::c_char {
+pub fn keycode_to_emacs_key_name(keycode: &VirtualKeyCode) -> *const libc::c_char {
     match keycode {
         VirtualKeyCode::Escape => kn!("escape"),
         VirtualKeyCode::Backspace => kn!("backspace"),

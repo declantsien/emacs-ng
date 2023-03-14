@@ -102,14 +102,14 @@ pub mod window_system {
             };
         }
 
-        #[cfg(use_tao)]
+        #[cfg(use_keyboard_input_2_0)]
         pub use crate::window_system::winit_impl::tao::*;
-        #[cfg(use_winit)]
+        #[cfg(not(use_keyboard_input_2_0))]
         pub use crate::window_system::winit_impl::winit::*;
 
-        #[cfg(use_tao)]
+        #[cfg(use_keyboard_input_2_0)]
         pub mod tao;
-        #[cfg(use_winit)]
+        #[cfg(not(use_keyboard_input_2_0))]
         pub mod winit;
     }
 }

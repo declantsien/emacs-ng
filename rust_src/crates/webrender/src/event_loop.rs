@@ -200,13 +200,8 @@ pub fn poll_a_event(timeout: Duration) -> Option<GUIEvent> {
                     result.replace(Some(e.to_static().unwrap()));
                     *control_flow = ControlFlow::Exit;
                 }
-                #[cfg(use_tao)]
-                WindowEvent::ReceivedImeText(_) => {
-                    result.replace(Some(e.to_static().unwrap()));
-                    *control_flow = ControlFlow::Exit;
-                }
 
-                #[cfg(use_winit)]
+                #[cfg(not(use_keyboard_input_2_0))]
                 WindowEvent::ReceivedCharacter(_) => {
                     result.replace(Some(e.to_static().unwrap()));
                     *control_flow = ControlFlow::Exit;

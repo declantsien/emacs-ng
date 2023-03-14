@@ -2,9 +2,9 @@ use crate::window_system::api::dpi::LogicalPosition;
 use crate::window_system::frame::LispFrameWinitExt;
 use crate::window_system::{keycode_to_emacs_key_name, to_emacs_modifiers, virtual_keycode};
 
-#[cfg(use_winit)]
+#[cfg(not(use_keyboard_input_2_0))]
 use crate::window_system::api::event::{ModifiersState, VirtualKeyCode};
-#[cfg(use_tao)]
+#[cfg(use_keyboard_input_2_0)]
 use crate::window_system::api::keyboard::{KeyCode as VirtualKeyCode, ModifiersState};
 use crate::window_system::api::{
     dpi::PhysicalPosition,
@@ -27,7 +27,7 @@ impl InputProcessor {
                 InputProcessor {
                     modifiers: ModifiersState::default(),
                     total_delta: PhysicalPosition::new(0.0, 0.9),
-                    #[cfg(use_winit)]
+                    #[cfg(not(use_keyboard_input_2_0))]
                     suppress_chars: false,
                 }
             })
@@ -59,12 +59,12 @@ impl InputProcessor {
 pub struct InputProcessor {
     modifiers: ModifiersState,
     total_delta: PhysicalPosition<f64>,
-    #[cfg(use_winit)]
+    #[cfg(not(use_keyboard_input_2_0))]
     suppress_chars: bool,
 }
 
 impl InputProcessor {
-    #[cfg(use_tao)]
+    #[cfg(use_keyboard_input_2_0)]
     pub fn handle_modifiers_changed(new_state: ModifiersState) {
         let snapshot = Self::snapshot();
         let mut modifiers = snapshot.modifiers.clone();
@@ -86,7 +86,7 @@ impl InputProcessor {
             ..snapshot
         });
     }
-    #[cfg(use_winit)]
+    #[cfg(not(use_keyboard_input_2_0))]
     pub fn handle_modifiers_changed(new_state: ModifiersState) {
         let snapshot = Self::snapshot();
 
@@ -104,7 +104,7 @@ impl InputProcessor {
         });
     }
 
-    #[cfg(use_winit)]
+    #[cfg(not(use_keyboard_input_2_0))]
     fn set_suppress_chars(suppress_chars: bool) {
         let snapshot = Self::snapshot();
         Self::update(InputProcessor {
@@ -122,7 +122,7 @@ impl InputProcessor {
 impl InputProcessor {
     pub fn handle_receive_char(c: char, top_frame: LispObject) -> Option<input_event> {
         let state = Self::global();
-        #[cfg(use_winit)]
+        #[cfg(not(use_keyboard_input_2_0))]
         if state.suppress_chars {
             return None;
         }
@@ -149,11 +149,11 @@ impl InputProcessor {
         top_frame: LispObject,
     ) -> Option<input_event> {
         let InputProcessor { modifiers, .. } = Self::global().clone();
-        if keycode_to_emacs_key_name(key_code).is_null() {
+        if keycode_to_emacs_key_name(&key_code).is_null() {
             return None;
         }
 
-        #[cfg(use_winit)]
+        #[cfg(not(use_keyboard_input_2_0))]
         Self::set_suppress_chars(true);
 
         let code = virtual_keycode(key_code);
@@ -176,7 +176,7 @@ impl InputProcessor {
     }
 
     pub fn handle_key_released() {
-        #[cfg(use_winit)]
+        #[cfg(not(use_keyboard_input_2_0))]
         Self::set_suppress_chars(false);
     }
 

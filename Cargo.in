@@ -93,6 +93,7 @@ webrender = [
   "wrterm",
   "wrterm/std",
   "wrterm/wayland",
+  "wrterm/winit_keyboard_input_2_0",
   @WEBRENDER_EXTRA_FEATURES@
 ]
 # Use the winit window system
@@ -130,3 +131,7 @@ rev = "57cd1e290205a5459969bfe4cf0852d3bfec189c"
 [patch.crates-io.tao]
 git = "https://github.com/tauri-apps/tao"
 rev = "28b53f80c49bbf2ae8902b98a2e28f6451a5a8f1"
+
+[patch.crates-io.winit]
+git = "https://github.com/rust-windowing/winit"
+branch = "new-keyboard-v3"

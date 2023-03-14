@@ -39,6 +39,7 @@ fn main() {
         have_window_system: { any(window_system_winit, window_system_pgtk) },
         use_winit: { feature = "winit" },
         use_tao: { all(feature = "tao", not(use_winit)) },
+        use_keyboard_input_2_0: { any(feature = "winit_keyboard_input_2_0", use_tao) },
 
         // X11/wayland are winit specific
         x11_platform: { all(feature = "x11", free_unix, not(wasm), use_winit)},

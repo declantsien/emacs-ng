@@ -5,7 +5,7 @@ use crate::event_loop::WrEventLoop;
 use crate::frame::LispFrameWindowSystemExt;
 use crate::input::InputProcessor;
 use crate::term::*;
-#[cfg(use_winit)]
+#[cfg(not(use_keyboard_input_2_0))]
 use crate::window_system::api::event::KeyboardInput;
 use crate::{winit_set_background_color, winit_set_cursor_color};
 use emacs::bindings::{
@@ -240,7 +240,7 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
                 let frame: LispObject = frame.into();
 
                 match event {
-                    #[cfg(use_winit)]
+                    #[cfg(not(use_keyboard_input_2_0))]
                     WindowEvent::ReceivedCharacter(key_code) => {
                         if let Some(mut iev) = InputProcessor::handle_receive_char(key_code, frame)
                         {
@@ -249,14 +249,11 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
                         }
                     }
 
-                    #[cfg(use_tao)]
-                    WindowEvent::ReceivedImeText(_text) => {}
-
                     WindowEvent::ModifiersChanged(state) => {
                         let _ = InputProcessor::handle_modifiers_changed(state);
                     }
 
-                    #[cfg(use_tao)]
+                    #[cfg(use_keyboard_input_2_0)]
                     WindowEvent::KeyboardInput { event, .. } => match event.state {
                         ElementState::Pressed => match event.logical_key {
                             crate::window_system::api::keyboard::Key::Character(ch) => {
@@ -281,10 +278,9 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
                         ElementState::Released => {
                             InputProcessor::handle_key_released();
                         }
-                        e => todo!("Unhandled event {:?}", e),
                     },
 
-                    #[cfg(use_winit)]
+                    #[cfg(not(use_keyboard_input_2_0))]
                     WindowEvent::KeyboardInput {
                         input:
                             KeyboardInput {
