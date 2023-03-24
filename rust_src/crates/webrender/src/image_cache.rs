@@ -221,18 +221,35 @@ impl ImageSource {
 
         // let mut fontdb = fontdb::Database::new();
         // fontdb.load_system_fonts();
+        let result = usvg::Tree::from_data(contents, opt);
+        let mut tree = match result {
+            Ok(result) => result,
+            Err(e) => {
+                image_error!("Failed to parse svg {e:?}");
+                return None;
+            }
+        };
 
-        let mut tree = usvg::Tree::from_data(contents, opt).unwrap();
         tree.convert_text(fontdb);
         let pixmap_size = tree.size.to_screen_size();
-        let mut pixmap = tiny_skia::Pixmap::new(pixmap_size.width(), pixmap_size.height()).unwrap();
-        resvg::render(
+        let result = tiny_skia::Pixmap::new(pixmap_size.width(), pixmap_size.height());
+        if result.is_none() {
+            image_error!("Failed to create tiny_skia pixmap");
+            return None;
+        }
+        let mut pixmap = result.unwrap();
+        match resvg::render(
             &tree,
             usvg::FitTo::Original,
             tiny_skia::Transform::default(),
             pixmap.as_mut(),
-        )
-        .unwrap();
+        ) {
+            None => {
+                image_error!("Failed to render svg using resvg");
+                return None;
+            }
+            _ => {}
+        }
 
         match pixmap.encode_png() {
             Ok(bytes) => Some(bytes),
@@ -346,18 +363,26 @@ impl ImageCache {
     where
         P: FnOnce(&mut ImageCache) -> T,
     {
-        let cache = Self::global().try_lock();
-        let mut cache = cache.unwrap();
-        Some(p(&mut cache))
+        match Self::global().try_lock() {
+            Ok(mut cache) => Some(p(&mut cache)),
+            Err(e) => {
+                image_error!("Image cache not available... {e:?}");
+                None
+            }
+        }
     }
 
     fn cache<P, T>(p: P) -> Option<T>
     where
         P: FnOnce(&ImageCache) -> T,
     {
-        let cache = Self::global().try_lock();
-        let cache = cache.unwrap();
-        Some(p(&cache))
+        match Self::global().try_lock() {
+            Ok(cache) => Some(p(&cache)),
+            Err(e) => {
+                image_error!("Image cache not available... {e:?}");
+                None
+            }
+        }
     }
 
     pub fn with_image_data<P, T>(
@@ -405,7 +430,10 @@ impl ImageCache {
     }
 
     pub fn insert(hash: ImageHash, result: ImageCacheResult) -> Option<ImageCacheResult> {
-        ImageCache::cache_mut(|cache| cache.0.insert(hash, result)).unwrap()
+        match ImageCache::cache_mut(|cache| cache.0.insert(hash, result)) {
+            Some(result) => result,
+            None => None,
+        }
     }
 
     pub fn load(image: ImageRef) {

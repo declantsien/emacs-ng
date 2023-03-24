@@ -133,6 +133,9 @@ impl ImageExt for ImageRef {
             let hash = self.hash();
             let transform = self.pixmap();
             ImageCache::with_image_data(&hash, frame_index, transform, |(data, meta)| {
+                if data.is_none() {
+                    return false;
+                }
                 let (descriptor, data) = data.unwrap();
                 let size = descriptor.size;
                 self.width = size.width;
