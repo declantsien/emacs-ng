@@ -1,10 +1,12 @@
 use crate::frame::LispFrameWindowSystemExt;
+use crate::image::ImageRef;
+use crate::image::ImageExt;
 use euclid::Scale;
 use std::cmp::min;
 
 use webrender::{self, api::units::*, api::*};
 
-use crate::{frame::LispFrameExt, fringe::FringeBitmap, image::WrPixmap};
+use crate::{frame::LispFrameExt, fringe::FringeBitmap};
 
 use super::{
     color::{color_to_pixel, pixel_to_color},
@@ -290,14 +292,17 @@ impl Renderer for LispFrameRef {
     }
 
     fn draw_image_glyph(&mut self, mut s: GlyphStringRef) {
-        let wr_pixmap = unsafe { (*s.img).pixmap } as *mut WrPixmap;
+        let image: ImageRef = s.img.into();
+        let frame: LispFrameRef = s.f.into();
+        let image_key = image.image_key(frame);
 
-        // TODO null pixmap? 0x0
-        if wr_pixmap.is_null() {
+        if image_key.is_none() {
+            log::error!("image key {:?}", image_key);
+
             return;
         }
 
-        let image_key = unsafe { (*wr_pixmap).image_key };
+        let image_key = image_key.unwrap();
 
         let mut clip_rect = Emacs_Rectangle {
             x: 0,
