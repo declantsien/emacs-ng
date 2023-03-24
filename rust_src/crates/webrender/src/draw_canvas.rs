@@ -42,7 +42,7 @@ pub trait Renderer {
 
     fn draw_image(
         &mut self,
-        image_key: ImageKey,
+        image_key: Option<ImageKey>,
         background_color: Option<ColorF>,
         bounds: LayoutRect,
         clip_bounds: Option<LayoutRect>,
@@ -308,13 +308,13 @@ impl Renderer for LispFrameRef {
         let frame: LispFrameRef = s.f.into();
         let image_key = image.image_key(frame);
 
-        if image_key.is_none() {
-            log::error!("image key {:?}", image_key);
-
-            return;
-        }
-
-        let image_key = image_key.unwrap();
+        // clear area
+        let x = s.x;
+        let y = s.y;
+        let gc = s.gc;
+        let visible_height = s.visible_height();
+        let background_color = pixel_to_color(unsafe { (*gc).background } as u64);
+        self.clear_area(background_color, x, y, s.background_width, visible_height);
 
         let mut clip_rect = Emacs_Rectangle {
             x: 0,
@@ -343,7 +343,7 @@ impl Renderer for LispFrameRef {
 
     fn draw_image(
         &mut self,
-        image_key: ImageKey,
+        image_key: Option<ImageKey>,
         background_color: Option<ColorF>,
         bounds: LayoutRect,
         clip_bounds: Option<LayoutRect>,
@@ -357,17 +357,21 @@ impl Renderer for LispFrameRef {
             self.draw_rectangle(background_color, background_rect);
         }
 
-        self.canvas().display(|builder, space_and_clip, _scale| {
-            // render image
-            builder.push_image(
-                &CommonItemProperties::new(clip_bounds, space_and_clip),
-                bounds,
-                ImageRendering::Auto,
-                AlphaType::Alpha,
-                image_key,
-                ColorF::WHITE,
-            );
-        });
+        if let Some(image_key) = image_key {
+            self.canvas().display(|builder, space_and_clip, _scale| {
+                // render image
+                builder.push_image(
+                    &CommonItemProperties::new(clip_bounds, space_and_clip),
+                    bounds,
+                    ImageRendering::Auto,
+                    AlphaType::Alpha,
+                    image_key,
+                    ColorF::WHITE,
+                );
+            });
+        } else {
+            log::error!("image key {:?}", image_key);
+        }
     }
 
     fn draw_composite_glyph_string_foreground(&mut self, s: GlyphStringRef) {
@@ -704,6 +708,7 @@ impl Renderer for LispFrameRef {
 
 pub trait WrGlyph {
     fn x(self) -> i32;
+    fn box_line_width(self) -> i32;
     fn font(self) -> WRFontRef;
     fn font_instance_key(self) -> FontInstanceKey;
     fn image(self) -> ImageRef;
@@ -733,6 +738,11 @@ impl WrGlyph for GlyphStringRef {
             self.x
         }
     }
+
+    fn box_line_width(self) -> i32 {
+        std::cmp::max(unsafe { (*self.face).box_horizontal_line_width }, 0)
+    }
+
     fn frame(self) -> LispFrameRef {
         self.f.into()
     }
