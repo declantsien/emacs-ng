@@ -31,6 +31,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
 
 [[package]]
+name = "ahash"
+version = "0.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fcb51a0695d8f838b1ee009b3fbf66bda078cd64590202a864a8f3e8c4315c47"
+dependencies = [
+ "getrandom 0.2.8",
+ "once_cell",
+ "version_check",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "0.6.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1131,6 +1142,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "fontdue"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a62391ecb864cf12ed06b2af4eda2e609b97657950d6a8f06841b17726ab253"
+dependencies = [
+ "hashbrown 0.11.2",
+ "ttf-parser 0.15.2",
+]
+
+[[package]]
 name = "foreign-types"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1643,7 +1664,7 @@ dependencies = [
 [[package]]
 name = "glsl-to-cxx"
 version = "0.1.0"
-source = "git+https://github.com/declantsien/webrender.git?rev=1732a483fe19466a4e2834017214ff3e30525f45#1732a483fe19466a4e2834017214ff3e30525f45"
+source = "git+https://github.com/declantsien/webrender.git?rev=be26540c0d9ed2b3e06ef2601abc020262875d0e#be26540c0d9ed2b3e06ef2601abc020262875d0e"
 dependencies = [
  "glsl",
 ]
@@ -1797,6 +1818,15 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
+dependencies = [
+ "ahash",
+]
+
+[[package]]
+name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
@@ -1893,7 +1923,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1885e79c1fc4b10f0e172c475f458b7f7b93061064d98c3293e98c5ba0c8b399"
 dependencies = [
  "autocfg 1.1.0",
- "hashbrown",
+ "hashbrown 0.12.3",
 ]
 
 [[package]]
@@ -2842,7 +2872,7 @@ checksum = "9f746c4065a8fa3fe23974dd82f15431cc8d40779821001404d10d2e79ca7d79"
 [[package]]
 name = "peek-poke"
 version = "0.3.0"
-source = "git+https://github.com/declantsien/webrender.git?rev=1732a483fe19466a4e2834017214ff3e30525f45#1732a483fe19466a4e2834017214ff3e30525f45"
+source = "git+https://github.com/declantsien/webrender.git?rev=be26540c0d9ed2b3e06ef2601abc020262875d0e#be26540c0d9ed2b3e06ef2601abc020262875d0e"
 dependencies = [
  "euclid",
  "peek-poke-derive",
@@ -2851,7 +2881,7 @@ dependencies = [
 [[package]]
 name = "peek-poke-derive"
 version = "0.3.0"
-source = "git+https://github.com/declantsien/webrender.git?rev=1732a483fe19466a4e2834017214ff3e30525f45#1732a483fe19466a4e2834017214ff3e30525f45"
+source = "git+https://github.com/declantsien/webrender.git?rev=be26540c0d9ed2b3e06ef2601abc020262875d0e#be26540c0d9ed2b3e06ef2601abc020262875d0e"
 dependencies = [
  "proc-macro2 1.0.52",
  "quote 1.0.26",
@@ -3864,7 +3894,7 @@ dependencies = [
 [[package]]
 name = "swgl"
 version = "0.1.0"
-source = "git+https://github.com/declantsien/webrender.git?rev=1732a483fe19466a4e2834017214ff3e30525f45#1732a483fe19466a4e2834017214ff3e30525f45"
+source = "git+https://github.com/declantsien/webrender.git?rev=be26540c0d9ed2b3e06ef2601abc020262875d0e#be26540c0d9ed2b3e06ef2601abc020262875d0e"
 dependencies = [
  "cc",
  "gleam",
@@ -4282,6 +4312,12 @@ checksum = "ce607aae8ab0ab3abf3a2723a9ab6f09bb8639ed83fdd888d857b8e556c868d8"
 dependencies = [
  "minidl",
 ]
+
+[[package]]
+name = "ttf-parser"
+version = "0.15.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b3e06c9b9d80ed6b745c7159c40b311ad2916abb34a49e9be2653b90db0d8dd"
 
 [[package]]
 name = "ttf-parser"
@@ -4794,7 +4830,7 @@ dependencies = [
 [[package]]
 name = "webrender"
 version = "0.62.0"
-source = "git+https://github.com/declantsien/webrender.git?rev=1732a483fe19466a4e2834017214ff3e30525f45#1732a483fe19466a4e2834017214ff3e30525f45"
+source = "git+https://github.com/declantsien/webrender.git?rev=be26540c0d9ed2b3e06ef2601abc020262875d0e#be26540c0d9ed2b3e06ef2601abc020262875d0e"
 dependencies = [
  "bincode",
  "bitflags",
@@ -4831,7 +4867,7 @@ dependencies = [
 [[package]]
 name = "webrender_api"
 version = "0.62.0"
-source = "git+https://github.com/declantsien/webrender.git?rev=1732a483fe19466a4e2834017214ff3e30525f45#1732a483fe19466a4e2834017214ff3e30525f45"
+source = "git+https://github.com/declantsien/webrender.git?rev=be26540c0d9ed2b3e06ef2601abc020262875d0e#be26540c0d9ed2b3e06ef2601abc020262875d0e"
 dependencies = [
  "app_units",
  "bitflags",
@@ -4850,7 +4886,7 @@ dependencies = [
 [[package]]
 name = "webrender_build"
 version = "0.0.2"
-source = "git+https://github.com/declantsien/webrender.git?rev=1732a483fe19466a4e2834017214ff3e30525f45#1732a483fe19466a4e2834017214ff3e30525f45"
+source = "git+https://github.com/declantsien/webrender.git?rev=be26540c0d9ed2b3e06ef2601abc020262875d0e#be26540c0d9ed2b3e06ef2601abc020262875d0e"
 dependencies = [
  "bitflags",
  "lazy_static",
@@ -5099,20 +5135,22 @@ dependencies = [
 [[package]]
 name = "wr_glyph_rasterizer"
 version = "0.1.0"
-source = "git+https://github.com/declantsien/webrender.git?rev=1732a483fe19466a4e2834017214ff3e30525f45#1732a483fe19466a4e2834017214ff3e30525f45"
+source = "git+https://github.com/declantsien/webrender.git?rev=be26540c0d9ed2b3e06ef2601abc020262875d0e#be26540c0d9ed2b3e06ef2601abc020262875d0e"
 dependencies = [
  "core-foundation",
  "core-graphics",
  "core-text",
  "dwrote",
  "euclid",
+ "fontdue",
  "freetype",
  "fxhash",
- "lazy_static",
  "libc",
  "log",
  "malloc_size_of_derive",
  "objc",
+ "once_cell",
+ "parking_lot",
  "rayon",
  "serde",
  "smallvec",
@@ -5124,7 +5162,7 @@ dependencies = [
 [[package]]
 name = "wr_malloc_size_of"
 version = "0.0.2"
-source = "git+https://github.com/declantsien/webrender.git?rev=1732a483fe19466a4e2834017214ff3e30525f45#1732a483fe19466a4e2834017214ff3e30525f45"
+source = "git+https://github.com/declantsien/webrender.git?rev=be26540c0d9ed2b3e06ef2601abc020262875d0e#be26540c0d9ed2b3e06ef2601abc020262875d0e"
 dependencies = [
  "app_units",
  "euclid",
