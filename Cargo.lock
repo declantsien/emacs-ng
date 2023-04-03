@@ -1148,6 +1148,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a62391ecb864cf12ed06b2af4eda2e609b97657950d6a8f06841b17726ab253"
 dependencies = [
  "hashbrown 0.11.2",
+ "rayon",
  "ttf-parser 0.15.2",
 ]
 
@@ -1664,7 +1665,7 @@ dependencies = [
 [[package]]
 name = "glsl-to-cxx"
 version = "0.1.0"
-source = "git+https://github.com/declantsien/webrender.git?rev=be26540c0d9ed2b3e06ef2601abc020262875d0e#be26540c0d9ed2b3e06ef2601abc020262875d0e"
+source = "git+https://github.com/declantsien/webrender.git?rev=b62669fee79af050a0b8e0d8a310da4e28e8b896#b62669fee79af050a0b8e0d8a310da4e28e8b896"
 dependencies = [
  "glsl",
 ]
@@ -1823,6 +1824,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
 dependencies = [
  "ahash",
+ "rayon",
 ]
 
 [[package]]
@@ -2872,7 +2874,7 @@ checksum = "9f746c4065a8fa3fe23974dd82f15431cc8d40779821001404d10d2e79ca7d79"
 [[package]]
 name = "peek-poke"
 version = "0.3.0"
-source = "git+https://github.com/declantsien/webrender.git?rev=be26540c0d9ed2b3e06ef2601abc020262875d0e#be26540c0d9ed2b3e06ef2601abc020262875d0e"
+source = "git+https://github.com/declantsien/webrender.git?rev=b62669fee79af050a0b8e0d8a310da4e28e8b896#b62669fee79af050a0b8e0d8a310da4e28e8b896"
 dependencies = [
  "euclid",
  "peek-poke-derive",
@@ -2881,7 +2883,7 @@ dependencies = [
 [[package]]
 name = "peek-poke-derive"
 version = "0.3.0"
-source = "git+https://github.com/declantsien/webrender.git?rev=be26540c0d9ed2b3e06ef2601abc020262875d0e#be26540c0d9ed2b3e06ef2601abc020262875d0e"
+source = "git+https://github.com/declantsien/webrender.git?rev=b62669fee79af050a0b8e0d8a310da4e28e8b896#b62669fee79af050a0b8e0d8a310da4e28e8b896"
 dependencies = [
  "proc-macro2 1.0.52",
  "quote 1.0.26",
@@ -3894,7 +3896,7 @@ dependencies = [
 [[package]]
 name = "swgl"
 version = "0.1.0"
-source = "git+https://github.com/declantsien/webrender.git?rev=be26540c0d9ed2b3e06ef2601abc020262875d0e#be26540c0d9ed2b3e06ef2601abc020262875d0e"
+source = "git+https://github.com/declantsien/webrender.git?rev=b62669fee79af050a0b8e0d8a310da4e28e8b896#b62669fee79af050a0b8e0d8a310da4e28e8b896"
 dependencies = [
  "cc",
  "gleam",
@@ -4830,7 +4832,7 @@ dependencies = [
 [[package]]
 name = "webrender"
 version = "0.62.0"
-source = "git+https://github.com/declantsien/webrender.git?rev=be26540c0d9ed2b3e06ef2601abc020262875d0e#be26540c0d9ed2b3e06ef2601abc020262875d0e"
+source = "git+https://github.com/declantsien/webrender.git?rev=b62669fee79af050a0b8e0d8a310da4e28e8b896#b62669fee79af050a0b8e0d8a310da4e28e8b896"
 dependencies = [
  "bincode",
  "bitflags",
@@ -4867,7 +4869,7 @@ dependencies = [
 [[package]]
 name = "webrender_api"
 version = "0.62.0"
-source = "git+https://github.com/declantsien/webrender.git?rev=be26540c0d9ed2b3e06ef2601abc020262875d0e#be26540c0d9ed2b3e06ef2601abc020262875d0e"
+source = "git+https://github.com/declantsien/webrender.git?rev=b62669fee79af050a0b8e0d8a310da4e28e8b896#b62669fee79af050a0b8e0d8a310da4e28e8b896"
 dependencies = [
  "app_units",
  "bitflags",
@@ -4886,7 +4888,7 @@ dependencies = [
 [[package]]
 name = "webrender_build"
 version = "0.0.2"
-source = "git+https://github.com/declantsien/webrender.git?rev=be26540c0d9ed2b3e06ef2601abc020262875d0e#be26540c0d9ed2b3e06ef2601abc020262875d0e"
+source = "git+https://github.com/declantsien/webrender.git?rev=b62669fee79af050a0b8e0d8a310da4e28e8b896#b62669fee79af050a0b8e0d8a310da4e28e8b896"
 dependencies = [
  "bitflags",
  "lazy_static",
@@ -5135,7 +5137,7 @@ dependencies = [
 [[package]]
 name = "wr_glyph_rasterizer"
 version = "0.1.0"
-source = "git+https://github.com/declantsien/webrender.git?rev=be26540c0d9ed2b3e06ef2601abc020262875d0e#be26540c0d9ed2b3e06ef2601abc020262875d0e"
+source = "git+https://github.com/declantsien/webrender.git?rev=b62669fee79af050a0b8e0d8a310da4e28e8b896#b62669fee79af050a0b8e0d8a310da4e28e8b896"
 dependencies = [
  "core-foundation",
  "core-graphics",
@@ -5152,9 +5154,15 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "rayon",
+ "resvg",
+ "rustybuzz 0.6.0",
  "serde",
  "smallvec",
+ "tiny-skia",
+ "tiny-skia-path",
  "tracy-rs",
+ "ttf-parser 0.18.1",
+ "usvg",
  "webrender_api",
  "wr_malloc_size_of",
 ]
@@ -5162,7 +5170,7 @@ dependencies = [
 [[package]]
 name = "wr_malloc_size_of"
 version = "0.0.2"
-source = "git+https://github.com/declantsien/webrender.git?rev=be26540c0d9ed2b3e06ef2601abc020262875d0e#be26540c0d9ed2b3e06ef2601abc020262875d0e"
+source = "git+https://github.com/declantsien/webrender.git?rev=b62669fee79af050a0b8e0d8a310da4e28e8b896#b62669fee79af050a0b8e0d8a310da4e28e8b896"
 dependencies = [
  "app_units",
  "euclid",
