@@ -238,12 +238,10 @@ impl Canvas {
         let builder = std::mem::replace(&mut self.display_list_builder, None);
 
         if let Some(mut builder) = builder {
-            let layout_size = self.layout_size();
-
             let epoch = self.epoch;
             let mut txn = Transaction::new();
 
-            txn.set_display_list(epoch, None, layout_size.to_f32(), builder.end());
+            txn.set_display_list(epoch, builder.end());
             txn.set_root_pipeline(self.pipeline_id);
             txn.generate_frame(0, RenderReasons::NONE);
 
@@ -614,7 +612,13 @@ impl RenderNotifier for Notifier {
 
     fn wake_up(&self, _composite_needed: bool) {}
 
-    fn new_frame_ready(&self, _: DocumentId, _scrolled: bool, composite_needed: bool) {
+    fn new_frame_ready(
+        &self,
+        _: DocumentId,
+        _scrolled: bool,
+        composite_needed: bool,
+        _frame_publish_id: FramePublishId,
+    ) {
         self.wake_up(composite_needed);
     }
 }

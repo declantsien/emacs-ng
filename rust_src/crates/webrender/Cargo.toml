@@ -49,7 +49,8 @@ features = ["signal"]
 # Cargo.lock update patch
 [dependencies.webrender]
 git = "https://github.com/declantsien/webrender.git"
-rev = "19020c8691875f7e970d3f35d4b05db9563e4beb"
+rev = "b62669fee79af050a0b8e0d8a310da4e28e8b896"
+# path = "/shared/src/webrender/webrender"
 default-features = false
 
 [dependencies.webrender_surfman]
