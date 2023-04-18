@@ -1,3 +1,4 @@
+use super::font::emacs_to_fontdb_family;
 use core::ops::Deref;
 #[cfg(free_unix)]
 use font_loader::system_fonts;
@@ -123,19 +124,6 @@ impl FontDB<'static> {
             .unwrap_or_else(|| Vec::new())
     }
 
-    pub fn family_name(family_name: &str) -> Family {
-        match family_name.clone().to_lowercase().as_str() {
-            "default" => Family::Monospace, // emacs reports default
-            "serif" => Family::Serif,
-            "sans-serif" => Family::SansSerif,
-            "sans serif" => Family::SansSerif,
-            "monospace" => Family::Monospace,
-            "cursive" => Family::Cursive,
-            "fantasy" => Family::Fantasy,
-            _ => Family::Name(family_name),
-        }
-    }
-
     pub fn face_info_from_desc(&self, desc: FontDescriptor) -> Option<&FaceInfo> {
         match desc {
             FontDescriptor::PostScript(ref name) => self.select_postscript(name),
@@ -145,7 +133,7 @@ impl FontDB<'static> {
                 slant,
                 stretch,
             } => self.query(&Query {
-                families: &[Self::family_name(family)],
+                families: &[emacs_to_fontdb_family(family)],
                 stretch,
                 weight,
                 style: slant,
