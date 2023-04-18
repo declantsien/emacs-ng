@@ -1,5 +1,6 @@
-use std::collections::HashMap;
+use fontdb::Family;
 use std::sync::OnceLock;
+use webrender::FastHashMap;
 
 use std::ffi::CString;
 use std::ptr;
@@ -208,7 +209,7 @@ extern "C" fn match_(_f: *mut frame, spec: LispObject) -> LispObject {
     let font_db = FontDB::global();
 
     let fonts = if let Some(family) = family {
-        let family = FontDB::family_name(&family);
+        let family = emacs_to_fontdb_family(&family);
         font_db.fonts_by_family(&family)
     } else {
         font_db.all_fonts()
@@ -326,7 +327,7 @@ pub struct WRFont {
 
     pub face_id: fontdb::ID,
 
-    pub instance_keys: HashMap<u64, FontInstanceKey>,
+    pub instance_keys: FastHashMap<u64, FontInstanceKey>,
 }
 
 impl WRFont {
@@ -544,4 +545,17 @@ pub extern "C" fn syms_of_ttfp_font() {
     }
 
     register_ttfp_font_driver(ptr::null_mut());
+}
+
+pub fn emacs_to_fontdb_family(family_name: &str) -> Family {
+    match family_name.clone().to_lowercase().as_str() {
+        "default" => Family::Monospace, // emacs reports default
+        "serif" => Family::Serif,
+        "sans-serif" => Family::SansSerif,
+        "sans serif" => Family::SansSerif,
+        "monospace" => Family::Monospace,
+        "cursive" => Family::Cursive,
+        "fantasy" => Family::Fantasy,
+        _ => Family::Name(family_name),
+    }
 }
