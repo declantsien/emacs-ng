@@ -120,3 +120,4 @@ std = [
   "rustybuzz/std",
   "usvg-text-layout/memmap-fonts"
 ]
+avif=["image_/avif-decoder"]

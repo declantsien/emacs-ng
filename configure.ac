@@ -1344,6 +1344,12 @@ AC_ARG_ENABLE(winit-pselect,
 		On by default on macOS.])],
 [ac_enable_winit_pselect="${enableval}"],[])
 
+AC_ARG_ENABLE(wr-avif,
+[AS_HELP_STRING([--enable-wr-avif],
+		[enable avif image support for WR renderer.
+		requires the libdav1d C library.])],
+[ac_enable_wr_avif="${enableval}"],[])
+
 AC_ARG_WITH([wr-gl],[AS_HELP_STRING([--with-wr-gl=KIT],
  [use an GL context creation toolkit (KIT one of: yes or surfman, glutin, gtk3).
  Surfman will be used if none given.])],
@@ -6419,6 +6425,12 @@ if test "${with_webrender}" = "yes" ; then
   AC_DEFINE(HAVE_NATIVE_IMAGE_API, 1, [Define to use native OS APIs for images.])
             NATIVE_IMAGE_API="yes (webrender)"
 
+  if test x$ac_enable_wr_avif != x ; then
+     EMACS_CHECK_MODULES([DAV1D], [dav1d])
+     test "$HAVE_DAV1D" = "no" && AC_MSG_ERROR(WR avif support requires libdav1d)
+     WEBRENDER_EXTRA_FEATURES="\"wrterm/avif\", ${WEBRENDER_EXTRA_FEATURES}"
+  fi
+
   if test "${opsys}" = gnu-linux; then
     EMACS_CHECK_MODULES([FREETYPE], [freetype2])
     test "$HAVE_FREETYPE" = "no" && AC_MSG_ERROR(webrender requires libfreetype)
@@ -6948,6 +6960,7 @@ AS_ECHO(["  Does Emacs use -lXaw3d?                                 ${HAVE_XAW3D
   Does Emacs use a png library?                           ${HAVE_PNG} $LIBPNG
   Does Emacs use -lrsvg-2?                                ${HAVE_RSVG}
   Does Emacs use -lwebp?                                  ${HAVE_WEBP}
+  Does Emacs use -ldav1d?                                 ${HAVE_DAV1D}
   Does Emacs use -lsqlite3?                               ${HAVE_SQLITE3}
   Does Emacs use cairo?                                   ${HAVE_CAIRO}
   Does Emacs use -llcms2?                                 ${HAVE_LCMS2}
@@ -7108,8 +7121,8 @@ fi || AC_MSG_ERROR(['src/epaths.h' could not be made.])
 ], [GCC="$GCC" CPPFLAGS="$CPPFLAGS" opsys="$opsys" HAVE_NS="$HAVE_NS"
     window_system="$window_system" EN_NS_SELF_CONTAINED="$EN_NS_SELF_CONTAINED"])
 
-CARGO_DEFAULT_FEATURES=""
-WEBRENDER_EXTRA_FEATURES=""
+dnl CARGO_DEFAULT_FEATURES=""
+dnl WEBRENDER_EXTRA_FEATURES=""
 if test "$HAVE_LIBXML2" = "yes"; then
     CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"use-xml2\", "
 fi
