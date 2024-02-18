@@ -8151,12 +8151,12 @@ case "${window_system}" in
     pgtk)
         CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"window-system-pgtk\", "
 	if test "${with_webrender}" = "yes" ; then
-	   WEBRENDER_EXTRA_FEATURES="\"wrterm/pgtk\", ${WEBRENDER_EXTRA_FEATURES}"
+	   WEBRENDER_EXTRA_FEATURES="\"gl-renderer/pgtk\", ${WEBRENDER_EXTRA_FEATURES}"
 	fi
     ;;
 esac
 if test "${with_webrender}" = "yes" ; then
-   CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"webrender\", "
+   CARGO_DEFAULT_FEATURES="${CARGO_DEFAULT_FEATURES}\"gl-renderer\", "
    if test "X${with_wr_gl}" = "X"; then
 	case "${window_system}" in
 	    winit)
@@ -8181,9 +8181,9 @@ if test "${with_webrender}" = "yes" ; then
    fi
 
    case "${with_wr_gl}" in
-      glutin ) WEBRENDER_EXTRA_FEATURES="\"wrterm/glutin\", ${WEBRENDER_EXTRA_FEATURES}";;
-      gtk3 ) WEBRENDER_EXTRA_FEATURES="\"wrterm/gtk3\", ${WEBRENDER_EXTRA_FEATURES}";;
-      * ) WEBRENDER_EXTRA_FEATURES="\"wrterm/surfman\", ${WEBRENDER_EXTRA_FEATURES}";;
+      glutin ) WEBRENDER_EXTRA_FEATURES="\"gl-renderer/glutin\", ${WEBRENDER_EXTRA_FEATURES}";;
+      gtk3 ) WEBRENDER_EXTRA_FEATURES="\"gl-renderer/gtk3\", ${WEBRENDER_EXTRA_FEATURES}";;
+      * ) WEBRENDER_EXTRA_FEATURES="\"gl-renderer/surfman\", ${WEBRENDER_EXTRA_FEATURES}";;
    esac
 fi
 if test "$HAVE_LIBGIT" = "yes"; then

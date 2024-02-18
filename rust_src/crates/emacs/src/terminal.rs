@@ -11,9 +11,10 @@ use crate::{
     vector::LispVectorlikeRef,
 };
 
-pub type LispTerminalRef = ExternalPtr<terminal>;
+pub type TerminalRef = ExternalPtr<terminal>;
+use crate::display_info::DisplayInfoRef;
 
-impl LispTerminalRef {
+impl TerminalRef {
     pub fn is_live(self) -> bool {
         !self.name.is_null()
     }
@@ -25,6 +26,13 @@ impl LispTerminalRef {
             unsafe { build_string(self.name) }
         }
     }
+
+    pub fn display_info(self) -> DisplayInfoRef {
+        #[cfg(feature = "window-system-pgtk")]
+        return DisplayInfoRef::new(unsafe { self.display_info.pgtk });
+        #[cfg(feature = "window-system-winit")]
+        return DisplayInfoRef::new(unsafe { self.display_info.winit });
+    }
 }
 
 impl LispObject {
@@ -33,13 +41,13 @@ impl LispObject {
             .map_or(false, |v| v.is_pseudovector(pvec_type::PVEC_TERMINAL))
     }
 
-    pub fn as_terminal(self) -> Option<LispTerminalRef> {
+    pub fn as_terminal(self) -> Option<TerminalRef> {
         self.as_vectorlike()
             .and_then(LispVectorlikeRef::as_terminal)
     }
 }
 
-impl From<LispObject> for Option<LispTerminalRef> {
+impl From<LispObject> for Option<TerminalRef> {
     fn from(obj: LispObject) -> Self {
         let obj = if obj.is_nil() {
             unsafe { Fselected_frame() }
@@ -55,7 +63,7 @@ impl From<LispObject> for Option<LispTerminalRef> {
             ptr::null_mut()
         };
 
-        if let Some(term_ref) = LispTerminalRef::from_ptr(term as *mut c_void) {
+        if let Some(term_ref) = TerminalRef::from_ptr(term as *mut c_void) {
             if term_ref.is_live() {
                 return Some(term_ref);
             }
@@ -65,7 +73,7 @@ impl From<LispObject> for Option<LispTerminalRef> {
     }
 }
 
-impl From<LispObject> for LispTerminalRef {
+impl From<LispObject> for TerminalRef {
     fn from(obj: LispObject) -> Self {
         let value: Option<Self> = obj.into();
         value.unwrap_or_else(|| wrong_type!(Qterminal_live_p, obj))
