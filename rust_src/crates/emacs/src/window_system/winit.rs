@@ -76,7 +76,6 @@ pub struct WinitTermData {
     pub terminal: TerminalRef,
     pub focus_frame: FrameRef,
     pub clipboard: Clipboard,
-    pub all_frames: Vec<FrameRef>,
     pub event_loop: EventLoop<i32>,
 }
 
@@ -90,7 +89,6 @@ impl Default for WinitTermData {
         WinitTermData {
             terminal: TerminalRef::new(ptr::null_mut()),
             focus_frame: FrameRef::new(ptr::null_mut()),
-            all_frames: Vec::new(),
             event_loop,
             clipboard,
         }

@@ -5,9 +5,9 @@ use emacs::globals::Qmaximized;
 use emacs::terminal::TerminalRef;
 use emacs::{
     bindings::{
-        do_pending_window_change, fullscreen_type, gl_renderer_fit_context, list4i, make_frame,
-        make_frame_without_minibuffer, make_minibuffer_frame, output_method, winit_output,
-        Emacs_Cursor,
+        do_pending_window_change, fullscreen_type, gl_renderer_fit_context, gui_figure_window_size,
+        list4i, make_frame, make_frame_without_minibuffer, make_minibuffer_frame, output_method,
+        winit_output, Emacs_Cursor, Fcons, Vframe_list,
     },
     frame::FrameRef,
     globals::{Qinner_edges, Qnil, Qnone, Qonly, Qouter_edges},
@@ -26,13 +26,8 @@ use emacs::display_info::DisplayInfoRef;
 use emacs::output::Output;
 
 pub trait FrameExtWinit {
-    fn build(
-        display: LispObject,
-        dpyinfo: DisplayInfoRef,
-        tem: LispObject,
-        kb: KeyboardRef,
-    ) -> Self;
-    fn set_window(&self, handle: winit::window::Window);
+    fn setup_winit(&mut self, params: LispObject);
+    fn set_winit_window(&self, handle: winit::window::Window);
     fn set_inner_size(&self, size: PhysicalSize<u32>);
     fn set_cursor_color(&self, color: ColorF);
     fn set_background_color(&self, color: ColorF);
@@ -51,29 +46,13 @@ pub trait FrameExtWinit {
 }
 
 impl FrameExtWinit for FrameRef {
-    fn build(
-        display: LispObject,
-        dpyinfo: DisplayInfoRef,
-        tem: LispObject,
-        mut kb: KeyboardRef,
-    ) -> Self {
-        log::trace!("Winit creating new frame");
-        let frame = if tem.eq(Qnone) || tem.is_nil() {
-            unsafe { make_frame_without_minibuffer(Qnil, kb.as_mut(), display) }
-        } else if tem.eq(Qonly) {
-            unsafe { make_minibuffer_frame() }
-        } else if tem.is_window() {
-            unsafe { make_frame_without_minibuffer(tem, kb.as_mut(), display) }
-        } else {
-            unsafe { make_frame(true) }
-        };
+    fn setup_winit(&mut self, params: LispObject) {
+        /* Compute the size of the winit window.  */
+        // FIXME what to do with the window_prompting here
+        let _window_prompting =
+            unsafe { gui_figure_window_size(self.as_mut(), params, true, true) };
 
-        let mut frame = FrameRef::new(frame);
-
-        frame.terminal = dpyinfo.terminal;
-        frame.set_output_method(output_method::output_winit);
-
-        let mut terminal = TerminalRef::new(dpyinfo.terminal);
+        let mut terminal = self.terminal();
 
         let event_loop = &terminal.winit_term_data().event_loop;
         let window_builder = WindowBuilder::new().with_visible(true);
@@ -91,28 +70,14 @@ impl FrameExtWinit for FrameRef {
         let window = window_builder.build(&event_loop).unwrap();
         window.set_theme(None);
         window.set_title(&invocation_name);
-        let mut output = Box::new(Output::default());
-        build_mouse_cursors(&mut output.as_mut());
 
-        // TODO default frame size?
-        log::trace!("frame total_cols {:?}", frame.total_cols);
-        log::trace!("frame line_height {:?}", frame.line_height);
+        self.pixel_width = (window.inner_size().width as f64 / scale_factor).round() as i32;
+        self.pixel_height = (window.inner_size().height as f64 / scale_factor).round() as i32;
 
-        frame.pixel_width = (window.inner_size().width as f64 / scale_factor).round() as i32;
-        frame.pixel_height = (window.inner_size().height as f64 / scale_factor).round() as i32;
-
-        // Remeber to destory the Output object when frame destoried.
-        let output = Box::into_raw(output);
-        frame.output_data.winit = output as *mut winit_output;
-        frame.set_display_info(dpyinfo);
-
-        frame.set_window(window);
-        terminal.winit_term_data().all_frames.push(frame);
-        log::trace!("create_frame done");
-        frame
+        self.set_winit_window(window);
     }
 
-    fn set_window(&self, window: winit::window::Window) {
+    fn set_winit_window(&self, window: winit::window::Window) {
         self.output().winit_term_data().set_window(window);
     }
 
