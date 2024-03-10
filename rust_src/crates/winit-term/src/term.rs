@@ -2,15 +2,14 @@ use super::frame::FrameExtWinit;
 use crate::input::InputProcessor;
 use crate::{winit_set_background_color, winit_set_cursor_color};
 use emacs::bindings::{
-    add_keyboard_wait_descriptor, gl_renderer_free_frame_resources,
-    gl_renderer_free_terminal_resources, init_sigio, interrupt_input, wr_after_update_window_line,
-    wr_clear_frame, wr_clear_frame_area, wr_defined_color, wr_draw_fringe_bitmap,
-    wr_draw_glyph_string, wr_draw_vertical_window_border, wr_draw_window_cursor,
-    wr_draw_window_divider, wr_flush_display, wr_free_pixmap, wr_new_font, wr_scroll_run,
-    wr_update_end, wr_update_window_begin, wr_update_window_end,
+    add_keyboard_wait_descriptor, block_input, gl_renderer_free_frame_resources,
+    gl_renderer_free_terminal_resources, init_sigio, interrupt_input, unblock_input,
+    wr_after_update_window_line, wr_clear_frame, wr_clear_frame_area, wr_defined_color,
+    wr_draw_fringe_bitmap, wr_draw_glyph_string, wr_draw_vertical_window_border,
+    wr_draw_window_cursor, wr_draw_window_divider, wr_flush_display, wr_free_pixmap, wr_new_font,
+    wr_scroll_run, wr_update_end, wr_update_window_begin, wr_update_window_end,
 };
 use emacs::terminal::TerminalRef;
-use raw_window_handle::HasRawDisplayHandle;
 use std::ptr;
 use std::sync::OnceLock;
 use std::time::Duration;
@@ -31,9 +30,9 @@ use emacs::{
     },
     bindings::{
         gui_clear_end_of_line, gui_clear_window_mouse_face, gui_fix_overlapping_area,
-        gui_get_glyph_overhangs, gui_produce_glyphs, gui_set_alpha, gui_set_autolower,
-        gui_set_autoraise, gui_set_border_width, gui_set_bottom_divider_width, gui_set_font,
-        gui_set_font_backend, gui_set_fullscreen, gui_set_horizontal_scroll_bars,
+        gui_get_glyph_overhangs, gui_insert_glyphs, gui_produce_glyphs, gui_set_alpha,
+        gui_set_autolower, gui_set_autoraise, gui_set_border_width, gui_set_bottom_divider_width,
+        gui_set_font, gui_set_font_backend, gui_set_fullscreen, gui_set_horizontal_scroll_bars,
         gui_set_left_fringe, gui_set_line_spacing, gui_set_no_special_glyphs,
         gui_set_right_divider_width, gui_set_right_fringe, gui_set_screen_gamma,
         gui_set_scroll_bar_height, gui_set_scroll_bar_width, gui_set_unsplittable,
@@ -41,63 +40,66 @@ use emacs::{
         kbd_buffer_store_event_hold, Time, PT_PER_INCH,
     },
     frame::{all_frames, Frame, FrameRef},
-    globals::{Qnil, Qwinit},
+    globals::{Qnil, Qparent_frame, Qwinit},
     keyboard::allocate_keyboard,
     lisp::LispObject,
 };
 
-fn get_frame_parm_handlers() -> [frame_parm_handler; 48] {
+fn get_frame_parm_handlers() -> [frame_parm_handler; 51] {
     // Keep this list in the same order as frame_parms in frame.c.
     // Use None for unsupported frame parameters.
-    let handlers: [frame_parm_handler; 48] = [
+    let handlers: [frame_parm_handler; 51] = [
         Some(gui_set_autoraise),
         Some(gui_set_autolower),
         Some(winit_set_background_color),
-        None,
+        None, // x_set_border_color
         Some(gui_set_border_width),
         Some(winit_set_cursor_color),
-        None,
+        None, // x_set_cursor_type
         Some(gui_set_font),
-        None,
-        None,
-        None,
-        None,
-        None,
+        None, // x_set_foreground_color
+        None, // x_set_icon_name
+        None, // x_set_icon_type
+        None, // x_set_child_frame_border_width
+        None, // x_set_internal_border_width
         Some(gui_set_right_divider_width),
         Some(gui_set_bottom_divider_width),
-        None,
-        None,
-        None,
+        Some(winit_set_menu_bar_lines),
+        None, // x_set_mouse_color
+        None, // x_explicitly_set_name
         Some(gui_set_scroll_bar_width),
         Some(gui_set_scroll_bar_height),
-        None,
+        None, // x_set_title
         Some(gui_set_unsplittable),
         Some(gui_set_vertical_scroll_bars),
         Some(gui_set_horizontal_scroll_bars),
         Some(gui_set_visibility),
-        None,
-        None,
-        None,
-        None,
+        None, // x_set_tab_bar_lines
+        None, // x_set_tool_bar_lines
+        None, // x_set_scroll_bar_foreground
+        None, // x_set_scroll_bar_background
         Some(gui_set_screen_gamma),
         Some(gui_set_line_spacing),
         Some(gui_set_left_fringe),
         Some(gui_set_right_fringe),
-        None,
+        None, // x_set_wait_for_wm
         Some(gui_set_fullscreen),
         Some(gui_set_font_backend),
         Some(gui_set_alpha),
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
+        None, // x_set_sticky
+        None, // x_set_tool_bar_position
+        None, // x_set_inhibit_double_buffering,
+        None, // x_set_undecorated
+        Some(winit_set_parent_frame),
+        None, // x_set_skip_taskbar
+        None, // x_set_no_focus_on_map
+        None, // x_set_no_accept_focus
+        None, // x_set_z_group
+        None, // x_set_override_redirect,
         Some(gui_set_no_special_glyphs),
+        None, // x_set_alpha_background,
+        None, // x_set_use_frame_synchronization,
+        None, // x_set_shaded,
     ];
 
     handlers
@@ -118,9 +120,8 @@ impl RedisplayInterface {
                 frame_parm_handlers: (Box::into_raw(frame_parm_handlers)) as *mut Option<_>,
                 produce_glyphs: Some(gui_produce_glyphs),
                 write_glyphs: Some(gui_write_glyphs),
-                insert_glyphs: None,
+                insert_glyphs: Some(gui_insert_glyphs),
                 clear_end_of_line: Some(gui_clear_end_of_line),
-                clear_under_internal_border: None,
                 scroll_run_hook: Some(wr_scroll_run),
                 after_update_window_line_hook: Some(wr_after_update_window_line),
                 update_window_begin_hook: Some(wr_update_window_begin),
@@ -135,14 +136,15 @@ impl RedisplayInterface {
                 compute_glyph_string_overhangs: None,
                 draw_glyph_string: Some(wr_draw_glyph_string),
                 define_frame_cursor: Some(winit_define_frame_cursor),
-                default_font_parameter: None,
                 clear_frame_area: Some(wr_clear_frame_area),
+                clear_under_internal_border: None,
                 draw_window_cursor: Some(wr_draw_window_cursor),
                 draw_vertical_window_border: Some(wr_draw_vertical_window_border),
                 draw_window_divider: Some(wr_draw_window_divider),
-                shift_glyphs_for_insert: None,
+                shift_glyphs_for_insert: None, /* Never called; see comment in xterm.c.  */
                 show_hourglass: None,
                 hide_hourglass: None,
+                default_font_parameter: None,
             };
 
             RedisplayInterface(interface)
@@ -170,12 +172,8 @@ extern "C" fn winit_define_frame_cursor(f: *mut Frame, cursor: Emacs_Cursor) {
 }
 
 extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut input_event) -> i32 {
-    let mut terminal: TerminalRef = terminal.into();
+    let terminal: TerminalRef = terminal.into();
     let mut display_info = terminal.display_info();
-
-    let data = terminal.clone().winit_term_data();
-    // emacs::frame::all_frames() has denies
-    let all_frames = data.all_frames.clone();
 
     let mut count = 0;
     let mut handle_event = |e: Event<i32>| {
@@ -183,15 +181,18 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
             Event::WindowEvent {
                 window_id, event, ..
             } => {
-                let frame = all_frames.iter().find(|f| {
-                    f.output().winit_term_data().window.as_ref().unwrap().id() == window_id
+                let frame = all_frames().find(|f| {
+                    return f
+                        .winit_data()
+                        .and_then(|d| d.window.as_ref().and_then(|w| Some(w.id() == window_id)))
+                        .unwrap_or(false);
                 });
 
                 if frame.is_none() {
                     return;
                 }
 
-                let mut frame: FrameRef = *frame.unwrap();
+                let mut frame: FrameRef = frame.unwrap();
                 //lisp frame
                 let lframe: LispObject = frame.into();
 
@@ -290,7 +291,7 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
                     }
 
                     WindowEvent::Resized(size) => {
-                        let scale_factor = frame.winit_scale_factor();
+                        let scale_factor = frame.scale_factor();
                         let size = DeviceIntSize::new(
                             (size.width as f64 / scale_factor).round() as i32,
                             (size.height as f64 / scale_factor).round() as i32,
@@ -322,49 +323,46 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
         }
     };
 
-    let status =
-        terminal
-            .winit_term_data()
-            .event_loop
-            .pump_events(Some(Duration::ZERO), |e, _elwt| {
-                if let Event::WindowEvent { event, .. } = &e {
-                    // Print only Window events to reduce noise
-                    log::trace!("{event:?}");
-                }
+    let status = terminal.winit_data().and_then(|mut d| {
+        let status = d.event_loop.pump_events(Some(Duration::ZERO), |e, _elwt| {
+            if let Event::WindowEvent { event, .. } = &e {
+                // Print only Window events to reduce noise
+                log::trace!("{event:?}");
+            }
 
-                match e {
-                    Event::AboutToWait => {
-                        all_frames.iter().for_each(|f| {
-                            let window = &f.output().winit_term_data().window;
-                            match window {
-                                Some(w) => w.request_redraw(),
-                                None => {}
-                            }
-                        });
-                        spin_sleep::sleep(Duration::from_millis(8));
-                    }
-                    Event::WindowEvent {
-                        event, window_id, ..
-                    } => match event {
-                        WindowEvent::Resized(_)
-                        | WindowEvent::KeyboardInput { .. }
-                        | WindowEvent::ModifiersChanged(_)
-                        | WindowEvent::MouseInput { .. }
-                        | WindowEvent::CursorMoved { .. }
-                        | WindowEvent::ThemeChanged(_)
-                        | WindowEvent::Focused(_)
-                        | WindowEvent::MouseWheel { .. }
-                        | WindowEvent::RedrawRequested
-                        | WindowEvent::CloseRequested => {
-                            handle_event(Event::WindowEvent { window_id, event });
-                        }
-                        _ => {}
-                    },
-                    Event::UserEvent(_nfds) => {}
-                    _ => {}
+            match e {
+                Event::AboutToWait => {
+                    all_frames().for_each(|f| {
+                        let _ = f
+                            .winit_data()
+                            .map(|d| d.window.as_ref().map(|w| w.request_redraw()));
+                    });
+                    spin_sleep::sleep(Duration::from_millis(8));
                 }
-            });
-    if let PumpStatus::Exit(_exit_code) = status {
+                Event::WindowEvent {
+                    event, window_id, ..
+                } => match event {
+                    WindowEvent::Resized(_)
+                    | WindowEvent::KeyboardInput { .. }
+                    | WindowEvent::ModifiersChanged(_)
+                    | WindowEvent::MouseInput { .. }
+                    | WindowEvent::CursorMoved { .. }
+                    | WindowEvent::ThemeChanged(_)
+                    | WindowEvent::Focused(_)
+                    | WindowEvent::MouseWheel { .. }
+                    | WindowEvent::RedrawRequested
+                    | WindowEvent::CloseRequested => {
+                        handle_event(Event::WindowEvent { window_id, event });
+                    }
+                    _ => {}
+                },
+                Event::UserEvent(_nfds) => {}
+                _ => {}
+            }
+        });
+        Some(status)
+    });
+    if let Some(PumpStatus::Exit(_exit_code)) = status {
         // break 'main ExitCode::from(exit_code as u8);
     }
 
@@ -398,14 +396,13 @@ extern "C" fn winit_implicitly_set_name(frame: *mut Frame, arg: LispObject, old_
 }
 
 extern "C" fn winit_get_focus_frame(frame: *mut Frame) -> LispObject {
-    let frame: FrameRef = frame.into();
-    let mut terminal = frame.terminal();
-
-    let focus_frame = terminal.winit_term_data().focus_frame;
-
-    match focus_frame.is_null() {
-        true => Qnil,
-        false => focus_frame.into(),
+    match FrameRef::from(frame)
+        .terminal()
+        .winit_data()
+        .and_then(|d| Some(d.focus_frame))
+    {
+        Some(frame) if !frame.is_null() => frame.into(),
+        _ => Qnil,
     }
 }
 
@@ -459,13 +456,60 @@ extern "C" fn winit_mouse_position(
 // cleanup frame resource after frame is deleted
 extern "C" fn winit_destroy_frame(f: *mut Frame) {
     unsafe { gl_renderer_free_frame_resources(f) };
-    let frame: FrameRef = f.into();
-    frame
-        .terminal()
-        .winit_term_data()
-        .all_frames
-        .retain(|f| f.as_ptr() != frame.as_ptr());
-    frame.output().free_winit_term_data();
+    let f: FrameRef = f.into();
+    f.free_winit_data();
+}
+
+extern "C" fn winit_set_menu_bar_lines(f: *mut Frame, _value: LispObject, _old_value: LispObject) {
+    let frame = FrameRef::from(f);
+    /* Right now, menu bars don't work properly in minibuf-only frames;
+    most of the commands try to apply themselves to the minibuffer
+    frame itself, and get an error because you can't switch buffers
+    in or split the minibuffer window.  */
+    if frame.is_minibuf_only() || frame.parent_frame().is_some() {
+        return;
+    }
+
+    //TODO unimplemented set_menu_bar_lines
+    return;
+}
+
+// Set frame F's `parent-frame' parameter.  If non-nil, make F a child
+// frame of the frame specified by that parameter.  Technically, this
+// makes F's window-system window a child window of the parent frame's
+// window-system window.  If nil, make F's window-system window a
+// top-level window--a child of its display's root window.
+extern "C" fn winit_set_parent_frame(f: *mut Frame, value: LispObject, old_value: LispObject) {
+    if value.is_not_nil()
+        && (!value.is_frame()
+            || !FrameRef::from(value).is_live()
+            || !FrameRef::from(value).is_current_window_system())
+    {
+        FrameRef::from(f).store_param(Qparent_frame, old_value);
+        error!("Invalid specification of `parent-frame'");
+    }
+    println!("new child frame {value:?}, old {old_value:?}");
+
+    let p = FrameRef::from(value);
+    let f = FrameRef::from(f);
+    println!("frame {:?}", LispObject::from(f));
+
+    if p != f {
+        unsafe { block_input() };
+        if !p.is_null() {
+            if f.display_info() != p.display_info() {
+                error!("Cross display reparent.");
+            }
+        }
+
+        if p.is_null() {
+            //
+        } else {
+        }
+
+        unsafe { unblock_input() };
+        f.set_parent(value);
+    }
 }
 
 #[no_mangle]
@@ -509,7 +553,7 @@ fn winit_create_terminal(mut dpyinfo: DisplayInfoRef) -> TerminalRef {
     terminal.delete_terminal_hook = Some(winit_delete_terminal);
 
     // Init term data for winit
-    let _ = terminal.winit_term_data();
+    terminal.init_winit_data();
 
     terminal
 }
@@ -517,7 +561,7 @@ fn winit_create_terminal(mut dpyinfo: DisplayInfoRef) -> TerminalRef {
 extern "C" fn winit_delete_terminal(terminal: *mut terminal) {
     unsafe { gl_renderer_free_terminal_resources(terminal) };
     let mut terminal: TerminalRef = terminal.into();
-    terminal.free_winit_term_data();
+    terminal.free_winit_data();
 }
 
 pub fn winit_term_init(display_name: LispObject) -> DisplayInfoRef {
@@ -540,12 +584,14 @@ pub fn winit_term_init(display_name: LispObject) -> DisplayInfoRef {
     // Fset_input_interrupt_mode (Qnil);
 
     //TODO add support for macOS/windows for interrupt_input
-    let fd = emacs::display_descriptor(terminal.raw_display_handle());
+    let fd = emacs::display_descriptor(terminal.raw_display_handle().unwrap());
 
     #[cfg(free_unix)]
     {
         use std::os::fd::AsRawFd;
-        register_io_fd(terminal.winit_term_data().event_loop.as_raw_fd());
+        terminal
+            .winit_data()
+            .map(|d| register_io_fd(d.event_loop_as_raw_fd()));
     }
     #[cfg(not(free_unix))]
     register_io_fd(fd);

@@ -43,6 +43,8 @@ pub mod lisp;
 pub mod buffer;
 #[cfg(feature = "window-system")]
 pub mod color;
+#[cfg(window_system)]
+pub mod dispextern;
 #[cfg(feature = "window-system")]
 pub mod display_info;
 pub mod eval;

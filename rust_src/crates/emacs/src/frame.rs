@@ -1,27 +1,31 @@
 //! Generic frame functions.
+use crate::dispextern::FrameParam;
 use crate::{
     bindings::{
         adjust_frame_size, change_frame_size, face, face_id, frame, frame_dimension,
         init_frame_faces, pvec_type, store_frame_param, update_face_from_frame_parameter, Fassq,
         Fselected_frame, Lisp_Type, Vframe_list,
     },
-    globals::{Qframe_live_p, Qframep, Qnil},
+    globals::{Qframe_live_p, Qframep, Qnil, Qt, Qunbound},
     lisp::{ExternalPtr, LispObject},
     list::{LispConsCircularChecks, LispConsEndChecks},
     vector::LispVectorlikeRef,
     window::LispWindowRef,
 };
 
+use crate::dispextern::ImageCacheRef;
+use std::ffi::CString;
 #[cfg(feature = "window-system")]
 use {
-    crate::bindings::{gui_default_parameter, resource_types, vertical_scroll_bar_type},
+    crate::bindings::{
+        globals, gui_default_parameter, make_frame, make_frame_without_minibuffer,
+        make_minibuffer_frame, specbind, vertical_scroll_bar_type, Fcons,
+    },
     crate::display_info::DisplayInfoRef,
     crate::font::FontRef,
-    crate::output::{OutputExtWindowSystem, OutputRef},
+    crate::globals::{Qnone, Qonly, Qx_resource_name},
+    crate::output::OutputRef,
     crate::terminal::TerminalRef,
-    // raw_window_handle::{RawDisplayHandle, RawWindowHandle},
-    std::ffi::CString,
-    // webrender_api::units::{DeviceIntSize, LayoutSize},
 };
 
 pub type Frame = frame;
@@ -35,6 +39,10 @@ pub type FrameRef = ExternalPtr<Frame>;
 impl FrameRef {
     pub fn root_window(self) -> LispWindowRef {
         self.root_window.into()
+    }
+
+    pub fn minibufffer_window(self) -> LispWindowRef {
+        self.minibuffer_window.into()
     }
 
     pub fn is_live(self) -> bool {
@@ -133,37 +141,93 @@ impl FrameRef {
         faces_map.get(id as usize).copied()
     }
 
-    pub fn get_param(self, prop: LispObject) -> LispObject {
-        match unsafe { Fassq(prop, self.param_alist) }.as_cons() {
+    pub fn param(self, prop: impl Into<LispObject>) -> LispObject {
+        match unsafe { Fassq(prop.into(), self.param_alist) }.as_cons() {
             Some(cons) => cons.cdr(),
             None => Qnil,
+        }
+    }
+
+    pub fn is_minibuf_only(self) -> bool {
+        self.root_window.eq(self.minibuffer_window)
+    }
+
+    pub fn parent_frame(self) -> Option<FrameRef> {
+        if cfg!(window_system) {
+            if self.parent_frame.is_not_nil() {
+                Some(FrameRef::from(self.parent_frame))
+            } else {
+                None
+            }
+        } else {
+            None
         }
     }
 
     #[cfg(feature = "window-system")]
     pub fn gui_default_parameter(
         mut self,
-        alist: LispObject,
-        prop: LispObject,
-        default: LispObject,
-        xprop: &str,
-        xclass: &str,
-        res_type: resource_types::Type,
-    ) {
-        let xprop = CString::new(xprop).unwrap();
-        let xclass = CString::new(xclass).unwrap();
+        params: LispObject,
+        param: impl Into<FrameParam>,
+        default: impl Into<LispObject>,
+    ) -> LispObject {
+        let param: FrameParam = param.into();
+
+        let params_fallback = || {
+            let lparam: LispObject = param.into();
+            if unsafe { Fassq(lparam, params) }.is_nil() {
+                let value = self.display_info().gui_arg(params, param);
+                if !value.base_eq(Qunbound) {
+                    return unsafe { Fcons(Fcons(param.into(), value), params) };
+                }
+                return params;
+            }
+            return params;
+        };
+
+        let params = match param {
+            FrameParam::InternalBorderWidth | FrameParam::ChildFrameBorderWidth => {
+                params_fallback()
+            }
+            _ => params,
+        };
+
+        let res_type = param.resource_type();
+        let (xprop, xclass) = param.x_resource();
 
         unsafe {
             gui_default_parameter(
                 self.as_mut(),
-                alist,
-                prop,
-                default,
+                params,
+                param.into(),
+                default.into(),
                 xprop.as_ptr(),
                 xclass.as_ptr(),
-                res_type,
-            );
-        };
+                res_type.into(),
+            )
+        }
+    }
+
+    pub fn gui_default_parameter_no_x_resource(
+        mut self,
+        alist: LispObject,
+        param: impl Into<FrameParam>,
+        default: impl Into<LispObject>,
+    ) -> LispObject {
+        let param: FrameParam = param.into();
+        let res_type = param.resource_type();
+        let str = CString::new("").unwrap();
+        unsafe {
+            gui_default_parameter(
+                self.as_mut(),
+                alist,
+                param.into(),
+                default.into(),
+                str.as_ptr(),
+                str.as_ptr(),
+                res_type.into(),
+            )
+        }
     }
 
     pub fn change_size(
@@ -199,8 +263,32 @@ impl FrameRef {
         }
     }
 
-    pub fn store_param(mut self, prop: LispObject, val: LispObject) {
-        unsafe { store_frame_param(self.as_mut(), prop, val) };
+    pub fn set_name(mut self, name: LispObject) {
+        unsafe { crate::bindings::fset_name(self.as_mut(), name) };
+    }
+
+    pub fn set_parent(mut self, parent: LispObject) {
+        unsafe { crate::bindings::fset_parent_frame(self.as_mut(), parent) };
+    }
+
+    pub fn set_icon_name(mut self, icon_name: LispObject) {
+        unsafe { crate::bindings::fset_icon_name(self.as_mut(), icon_name) };
+    }
+
+    pub fn set_undecorated_(mut self, undecorated: bool) {
+        if cfg!(window_system) {
+            self.set_undecorated(undecorated);
+        }
+    }
+
+    pub fn set_override_redirect_(mut self, override_redirect: bool) {
+        if cfg!(window_system) {
+            self.set_override_redirect(override_redirect);
+        }
+    }
+
+    pub fn store_param(mut self, prop: impl Into<LispObject>, val: impl Into<LispObject>) {
+        unsafe { store_frame_param(self.as_mut(), prop.into(), val.into()) };
     }
 
     pub fn update_face_from_frame_param(mut self, prop: LispObject, new_val: LispObject) {
@@ -223,7 +311,7 @@ impl FrameRef {
 
     #[cfg(feature = "window-system")]
     pub fn font(&self) -> FontRef {
-        FontRef::new(self.output().font as *mut _)
+        self.output().font()
     }
 
     #[cfg(feature = "window-system")]
@@ -254,6 +342,115 @@ impl FrameRef {
     #[cfg(feature = "window-system")]
     pub fn terminal(&self) -> TerminalRef {
         return TerminalRef::new(self.terminal);
+    }
+
+    pub fn is_current_window_system(&self) -> bool {
+        if cfg!(winit) {
+            return self.output_method() == crate::bindings::output_method::output_winit;
+        } else if cfg!(pgtk) {
+            return self.output_method() == crate::bindings::output_method::output_pgtk;
+        }
+        false
+    }
+
+    pub fn image_cache(self) -> ImageCacheRef {
+        self.terminal().image_cache()
+    }
+
+    pub fn build(mut dpyinfo: DisplayInfoRef, params: LispObject) -> Self {
+        let name = dpyinfo.gui_arg(params, FrameParam::Name);
+
+        if !name.is_string() && !name.eq(Qunbound) && !name.is_nil() {
+            error!("Invalid frame name--not a string or nil");
+        }
+
+        if name.is_string() {
+            unsafe {
+                globals.Vx_resource_name = name;
+            }
+        }
+
+        /* Check if parent window is specified. Return early if parent_id is not number
+        The validation is inside gui_arg func call*/
+        let parent_id = dpyinfo.gui_arg(params, FrameParam::ParentId);
+
+        let terminal = dpyinfo.terminal();
+
+        if terminal.name == std::ptr::null_mut() {
+            error!("Terminal is not live, can't create new frames on it");
+        }
+
+        let kb = terminal.kboard;
+
+        let tem = dpyinfo.gui_arg(params, FrameParam::Minibuffer);
+        let display_arg = dpyinfo.gui_arg(params, FrameParam::Display);
+
+        let f = if tem.eq(Qnone) || tem.is_nil() {
+            unsafe { make_frame_without_minibuffer(Qnil, kb, display_arg) }
+        } else if tem.eq(Qonly) {
+            unsafe { make_minibuffer_frame() }
+        } else if tem.is_window() {
+            unsafe { make_frame_without_minibuffer(tem, kb, display_arg) }
+        } else {
+            unsafe { make_frame(true) }
+        };
+
+        let mut f = Self::new(f);
+        /* Set the name; the functions to which we pass f expect the name to
+        be set.  */
+        if name.base_eq(Qunbound) || name.is_nil() {
+            // pgtk using dpyinfo->x_id_name here
+            let default_name = "default frame name";
+            let default_name: LispObject = default_name.to_string().into();
+            f.set_name(default_name);
+            f.set_explicit_name(false);
+        } else {
+            f.set_name(name);
+            f.set_explicit_name(true);
+            unsafe { specbind(Qx_resource_name, name) };
+        }
+
+        f.terminal = dpyinfo.terminal;
+        f.set_icon_name(dpyinfo.gui_arg(params, FrameParam::IconName));
+
+        let mut process_bool_arg = |param: FrameParam| {
+            let value = dpyinfo.gui_arg(params, param);
+            let value = value.is_not_nil() && !value.base_eq(Qunbound);
+            if param == FrameParam::Undecorated {
+                f.set_undecorated_(value);
+            } else if param == FrameParam::OverrideRedirect {
+                f.set_override_redirect_(value);
+            }
+            let value = if value { Qt } else { Qnil };
+            f.store_param(param, value);
+        };
+
+        process_bool_arg(FrameParam::Undecorated);
+        process_bool_arg(FrameParam::OverrideRedirect);
+
+        let mut process_num_arg = |param: FrameParam| {
+            let value = dpyinfo.gui_arg(params, param);
+            if value.is_fixnum() {
+                f.store_param(param, value);
+            }
+        };
+
+        process_num_arg(FrameParam::MinWidth);
+        process_num_arg(FrameParam::MinHeight);
+
+        /* Accept parent-frame if parent-id was not specified.  */
+        let parent_frame = if parent_id.is_nil() {
+            dpyinfo.gui_arg(params, FrameParam::ParentFrame)
+        } else {
+            Qnil
+        };
+        f.set_parent(parent_frame);
+        f.store_param(FrameParam::ParentFrame, parent_frame);
+        let unsplittable =
+            f.is_minibuf_only() || dpyinfo.gui_arg(params, FrameParam::Unsplittable).is_t();
+        f.set_no_split(unsplittable);
+
+        f
     }
 }
 

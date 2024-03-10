@@ -6,6 +6,7 @@ use libc::c_void;
 
 use crate::{
     bindings::{build_string, pvec_type, terminal, Fselected_frame},
+    dispextern::ImageCacheRef,
     globals::{Qnil, Qterminal_live_p},
     lisp::{ExternalPtr, LispObject},
     vector::LispVectorlikeRef,
@@ -27,6 +28,10 @@ impl TerminalRef {
         } else {
             unsafe { build_string(self.name) }
         }
+    }
+
+    pub fn image_cache(self) -> ImageCacheRef {
+        ImageCacheRef::new(self.image_cache as *mut _)
     }
 
     #[allow(unreachable_code)]
