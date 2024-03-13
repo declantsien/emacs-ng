@@ -3,9 +3,9 @@ use crate::input::InputProcessor;
 use crate::{winit_set_background_color, winit_set_cursor_color};
 use emacs::bindings::{
     add_keyboard_wait_descriptor, block_input, gl_renderer_free_frame_resources,
-    gl_renderer_free_terminal_resources, init_sigio, interrupt_input, unblock_input,
-    wr_after_update_window_line, wr_clear_frame, wr_clear_frame_area, wr_defined_color,
-    wr_draw_fringe_bitmap, wr_draw_glyph_string, wr_draw_vertical_window_border,
+    gl_renderer_free_terminal_resources, init_sigio, interrupt_input, set_frame_cursor_types,
+    unblock_input, wr_after_update_window_line, wr_clear_frame, wr_clear_frame_area,
+    wr_defined_color, wr_draw_fringe_bitmap, wr_draw_glyph_string, wr_draw_vertical_window_border,
     wr_draw_window_cursor, wr_draw_window_divider, wr_flush_display, wr_free_pixmap, wr_new_font,
     wr_scroll_run, wr_update_end, wr_update_window_begin, wr_update_window_end,
 };
@@ -52,54 +52,54 @@ fn get_frame_parm_handlers() -> [frame_parm_handler; 51] {
         Some(gui_set_autoraise),
         Some(gui_set_autolower),
         Some(winit_set_background_color),
-        None, // x_set_border_color
-        Some(gui_set_border_width),
+        Some(winit_set_border_color),
+        Some(winit_set_border_width),
         Some(winit_set_cursor_color),
-        None, // x_set_cursor_type
+        Some(winit_set_cursor_type),
         Some(gui_set_font),
-        None, // x_set_foreground_color
-        None, // x_set_icon_name
-        None, // x_set_icon_type
-        None, // x_set_child_frame_border_width
-        None, // x_set_internal_border_width
+        Some(winit_set_foreground_color),
+        Some(winit_set_icon_name),
+        Some(winit_set_icon_type),
+        Some(winit_set_child_frame_border_width),
+        Some(winit_set_internal_border_width),
         Some(gui_set_right_divider_width),
         Some(gui_set_bottom_divider_width),
         Some(winit_set_menu_bar_lines),
-        None, // x_set_mouse_color
-        None, // x_explicitly_set_name
+        Some(winit_set_mouse_color),
+        Some(winit_explicitly_set_name),
         Some(gui_set_scroll_bar_width),
         Some(gui_set_scroll_bar_height),
-        None, // x_set_title
+        Some(winit_set_title),
         Some(gui_set_unsplittable),
         Some(gui_set_vertical_scroll_bars),
         Some(gui_set_horizontal_scroll_bars),
         Some(gui_set_visibility),
-        None, // x_set_tab_bar_lines
-        None, // x_set_tool_bar_lines
-        None, // x_set_scroll_bar_foreground
-        None, // x_set_scroll_bar_background
+        Some(winit_set_tab_bar_lines),
+        Some(winit_set_tool_bar_lines),
+        Some(winit_set_scroll_bar_foreground),
+        Some(winit_set_scroll_bar_background),
         Some(gui_set_screen_gamma),
         Some(gui_set_line_spacing),
         Some(gui_set_left_fringe),
         Some(gui_set_right_fringe),
-        None, // x_set_wait_for_wm
+        Some(winit_set_wait_for_wm),
         Some(gui_set_fullscreen),
         Some(gui_set_font_backend),
         Some(gui_set_alpha),
-        None, // x_set_sticky
-        None, // x_set_tool_bar_position
-        None, // x_set_inhibit_double_buffering,
-        None, // x_set_undecorated
+        Some(winit_set_sticky),
+        Some(winit_set_tool_bar_position),
+        Some(winit_set_inhibit_double_buffering),
+        Some(winit_set_undecorated),
         Some(winit_set_parent_frame),
-        None, // x_set_skip_taskbar
-        None, // x_set_no_focus_on_map
-        None, // x_set_no_accept_focus
-        None, // x_set_z_group
-        None, // x_set_override_redirect,
+        Some(winit_set_skip_taskbar),
+        Some(winit_set_no_focus_on_map),
+        Some(winit_set_no_accept_focus),
+        Some(winit_set_z_group),
+        Some(winit_set_override_redirect),
         Some(gui_set_no_special_glyphs),
-        None, // x_set_alpha_background,
-        None, // x_set_use_frame_synchronization,
-        None, // x_set_shaded,
+        Some(winit_set_alpha_background),
+        Some(winit_set_use_frame_synchronization),
+        Some(winit_set_shaded),
     ];
 
     handlers
@@ -367,6 +367,158 @@ extern "C" fn winit_read_input_event(terminal: *mut terminal, hold_quit: *mut in
     }
 
     count
+}
+
+// Set the border-color of frame F to value described by ARG.
+// ARG can be a string naming a color.
+// The border-color is used for the border that is drawn by the display server
+// This should be working when winit is using X11, however winit haven't expose
+// a set method for change window bordor color as the time when writing
+// check x_set_border_color if we want to support this
+// For wayland/ns/windows, unknown
+extern "C" fn winit_set_border_color(_f: *mut Frame, _arg: LispObject, _oldval: LispObject) {}
+
+// See comments from winit_set_border_color
+extern "C" fn winit_set_border_width(f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    unsafe { gui_set_border_width(f, arg, oldval) };
+}
+
+extern "C" fn winit_set_cursor_type(f: *mut Frame, arg: LispObject, _oldval: LispObject) {
+    unsafe { set_frame_cursor_types(f, arg) };
+}
+
+extern "C" fn winit_set_foreground_color(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!("TODO: winit_set_foreground_color {:?} {:?}", arg, oldval);
+}
+
+extern "C" fn winit_set_icon_name(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!("TODO: winit_set_icon_name {:?} {:?}", arg, oldval);
+}
+
+extern "C" fn winit_set_icon_type(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!("TODO: winit_set_icon_type {:?} {:?}", arg, oldval);
+}
+
+extern "C" fn winit_set_child_frame_border_width(
+    _f: *mut Frame,
+    arg: LispObject,
+    oldval: LispObject,
+) {
+    log::debug!(
+        "TODO: winit_set_child_frame_border_width {:?} {:?}",
+        arg,
+        oldval
+    );
+}
+
+extern "C" fn winit_set_internal_border_width(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!(
+        "TODO: winit_set_internal_border_width {:?} {:?}",
+        arg,
+        oldval
+    );
+}
+
+extern "C" fn winit_set_mouse_color(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!("TODO: winit_set_mouse_color {:?} {:?}", arg, oldval);
+}
+extern "C" fn winit_explicitly_set_name(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!("TODO: winit_explicitly_set_name {:?} {:?}", arg, oldval);
+}
+
+extern "C" fn winit_set_title(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!("TODO: winit_set_title {:?} {:?}", arg, oldval);
+}
+
+extern "C" fn winit_set_tab_bar_lines(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!("TODO: winit_set_tab_bar_lines {:?} {:?}", arg, oldval);
+}
+extern "C" fn winit_set_tool_bar_lines(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!(
+        "TODO: winit_set_internal_border_width {:?} {:?}",
+        arg,
+        oldval
+    );
+}
+extern "C" fn winit_set_scroll_bar_foreground(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!(
+        "TODO: winit_set_scroll_bar_foreground {:?} {:?}",
+        arg,
+        oldval
+    );
+}
+extern "C" fn winit_set_scroll_bar_background(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!(
+        "TODO: winit_set_scroll_bar_background {:?} {:?}",
+        arg,
+        oldval
+    );
+}
+
+extern "C" fn winit_set_use_frame_synchronization(
+    _f: *mut Frame,
+    arg: LispObject,
+    oldval: LispObject,
+) {
+    log::debug!(
+        "TODO: winit_set_use_frame_synchronization {:?} {:?}",
+        arg,
+        oldval
+    );
+}
+
+extern "C" fn winit_set_alpha_background(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!("TODO: winit_set_alpha_background {:?} {:?}", arg, oldval);
+}
+
+extern "C" fn winit_set_wait_for_wm(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!("TODO: winit_set_wait_for_wm {:?} {:?}", arg, oldval);
+}
+
+extern "C" fn winit_set_shaded(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!("TODO: winit_set_shaded {:?} {:?}", arg, oldval);
+}
+extern "C" fn winit_set_skip_taskbar(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!("TODO: winit_set_skip_taskbar {:?} {:?}", arg, oldval);
+}
+
+extern "C" fn winit_set_no_focus_on_map(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!("TODO: winit_set_no_focus_on_map {:?} {:?}", arg, oldval);
+}
+extern "C" fn winit_set_no_accept_focus(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!("TODO: winit_set_no_accept_focus {:?} {:?}", arg, oldval);
+}
+
+extern "C" fn winit_set_z_group(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!("TODO: winit_set_z_group {:?} {:?}", arg, oldval);
+}
+
+extern "C" fn winit_set_override_redirect(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!("TODO: winit_set_override_redirect {:?} {:?}", arg, oldval);
+}
+
+extern "C" fn winit_set_sticky(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!("TODO: winit_set_sticky {:?} {:?}", arg, oldval);
+}
+
+extern "C" fn winit_set_tool_bar_position(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!("TODO: winit_set_tool_bar_position {:?} {:?}", arg, oldval);
+}
+
+extern "C" fn winit_set_inhibit_double_buffering(
+    _f: *mut Frame,
+    arg: LispObject,
+    oldval: LispObject,
+) {
+    log::debug!(
+        "TODO: winit_set_inhibit_double_buffering {:?} {:?}",
+        arg,
+        oldval
+    );
+}
+
+extern "C" fn winit_set_undecorated(_f: *mut Frame, arg: LispObject, oldval: LispObject) {
+    log::debug!("TODO: winit_set_undecorated {:?} {:?}", arg, oldval);
 }
 
 extern "C" fn winit_set_fullscreen(f: *mut Frame) {
