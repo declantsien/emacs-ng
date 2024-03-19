@@ -5,7 +5,6 @@ use webrender_api::ColorF;
 
 use super::DrawGlyphsFace;
 use super::EmacsGCRef;
-use super::FaceId;
 use super::FaceRef;
 use super::GlyphType;
 use crate::bindings::composition_gstring_from_id;
@@ -22,6 +21,7 @@ use crate::bindings::Emacs_Rectangle as NativeRectangle;
 use crate::bindings::XHASH_TABLE;
 use crate::color::pixel_to_color;
 use crate::definitions::EmacsInt;
+use crate::display_traits::GlyphRef;
 use crate::font::FontRef;
 use crate::frame::FrameRef;
 use crate::globals::Qnil;
@@ -30,7 +30,6 @@ use crate::lisp::LispObject;
 
 pub type XChar2b = u32;
 
-pub type GlyphStringRef = ExternalPtr<glyph_string>;
 pub type GlyphRowRef = ExternalPtr<GlyphRow>;
 
 pub type GlyphStringRef = ExternalPtr<glyph_string>;

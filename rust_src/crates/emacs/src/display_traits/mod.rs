@@ -78,14 +78,14 @@ use crate::lisp::ExternalPtr;
 use crate::lisp::LispObject;
 use std::ffi::CString;
 
-mod face;
-pub use face::*;
+mod glyph;
+pub use glyph::*;
 #[cfg(have_window_system)]
 mod glyph_string;
 #[cfg(have_window_system)]
 pub use glyph_string::*;
-mod glyph;
-pub use glyph::*;
+mod face;
+pub use face::*;
 
 pub type ImageCacheRef = ExternalPtr<ImageCache>;
 pub type EmacsGCRef = ExternalPtr<EmacsGC>;

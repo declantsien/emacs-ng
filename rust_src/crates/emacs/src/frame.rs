@@ -90,7 +90,7 @@ impl FrameRef {
     }
 
     // Pixel-width of internal border lines.
-    #[cfg(not(window_system))]
+    #[cfg(not(have_window_system))]
     pub fn internal_border_width(self) -> i32 {
         unsafe { frame_dimension(self.internal_border_width) }
     }
