@@ -75,7 +75,7 @@ pub type DisplayRef = ExternalPtr<Display>;
 pub static tip_frame: LispObject = Qnil;
 
 #[no_mangle]
-pub static mut winit_display_list: DisplayInfoRef = DisplayInfoRef::new(ptr::null_mut());
+pub static mut winit_display_list: Option<DisplayInfoRef> = None;
 
 #[allow(unused_variables)]
 #[no_mangle]
@@ -91,7 +91,8 @@ pub extern "C" fn winit_get_display_info(output: OutputRef) -> DisplayInfoRef {
 #[allow(unused_variables)]
 #[no_mangle]
 pub extern "C" fn winit_get_display(display_info: DisplayInfoRef) -> DisplayRef {
-    DisplayRef::new(ptr::null_mut())
+    unimplemented!("winit get display")
+    // DisplayRef::new(ptr::null_mut())
 }
 
 #[no_mangle]
@@ -148,8 +149,8 @@ pub extern "C" fn check_x_display_info(obj: LispObject) -> DisplayInfoRef {
             return frame.display_info();
         }
 
-        if !unsafe { winit_display_list.is_null() } {
-            return unsafe { winit_display_list };
+        if !unsafe { winit_display_list.is_none() } {
+            return unsafe { winit_display_list.unwrap() };
         }
 
         error!("Webrender windows are not in use or not initialized");
@@ -167,7 +168,7 @@ pub extern "C" fn check_x_display_info(obj: LispObject) -> DisplayInfoRef {
 
     if let Some(display_name) = obj.as_string() {
         let display_name = display_name.to_string();
-        let mut dpyinfo = unsafe { winit_display_list };
+        let mut dpyinfo = unsafe { winit_display_list }.expect("winit display list none");
 
         while !dpyinfo.is_null() {
             if dpyinfo
@@ -186,8 +187,8 @@ pub extern "C" fn check_x_display_info(obj: LispObject) -> DisplayInfoRef {
 
         x_open_connection(obj, Qnil, Qnil);
 
-        if !unsafe { winit_display_list.is_null() } {
-            return unsafe { winit_display_list };
+        if !unsafe { winit_display_list.is_none() } {
+            return unsafe { winit_display_list.unwrap() };
         }
 
         error!("Display on {} not responding.", display_name);
@@ -278,8 +279,7 @@ pub fn winit_create_frame(params: LispObject) -> FrameRef {
         globals.Vx_resource_name = globals.Vinvocation_name;
     }
 
-    let mut dpyinfo = DisplayInfoRef::null();
-    let terminal_or_display = dpyinfo.terminal_or_display_arg(params);
+    let terminal_or_display = DisplayInfoRef::terminal_or_display_arg(params);
     let mut dpyinfo = check_x_display_info(terminal_or_display);
 
     let mut f = FrameRef::build(dpyinfo, params);
@@ -518,8 +518,8 @@ pub fn x_open_connection(
 
     // Put this display on the chain.
     unsafe {
-        display_info.next = winit_display_list.as_mut();
-        winit_display_list = display_info;
+        winit_display_list.map(|mut d| display_info.next = d.as_mut());
+        winit_display_list = Some(display_info);
     }
     Qnil
 }

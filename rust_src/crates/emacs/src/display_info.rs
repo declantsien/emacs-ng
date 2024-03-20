@@ -1,3 +1,5 @@
+use std::ptr;
+
 #[cfg(feature = "window-system-android")]
 pub use crate::bindings::android_display_info as DisplayInfo;
 use crate::bindings::gui_display_get_arg;
@@ -20,6 +22,8 @@ use crate::terminal::TerminalRef;
 
 pub type DisplayInfoRef = ExternalPtr<DisplayInfo>;
 
+impl DisplayInfo {}
+
 impl DisplayInfoRef {
     pub fn terminal(&self) -> TerminalRef {
         return TerminalRef::new(self.terminal);
@@ -27,62 +31,71 @@ impl DisplayInfoRef {
 
     #[cfg(have_window_system)]
     pub fn gui_arg(&mut self, alist: LispObject, param: impl Into<FrameParam>) -> LispObject {
-        let param: FrameParam = param.into();
-        let res_type = param.resource_type();
-        let (attr, class) = param.x_resource();
-
-        let value = unsafe {
-            gui_display_get_arg(
-                self.as_mut(),
-                alist,
-                param.into(),
-                attr.as_ptr(),
-                class.as_ptr(),
-                res_type.into(),
-            )
-        };
-
-        // Do some validation here
-        match param {
-            FrameParam::IconName => {
-                if value.is_string() {
-                    value
-                } else {
-                    Qnil
-                }
-            }
-            FrameParam::ParentId => match value {
-                Qunbound | Qnil => Qnil,
-                _ => {
-                    unsafe { crate::bindings::CHECK_NUMBER(value) };
-                    value
-                }
-            },
-            FrameParam::Terminal | FrameParam::Display => match value {
-                Qunbound => Qnil,
-                _ => value,
-            },
-            FrameParam::ParentFrame => {
-                if value.base_eq(Qunbound)
-                    || value.is_nil()
-                    || !value.is_frame()
-                    || !FrameRef::from(value).is_live()
-                    || !FrameRef::from(value).is_current_window_system()
-                {
-                    Qnil
-                } else {
-                    value
-                }
-            }
-            _ => value,
-        }
+        display_get_arg(Some(self.clone()), alist, param)
     }
 
-    pub fn terminal_or_display_arg(&mut self, params: LispObject) -> LispObject {
-        let terminal = self.gui_arg(params, FrameParam::Terminal);
+    pub fn terminal_or_display_arg(params: LispObject) -> LispObject {
+        let terminal = display_get_arg(None, params, FrameParam::Terminal);
         if terminal.is_not_nil() {
             return terminal;
         }
-        self.gui_arg(params, FrameParam::Display)
+        display_get_arg(None, params, FrameParam::Display)
+    }
+}
+
+pub fn display_get_arg(
+    dpyinfo: Option<DisplayInfoRef>,
+    alist: LispObject,
+    param: impl Into<FrameParam>,
+) -> LispObject {
+    let dpyinfo = dpyinfo.map_or(ptr::null_mut(), |mut d| d.as_mut());
+    let param: FrameParam = param.into();
+    let res_type = param.resource_type();
+    let (attr, class) = param.x_resource();
+
+    let value = unsafe {
+        gui_display_get_arg(
+            dpyinfo,
+            alist,
+            param.into(),
+            attr.as_ptr(),
+            class.as_ptr(),
+            res_type.into(),
+        )
+    };
+
+    // Do some validation here
+    match param {
+        FrameParam::IconName => {
+            if value.is_string() {
+                value
+            } else {
+                Qnil
+            }
+        }
+        FrameParam::ParentId => match value {
+            Qunbound | Qnil => Qnil,
+            _ => {
+                unsafe { crate::bindings::CHECK_NUMBER(value) };
+                value
+            }
+        },
+        FrameParam::Terminal | FrameParam::Display => match value {
+            Qunbound => Qnil,
+            _ => value,
+        },
+        FrameParam::ParentFrame => {
+            if value.base_eq(Qunbound)
+                || value.is_nil()
+                || !value.is_frame()
+                || !FrameRef::from(value).is_live()
+                || !FrameRef::from(value).is_current_window_system()
+            {
+                Qnil
+            } else {
+                value
+            }
+        }
+        _ => value,
     }
 }

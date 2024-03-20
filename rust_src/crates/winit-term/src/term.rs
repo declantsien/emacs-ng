@@ -624,7 +624,7 @@ extern "C" fn winit_get_focus_frame(frame: *mut Frame) -> LispObject {
     match FrameRef::from(frame)
         .terminal()
         .winit_data()
-        .and_then(|d| Some(d.focus_frame))
+        .and_then(|d| d.focus_frame)
     {
         Some(frame) if !frame.is_null() => frame.into(),
         _ => Qnil,

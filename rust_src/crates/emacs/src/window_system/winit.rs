@@ -46,8 +46,7 @@ impl Default for WinitFrameData {
 pub type WinitFrameDataRef = ExternalPtr<WinitFrameData>;
 
 pub struct WinitTermData {
-    pub terminal: TerminalRef,
-    pub focus_frame: FrameRef,
+    pub focus_frame: Option<FrameRef>,
     pub clipboard: Clipboard,
     pub event_loop: EventLoop<i32>,
 }
@@ -61,8 +60,7 @@ impl Default for WinitTermData {
         event_loop.listen_device_events(DeviceEvents::Never);
         let clipboard = Clipboard::new().unwrap();
         WinitTermData {
-            terminal: TerminalRef::new(ptr::null_mut()),
-            focus_frame: FrameRef::new(ptr::null_mut()),
+            focus_frame: None,
             event_loop,
             clipboard,
         }
