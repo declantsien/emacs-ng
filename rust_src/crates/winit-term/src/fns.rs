@@ -75,7 +75,7 @@ pub type DisplayRef = ExternalPtr<Display>;
 pub static tip_frame: LispObject = Qnil;
 
 #[no_mangle]
-pub static mut winit_display_list: DisplayInfoRef = DisplayInfoRef::new(ptr::null_mut());
+pub static mut winit_display_list: Option<DisplayInfoRef> = None;
 
 #[allow(unused_variables)]
 #[no_mangle]
@@ -85,7 +85,7 @@ pub extern "C" fn winit_get_window_desc(_: OutputRef) -> Window {
 
 #[no_mangle]
 pub extern "C" fn winit_get_display_info(output: OutputRef) -> DisplayInfoRef {
-    output.display_info()
+    output.display_info().expect("display info null")
 }
 
 #[allow(unused_variables)]
@@ -148,11 +148,10 @@ pub extern "C" fn check_x_display_info(obj: LispObject) -> DisplayInfoRef {
             return frame.display_info();
         }
 
-        if !unsafe { winit_display_list.is_null() } {
-            return unsafe { winit_display_list };
+        match unsafe { winit_display_list } {
+            Some(dl) => dl,
+            None => error!("Webrender windows are not in use or not initialized"),
         }
-
-        error!("Webrender windows are not in use or not initialized");
     }
 
     if let Some(terminal) = obj.as_terminal() {
@@ -519,7 +518,7 @@ pub fn x_open_connection(
     // Put this display on the chain.
     unsafe {
         display_info.next = winit_display_list.as_mut();
-        winit_display_list = display_info;
+        winit_display_list = Some(display_info);
     }
     Qnil
 }
@@ -609,12 +608,9 @@ pub fn x_change_window_property(
 /// TERMINAL should be a terminal object, a frame or a display name (a string).
 /// If omitted or nil, that stands for the selected frame's display.
 #[lisp_fn(min = "0")]
-pub fn x_display_color_cells(obj: LispObject) -> LispObject {
-    // FIXME: terminal object or display name (a string) is not implemented
-    let frame = window_frame_live_or_selected(obj);
-    let terminal = frame.terminal();
-
-    let mut color_bits = terminal.get_color_bits();
+pub fn x_display_color_cells(terminal_or_display: LispObject) -> LispObject {
+    let mut dpyinfo = check_x_display_info(terminal_or_display);
+    let mut color_bits = dpyinfo.terminal().map_or(0, |t| t.get_color_bits());
 
     // Truncate color_bits to 24 to avoid integer overflow.
     // Some displays says 32, but only 24 bits are actually significant.
@@ -782,11 +778,11 @@ pub fn winit_display_monitor_attributes_list(terminal: LispObject) -> LispObject
 fn winit_screen_size(terminal: LispObject) -> LogicalSize<i32> {
     let dpyinfo = check_x_display_info(terminal);
     let terminal = dpyinfo.terminal();
-    terminal
+    terminal?
         .primary_monitor()
-        .or_else(|| terminal.available_monitors()?.next())
-        .and_then(|m| Some(m.size().to_logical::<i32>(m.scale_factor())))
-        .unwrap_or(LogicalSize::new(0, 0))
+        .or_else(|| terminal?.available_monitors()?.next())?
+        .size()
+        .to_logical::<i32>(m.scale_factor())
 }
 
 /// Return the width in pixels of the X display TERMINAL.

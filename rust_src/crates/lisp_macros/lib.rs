@@ -146,7 +146,7 @@ pub fn lisp_fn(attr_ts: TokenStream, fn_ts: TokenStream) -> TokenStream {
             subr_ref.doc = 0;
 
                     std::ptr::copy_nonoverlapping(&subr, #srname.as_mut_ptr(), 1);
-                    emacs::lisp::ExternalPtr::new(#srname.as_mut_ptr())
+                    emacs::lisp::ExternalPtr::new(#srname.as_mut_ptr()).unwrap()
                 }
             };
         }

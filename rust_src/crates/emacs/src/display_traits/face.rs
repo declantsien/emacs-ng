@@ -11,7 +11,7 @@ use super::FaceUnderlineType;
 pub type FaceRef = ExternalPtr<Face>;
 
 impl FaceRef {
-    pub fn font(&self) -> FontRef {
+    pub fn font(&self) -> Option<FontRef> {
         FontRef::new(self.font)
     }
 
@@ -29,5 +29,17 @@ impl FaceRef {
 
     pub fn fg_color(&self) -> ColorF {
         pixel_to_color(self.foreground)
+    }
+
+    pub fn underline_color(&self) -> ColorF {
+        pixel_to_color(self.underline_color)
+    }
+
+    pub fn overline_color(&self) -> ColorF {
+        pixel_to_color(self.overline_color)
+    }
+
+    pub fn strike_through_color(&self) -> ColorF {
+        pixel_to_color(self.strike_through_color)
     }
 }

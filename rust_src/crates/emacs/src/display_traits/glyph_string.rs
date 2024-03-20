@@ -34,57 +34,42 @@ pub type GlyphRowRef = ExternalPtr<GlyphRow>;
 
 pub type GlyphStringRef = ExternalPtr<glyph_string>;
 impl GlyphStringRef {
-    pub fn glyph_type(&self) -> GlyphType {
-        self.first_glyph().type_().into()
+    pub fn glyph_type(&self) -> Option<GlyphType> {
+        self.first_glyph().map(|g| g.type_().into())
     }
 
     pub fn hl(&self) -> DrawGlyphsFace {
         self.hl.into()
     }
 
-    pub fn font(&self) -> FontRef {
+    pub fn font(&self) -> Option<FontRef> {
         FontRef::new(self.font)
     }
 
-    pub fn face(&self) -> FaceRef {
+    pub fn face(&self) -> Option<FaceRef> {
         FaceRef::new(self.face)
     }
 
-    pub fn frame(&self) -> FrameRef {
+    pub fn frame(&self) -> Option<FrameRef> {
         FrameRef::new(self.f)
     }
 
     pub fn font_for_underline_metrics(&self) -> Option<FontRef> {
         let font = unsafe { font_for_underline_metrics(self.clone().as_mut()) };
-        if font.is_null() {
-            return None;
-        }
-        Some(FontRef::new(font))
+        FontRef::new(font)
     }
 
     pub fn clip_head(&self) -> Option<Self> {
-        if self.clip_head.is_null() {
-            return None;
-        }
-        Some(Self::new(self.clip_head))
+        Self::new(self.clip_head)
     }
     pub fn clip_tail(&self) -> Option<Self> {
-        if self.clip_tail.is_null() {
-            return None;
-        }
-        Some(Self::new(self.clip_tail))
+        Self::new(self.clip_tail)
     }
     pub fn prev(&self) -> Option<Self> {
-        if self.prev.is_null() {
-            return None;
-        }
-        Some(Self::new(self.prev))
+        Self::new(self.prev)
     }
     pub fn next(&self) -> Option<Self> {
-        if self.next.is_null() {
-            return None;
-        }
-        Some(Self::new(self.next))
+        Self::new(self.next)
     }
 
     pub fn is_for_overlaps(&self) -> bool {
@@ -92,13 +77,10 @@ impl GlyphStringRef {
     }
 
     pub fn row(&self) -> Option<GlyphRowRef> {
-        if self.row.is_null() {
-            return None;
-        }
-        Some(GlyphRowRef::new(self.row))
+        GlyphRowRef::new(self.row)
     }
 
-    pub fn gc(&self) -> EmacsGCRef {
+    pub fn gc(&self) -> Option<EmacsGCRef> {
         EmacsGCRef::new(self.gc)
     }
 
@@ -106,12 +88,12 @@ impl GlyphStringRef {
         unsafe { prepare_face_for_display(self.f, self.face) }
     }
 
-    pub fn bg_color(&self) -> ColorF {
-        pixel_to_color(self.gc().background as u64)
+    pub fn bg_color(&self) -> Option<ColorF> {
+        self.gc().map(|gc| pixel_to_color(gc.background as u64))
     }
 
-    pub fn fg_color(&self) -> ColorF {
-        pixel_to_color(self.gc().foreground as u64)
+    pub fn fg_color(&self) -> Option<ColorF> {
+        self.gc().map(|gc| pixel_to_color(gc.foreground as u64))
     }
 
     pub fn clip_rect(&mut self) -> NativeRectangle {
@@ -126,31 +108,34 @@ impl GlyphStringRef {
         clip_rect
     }
 
-    pub fn underline_color(&self) -> ColorF {
-        let color = if self.face().underline_defaulted_p() {
-            self.gc().foreground
+    pub fn underline_color(&self) -> Option<ColorF> {
+        if self.face().map_or(false, |f| f.underline_defaulted_p()) {
+            self.fg_color()
         } else {
-            self.face().underline_color
-        };
-        pixel_to_color(color)
+            self.face().map(|f| f.underline_color())
+        }
     }
 
-    pub fn overline_color(&self) -> ColorF {
-        let color = if self.face().overline_color_defaulted_p() {
-            self.gc().foreground
+    pub fn overline_color(&self) -> Option<ColorF> {
+        if self
+            .face()
+            .map_or(false, |f| f.overline_color_defaulted_p())
+        {
+            self.fg_color()
         } else {
-            self.face().overline_color
-        };
-        pixel_to_color(color)
+            self.face().map(|f| f.overline_color())
+        }
     }
 
-    pub fn strike_through_color(&self) -> ColorF {
-        let color = if self.face().strike_through_color_defaulted_p() {
-            self.gc().foreground
+    pub fn strike_through_color(&self) -> Option<ColorF> {
+        if self
+            .face()
+            .map_or(false, |f| f.strike_through_color_defaulted_p())
+        {
+            self.fg_color()
         } else {
-            self.face().strike_through_color
-        };
-        pixel_to_color(color)
+            self.face().map(|f| f.strike_through_color())
+        }
     }
 
     pub fn get_chars(&self) -> &[XChar2b] {
@@ -159,8 +144,8 @@ impl GlyphStringRef {
         unsafe { slice::from_raw_parts(self.char2b, len) }
     }
 
-    pub fn first_glyph(&self) -> GlyphRef {
-        self.first_glyph.into()
+    pub fn first_glyph(&self) -> Option<GlyphRef> {
+        GlyphRef::new(self.first_glyph)
     }
 
     pub fn composite_offsets(&self) -> &[i16] {
@@ -240,13 +225,7 @@ impl Iterator for GlyphStringIntoIterator {
     type Item = GlyphStringRef;
 
     fn next(&mut self) -> Option<GlyphStringRef> {
-        let new_next = self.next.and_then(|n| {
-            if n.next.is_null() {
-                None
-            } else {
-                Some(GlyphStringRef::from(n.next))
-            }
-        });
+        let new_next = self.next.and_then(|n| GlyphStringRef::new(n.next));
 
         let result = self.next;
         self.next = new_next;

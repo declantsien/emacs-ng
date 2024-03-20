@@ -375,10 +375,9 @@ impl From<FontEntry<'_>> for LispFontLike {
 }
 
 extern "C" fn get_cache(f: *mut frame) -> LispObject {
-    let frame = FrameRef::new(f);
-    let dpyinfo = frame.display_info();
-
-    dpyinfo.name_list_element
+    FrameRef::new(f)
+        .and_then(|f| f.display_info())
+        .map_or(Qnil, |d| d.name_list_element)
 }
 
 extern "C" fn draw(
@@ -514,25 +513,21 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
     let font_id = unsafe { XCAR(extra) };
     let font_id = FontId(unsafe { XFIXNUM(font_id) } as u32);
 
-    let mut frame: FrameRef = frame.into();
-    let font = frame.terminal().font_cache().get(font_id);
+    let mut frame = FrameRef::new(frame).expect("frame null");
+    let font = frame
+        .terminal()
+        .and_then(|mut t| t.font_index_cache())
+        .and_then(|mut c| c.get(font_id));
     if font.is_none() {
         return Qnil;
     }
     let font = font.unwrap();
-
-    let pixel_size = if pixel_size == 0 {
-        // pixel_size here reflects to DPR 1 for webrender display, we have scale_factor from winit.
-        // while pgtk/ns/w32 reflects to actual DPR on device by setting resx/resy to display
-        if !frame.font().is_null() {
-            frame.font().pixel_size as i64
-        } else {
-            // fallback font size
-            16
-        }
-    } else {
+    // pixel_size here reflects to DPR 1 for webrender display, we have scale_factor from winit.
+    // while pgtk/ns/w32 reflects to actual DPR on device by setting resx/resy to display
+    let pixel_size = match pixel_size {
+        0 => frame.font().map_or(16, |f| f.pixel_size as i64),
         // prefer elisp specific font size
-        pixel_size as i64
+        _ => pixel_size as i64,
     };
 
     let font_object: LispFontLike =
@@ -555,7 +550,8 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
             .as_font()
             .unwrap()
             .as_font_mut() as *mut FontInfo,
-    );
+    )
+    .expect("font info null");
     let metrics = font.metrics(&[]).scale(pixel_size as f32);
 
     font_info.font.pixel_size = pixel_size as i32;
@@ -586,19 +582,20 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
 }
 
 extern "C" fn close_font(f: *mut font) {
-    let mut font = FontInfoRef::new(f as *mut FontInfo);
-    unsafe { ManuallyDrop::drop(&mut font.base) };
+    FontInfoRef::new(f as *mut FontInfo)
+        .map(|mut font| unsafe { ManuallyDrop::drop(&mut font.base) });
 }
 
 extern "C" fn encode_char(font: *mut font, c: i32) -> u32 {
-    let font = FontInfoRef::new(font as *mut FontInfo);
-
     // 0 is returned for FONT_INVALID_CODE
     // https://developer.apple.com/fonts/TrueType-Reference-Manual/RM07/appendixB.html
     // The first glyph (glyph index 0) must be the MISSING CHARACTER GLYPH. This glyph must have a visible appearance and non-zero advance width.
     let idx = std::char::from_u32(c as u32)
-        .and_then(|c| Some(font.base.charmap().map(c) as u32))
+        .and_then(|c| {
+            FontInfoRef::new(font as *mut FontInfo).map(|f| f.base.charmap().map(c) as u32)
+        })
         .unwrap_or(FONT_INVALID_CODE);
+
     if idx == 0 {
         return FONT_INVALID_CODE;
     }
@@ -616,7 +613,7 @@ extern "C" fn text_extents(
     nglyphs: i32,
     metrics: *mut font_metrics,
 ) {
-    let font_info = FontInfoRef::new(font as *mut FontInfo);
+    let font_info = FontInfoRef::new(font as *mut FontInfo).expect("font info null");
 
     let glyph_indices: Vec<u32> = unsafe { std::slice::from_raw_parts(code, nglyphs as usize) }
         .iter()
@@ -684,9 +681,14 @@ pub extern "C" fn shape(lgstring: LispObject, direction: LispObject) -> LispObje
 
     let font = lgstring.lgstring_font();
     let font = unsafe { CHECK_FONT_GET_OBJECT(font) };
-    let mut font_info = FontInfoRef::new(font as *mut FontInfo);
-    let frame: FrameRef = font_info.frame.into();
-    let font = frame.terminal().font_cache().get(font_info.id).unwrap();
+    let mut font_info = FontInfoRef::new(font as *mut FontInfo).expect("no font");
+    let frame: FrameRef = FrameRef::new(font_info.frame).expect("frame null");
+    let font = frame
+        .terminal()
+        .and_then(|mut t| t.font_index_cache())
+        .and_then(|mut c| c.get(font_info.id))
+        .expect("no native font");
+
     let glyph_len = 0;
     let text_len = lgstring.lgstring_glyph_len();
     let mut chars: Vec<char> = Vec::with_capacity(text_len.try_into().unwrap());
@@ -712,11 +714,12 @@ pub extern "C" fn shape(lgstring: LispObject, direction: LispObject) -> LispObje
 
     /* If the caller didn't provide a meaningful DIRECTION, let Swash
     guess it. */
-    if !direction.is_nil()
+    if direction.is_not_nil()
         /* If they bind bidi-display-reordering to nil, the DIRECTION
 	they provide is meaningless, and we should let Swash guess
 	the real direction.  */
-        && !ThreadState::current_buffer_unchecked().bidi_display_reordering_.is_nil()
+        && ThreadState::current_buffer_unchecked()
+            .map_or(false, |b| b.bidi_display_reordering_.is_not_nil())
     {
         if direction.eq(QR2L) {
             shaper_builder = shaper_builder.direction(Direction::RightToLeft);
@@ -740,9 +743,14 @@ pub extern "C" fn shape(lgstring: LispObject, direction: LispObject) -> LispObje
         lang = lang.force_cons().car();
     }
     if lang.is_symbol() {
-        lang = lang.force_symbol().symbol_name();
-        let lang: String = lang.into();
-        shaper_builder = shaper_builder.language(Language::parse(lang.as_str()));
+        let lang = lang.force_symbol().map(|s| s.symbol_name());
+        match lang {
+            Some(lang) => {
+                let lang: String = lang.into();
+                shaper_builder = shaper_builder.language(Language::parse(lang.as_str()));
+            }
+            None => (),
+        }
     }
 
     //TODO use script

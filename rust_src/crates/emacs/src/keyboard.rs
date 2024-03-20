@@ -12,6 +12,6 @@ impl KeyboardRef {
     }
 }
 
-pub fn allocate_keyboard(keyboard_type: LispObject) -> KeyboardRef {
+pub fn allocate_keyboard(keyboard_type: LispObject) -> Option<KeyboardRef> {
     KeyboardRef::new(unsafe { allocate_kboard(keyboard_type) })
 }

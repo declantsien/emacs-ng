@@ -551,11 +551,9 @@ pub extern "C" fn gl_renderer_free_terminal_resources(terminal: *mut terminal) {
 /// Fit GL context to frame, reflecting frame/scale factor changes
 #[no_mangle]
 pub extern "C" fn gl_renderer_fit_context(f: *mut Frame) {
-    let frame: FrameRef = f.into();
-    if frame.output().is_null() || frame.output().gl_renderer.is_null() {
-        return;
-    }
-    frame.gl_renderer().update();
+    FrameRef::new(f)
+        .and_then(|f| f.gl_renderer().as_mut())
+        .map(|r| r.update());
 }
 
 /// Capture the contents of the current WebRender frame and

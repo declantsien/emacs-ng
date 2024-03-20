@@ -34,20 +34,31 @@ pub fn get_or_create_fringe_bitmap(
         return None;
     }
 
-    let mut display_info = frame.display_info().gl_renderer_data();
+    frame
+        .with_fringe_bitmap_caches(|c| c.get(&which))
+        .or_else(|| {
+            frame
+                .gl_renderer()
+                .map(|r| create_fringe_bitmap(r, p))
+                .and_then(|b| {
+                    frame
+                        .with_fringe_bitmap_caches(|mut c| c.insert(which, bitmap.clone()))
+                        .as_ref()
+                })
+        })
+        .map(|b| b.clone())
 
-    if let Some(bitmap) = display_info.fringe_bitmap_caches.get(&which) {
-        return Some(bitmap.clone());
-    }
-
-    let bitmap = create_fringe_bitmap(frame.gl_renderer(), p);
-
-    // add bitmap to cache
-    display_info
-        .fringe_bitmap_caches
-        .insert(which, bitmap.clone());
-
-    return Some(bitmap);
+    // frame.display_info()
+    //     .and_then(|dpyinfo| dpyinfo.gl_renderer_data())
+    //     .and_then(|d| d.fringe_bitmap_caches.get(&which))
+    //     .or_else(|| {
+    //         frame.gl_renderer().map(|r| create_fringe_bitmap(frame.gl_renderer(), p))
+    //             .map(|b| {
+    //                 frame.display_info()
+    //                     .and_then(|dpyinfo| dpyinfo.gl_renderer_data())
+    //                     .and_then(|d| d.fringe_bitmap_caches.insert(which, bitmap.clone()))
+    //             })
+    //     }).map(|b| b.clone())
 }
 
 fn create_fringe_bitmap(

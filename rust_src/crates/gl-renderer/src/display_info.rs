@@ -7,10 +7,11 @@ use emacs::bindings::Emacs_GC;
 use emacs::lisp::ExternalPtr;
 
 use crate::fringe::FringeBitmap;
+pub type FringeBitmapCaches = HashMap<i32, FringeBitmap>;
 
 pub struct GlRendererData {
     pub scratch_cursor_gc: Box<Emacs_GC>,
-    pub fringe_bitmap_caches: HashMap<i32, FringeBitmap>,
+    pub fringe_bitmap_caches: FringeBitmapCaches,
 }
 
 impl Default for GlRendererData {
@@ -30,7 +31,7 @@ pub type GlRendererDataRef = ExternalPtr<GlRendererData>;
 
 pub trait DisplayInfoExtGlRenderer {
     fn init_gl_renderer_data(&mut self);
-    fn gl_renderer_data(&mut self) -> GlRendererDataRef;
+    fn gl_renderer_data(&mut self) -> Option<GlRendererDataRef>;
     fn free_gl_renderer_data(&mut self);
 }
 
@@ -40,7 +41,7 @@ impl DisplayInfoExtGlRenderer for DisplayInfoRef {
         self.gl_renderer_data = Box::into_raw(data) as *mut libc::c_void;
     }
 
-    fn gl_renderer_data(&mut self) -> GlRendererDataRef {
+    fn gl_renderer_data(&mut self) -> Option<GlRendererDataRef> {
         if self.gl_renderer_data.is_null() {
             self.init_gl_renderer_data();
         }

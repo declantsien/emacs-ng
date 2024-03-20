@@ -36,21 +36,22 @@ impl LispObject {
 
     pub fn as_vectorlike(self) -> Option<LispVectorlikeRef> {
         if self.is_vectorlike() {
-            Some(unsafe { self.as_vectorlike_unchecked() })
+            unsafe { self.as_vectorlike_unchecked() }
         } else {
             None
         }
     }
 
-    pub unsafe fn as_vectorlike_unchecked(self) -> LispVectorlikeRef {
+    pub unsafe fn as_vectorlike_unchecked(self) -> Option<LispVectorlikeRef> {
         LispVectorlikeRef::new(self.get_untaggedptr() as *mut Lisp_Vectorlike)
     }
 
-    pub unsafe fn as_vector_unchecked(self) -> LispVectorRef {
-        self.as_vectorlike_unchecked().as_vector_unchecked()
+    pub unsafe fn as_vector_unchecked(self) -> Option<LispVectorRef> {
+        self.as_vectorlike_unchecked()
+            .map(|v| v.as_vector_unchecked())
     }
 
-    pub fn force_vector(self) -> LispVectorRef {
+    pub fn force_vector(self) -> Option<LispVectorRef> {
         unsafe { self.as_vector_unchecked() }
     }
 

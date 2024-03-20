@@ -132,31 +132,27 @@ impl WindowRef {
         (x, y, width, height)
     }
 
-    pub fn phys_cursor_glyph(mut self) -> GlyphRef {
-        unsafe { get_phys_cursor_glyph(self.as_mut()) }.into()
+    pub fn phys_cursor_glyph(mut self) -> Option<GlyphRef> {
+        GlyphRef::new(unsafe { get_phys_cursor_glyph(self.as_mut()) })
     }
 
     pub fn phys_cursor_geometry(mut self, mut row: GlyphRowRef) -> Option<(i32, i32, i32)> {
-        let mut cursor_glyph = self.phys_cursor_glyph();
-
-        if cursor_glyph.is_null() {
-            return None;
-        }
-
-        let mut x: i32 = 0;
-        let mut y: i32 = 0;
-        let mut height: i32 = 0;
-        unsafe {
-            get_phys_cursor_geometry(
-                self.as_mut(),
-                row.as_mut(),
-                cursor_glyph.as_mut(),
-                &mut x,
-                &mut y,
-                &mut height,
-            )
-        };
-        Some((x, y, height))
+        self.phys_cursor_glyph().map(|mut glyph| {
+            let mut x: i32 = 0;
+            let mut y: i32 = 0;
+            let mut height: i32 = 0;
+            unsafe {
+                get_phys_cursor_geometry(
+                    self.as_mut(),
+                    row.as_mut(),
+                    glyph.as_mut(),
+                    &mut x,
+                    &mut y,
+                    &mut height,
+                )
+            };
+            (x, y, height)
+        })
     }
 
     pub fn draw_phys_cursor_glyph(mut self, mut row: GlyphRowRef) {

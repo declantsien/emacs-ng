@@ -1,6 +1,7 @@
 //! This module contains Rust definitions whose C equivalents live in
 //! lisp.h.
 
+use core::ptr::NonNull;
 use std::ffi::CString;
 use std::fmt;
 use std::mem;
@@ -202,65 +203,75 @@ impl LispObject {
 // ExternalPtr
 
 #[repr(transparent)]
-pub struct ExternalPtr<T>(*mut T);
+pub struct ExternalPtr<T>(NonNull<T>);
 
 impl<T> Copy for ExternalPtr<T> {}
 
 // Derive fails for this type so do it manually
 impl<T> Clone for ExternalPtr<T> {
     fn clone(&self) -> Self {
-        Self::new(self.0)
+        Self(self.0.clone())
     }
 }
 
 impl<T> ExternalPtr<T> {
-    pub const fn null() -> Self {
-        Self(ptr::null_mut() as *mut T)
+    // pub const fn null() -> Self {
+    //     Self(None)
+    // }
+
+    pub const fn new(p: *mut T) -> Option<Self> {
+        let nonnull = NonNull::new(p);
+        match nonnull {
+            Some(nonnull) => Some(Self(nonnull)),
+            None => None,
+        }
     }
 
-    pub const fn new(p: *mut T) -> Self {
-        Self(p)
+    pub const fn new_unchecked(p: *mut T) -> Self {
+        let nonnull = unsafe { NonNull::new_unchecked(p) };
+        Self(nonnull)
     }
 
     pub fn is_null(self) -> bool {
-        self.0.is_null()
+        false
     }
 
     pub const fn as_ptr(self) -> *const T {
-        self.0
+        self.0.as_ptr()
     }
 
     pub fn as_mut(&mut self) -> *mut T {
-        self.0
+        unsafe { self.0.as_mut() }
     }
 
     pub fn from_ptr(ptr: *mut c_void) -> Option<Self> {
-        unsafe { ptr.as_ref().map(|p| mem::transmute(p)) }
+        let ptr: Option<*mut T> = unsafe { ptr.as_ref().map(|p| mem::transmute(p)) };
+        ptr.and_then(|p| NonNull::new(p)).map(|p| Self(p))
     }
 
     pub fn cast<U>(mut self) -> ExternalPtr<U> {
-        ExternalPtr::<U>(self.as_mut().cast())
+        ExternalPtr::<U>(self.0.cast::<U>())
     }
 }
 
 impl<T> Deref for ExternalPtr<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
-        unsafe { &*self.0 }
+        unsafe { self.0.as_ref() }
     }
 }
 
 impl<T> DerefMut for ExternalPtr<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { &mut *self.0 }
+        unsafe { self.0.as_mut() }
     }
 }
 
-impl<T> From<*mut T> for ExternalPtr<T> {
-    fn from(o: *mut T) -> Self {
-        Self::new(o)
-    }
-}
+// impl<T> From<*mut T> for ExternalPtr<T> {
+//     fn from(o: *mut T) -> Option<Self> {
+//         Self::new(o)
+//     }
+// }
 
 impl<T> PartialEq for ExternalPtr<T> {
     fn eq(&self, other: &Self) -> bool {

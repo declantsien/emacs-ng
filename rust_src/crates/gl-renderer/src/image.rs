@@ -192,7 +192,7 @@ impl ImageExt for ImageRef {
             let pixmap_ptr = Box::into_raw(wr_pixmap);
             self.pixmap = pixmap_ptr as *mut c_void;
         }
-        (self.pixmap as *mut WrPixmap).into()
+        WrPixmapRef::new_unchecked(self.pixmap as *mut WrPixmap)
     }
     fn data(&self, wr_pixmap: WrPixmapRef) -> (ImageDescriptor, ImageData) {
         let hash = self.hash();
@@ -202,7 +202,7 @@ impl ImageExt for ImageRef {
     }
     fn meta(&self, frame: FrameRef) -> Option<(ImageKey, ImageDescriptor)> {
         let hash = self.hash();
-        frame.gl_renderer().image_key(&hash)
+        frame.gl_renderer()?.image_key(&hash)
     }
 }
 

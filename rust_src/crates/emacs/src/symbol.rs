@@ -46,7 +46,9 @@ impl LispSymbolRef {
     }
 
     pub const fn iter(self) -> LispSymbolIter {
-        LispSymbolIter { current: self }
+        LispSymbolIter {
+            current: Some(self),
+        }
     }
 
     pub fn get_next(self) -> Option<Self> {
@@ -84,7 +86,7 @@ impl From<LispSymbolRef> for LispObject {
 impl From<LispObject> for Option<LispSymbolRef> {
     fn from(o: LispObject) -> Self {
         if o.is_symbol() {
-            Some(LispSymbolRef::new(o.symbol_ptr_value() as *mut Lisp_Symbol))
+            LispSymbolRef::new(o.symbol_ptr_value() as *mut Lisp_Symbol)
         } else {
             None
         }
@@ -97,7 +99,7 @@ impl LispObject {
         self.get_type() == Lisp_Type::Lisp_Symbol
     }
 
-    pub fn force_symbol(self) -> LispSymbolRef {
+    pub fn force_symbol(self) -> Option<LispSymbolRef> {
         LispSymbolRef::new(self.symbol_ptr_value() as *mut Lisp_Symbol)
     }
 
@@ -118,20 +120,19 @@ impl LispObject {
 }
 
 pub struct LispSymbolIter {
-    current: LispSymbolRef,
+    current: Option<LispSymbolRef>,
 }
 
 impl Iterator for LispSymbolIter {
     type Item = LispSymbolRef;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current.is_null() {
-            None
-        } else {
-            let sym = self.current;
-            let s = unsafe { sym.u.s.as_ref() };
-            self.current = LispSymbolRef::new(s.next);
-            Some(sym)
-        }
+        let new_current = self
+            .current
+            .and_then(|s| LispSymbolRef::new(unsafe { s.u.s.as_ref() }.next));
+
+        let result = self.current;
+        self.current = new_current;
+        result
     }
 }

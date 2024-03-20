@@ -1,11 +1,11 @@
-use crate::bindings::glyph;
+use crate::bindings::glyph as Glyph;
 use crate::display_traits::FaceId;
 use crate::display_traits::GlyphType;
 use crate::lisp::ExternalPtr;
 
-pub type GlyphRef = ExternalPtr<glyph>;
+pub type GlyphRef = ExternalPtr<Glyph>;
 
-impl GlyphRef {
+impl Glyph {
     pub fn glyph_type(&self) -> GlyphType {
         self.type_().into()
     }

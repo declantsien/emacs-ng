@@ -1,4 +1,7 @@
 use super::util::HandyDandyRectBuilder;
+use crate::display_info::DisplayInfoExtGlRenderer;
+use crate::display_info::FringeBitmapCaches;
+use crate::display_info::GlRendererDataRef;
 use crate::fringe::FringeBitmap;
 use crate::glyph::GlyphStringExtGlRenderer;
 use crate::glyph::WrGlyph;
@@ -19,8 +22,11 @@ use webrender::api::units::*;
 use webrender::api::*;
 
 pub trait FrameExtGlRendererCommon {
-    fn gl_renderer(&self) -> GlRendererRef;
+    fn gl_renderer(&self) -> Option<GlRendererRef>;
     fn free_gl_renderer_resources(&mut self);
+    fn with_fringe_bitmap_caches<P, T>(&self, p: P) -> Option<T>
+    where
+        P: FnOnce(&mut FringeBitmapCaches) -> Option<T>;
     fn draw_glyph_string(&mut self, s: GlyphStringRef);
 
     fn draw_glyph_string_background(&mut self, s: GlyphStringRef, force_p: bool);
@@ -85,7 +91,7 @@ pub trait FrameExtGlRendererCommon {
 }
 
 impl FrameExtGlRendererCommon for FrameRef {
-    fn gl_renderer(&self) -> GlRendererRef {
+    fn gl_renderer(&self) -> Option<GlRendererRef> {
         if self.output().gl_renderer.is_null() {
             log::debug!("gl renderer data empty");
             let data = Box::new(GlRenderer::build(self.clone()));
@@ -98,6 +104,15 @@ impl FrameExtGlRendererCommon for FrameRef {
     fn free_gl_renderer_resources(&mut self) {
         let _ = unsafe { Box::from_raw(self.output().gl_renderer as *mut GlRenderer) };
         self.output().gl_renderer = ptr::null_mut();
+    }
+
+    fn with_fringe_bitmap_caches<P, T>(&self, p: P) -> Option<T>
+    where
+        P: FnOnce(&mut FringeBitmapCaches) -> Option<T>,
+    {
+        self.display_info()
+            .and_then(|mut dpyinfo| dpyinfo.gl_renderer_data())
+            .and_then(|mut d| p(&mut d.fringe_bitmap_caches))
     }
 
     fn draw_glyph_string(&mut self, mut s: GlyphStringRef) {

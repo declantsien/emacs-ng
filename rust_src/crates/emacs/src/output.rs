@@ -21,7 +21,7 @@ pub type OutputRef = ExternalPtr<Output>;
 
 impl OutputRef {
     #[cfg(have_window_system)]
-    pub fn font(&self) -> FontRef {
+    pub fn font(&self) -> Option<FontRef> {
         FontRef::new(self.font as *mut _)
     }
     #[cfg(have_window_system)]
@@ -34,7 +34,7 @@ impl OutputRef {
         self.fontset = fontset;
     }
 
-    pub fn display_info(&self) -> DisplayInfoRef {
+    pub fn display_info(&self) -> Option<DisplayInfoRef> {
         DisplayInfoRef::new(self.display_info as *mut _)
     }
 }

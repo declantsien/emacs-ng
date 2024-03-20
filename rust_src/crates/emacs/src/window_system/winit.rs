@@ -46,8 +46,8 @@ impl Default for WinitFrameData {
 pub type WinitFrameDataRef = ExternalPtr<WinitFrameData>;
 
 pub struct WinitTermData {
-    pub terminal: TerminalRef,
-    pub focus_frame: FrameRef,
+    pub terminal: Option<TerminalRef>,
+    pub focus_frame: Option<FrameRef>,
     pub clipboard: Clipboard,
     pub event_loop: EventLoop<i32>,
 }
@@ -61,8 +61,8 @@ impl Default for WinitTermData {
         event_loop.listen_device_events(DeviceEvents::Never);
         let clipboard = Clipboard::new().unwrap();
         WinitTermData {
-            terminal: TerminalRef::new(ptr::null_mut()),
-            focus_frame: FrameRef::new(ptr::null_mut()),
+            terminal: None,
+            focus_frame: None,
             event_loop,
             clipboard,
         }
@@ -80,10 +80,7 @@ impl TerminalRef {
     }
 
     pub fn winit_data(&self) -> Option<WinitTermDataRef> {
-        if self.is_null() || self.winit.is_null() {
-            return None;
-        }
-        Some(WinitTermDataRef::new(self.winit as *mut WinitTermData))
+        WinitTermDataRef::new(self.winit as *mut WinitTermData)
     }
 
     pub fn free_winit_data(&mut self) {
@@ -131,7 +128,7 @@ impl FrameRef {
                     .as_raw(),
             )
         }
-        frame_display_handle(self).or_else(|| self.terminal().raw_display_handle())
+        frame_display_handle(self).or_else(|| self.terminal().and_then(|t| t.raw_display_handle()))
     }
 
     pub fn raw_window_handle(&self) -> Option<RawWindowHandle> {
@@ -147,25 +144,20 @@ impl FrameRef {
             .winit_data()
             .map(|mut d| unsafe { Box::from_raw(d.as_mut()) });
 
-        self.output().winit = ptr::null_mut();
+        self.output().map(|mut o| o.winit = ptr::null_mut());
     }
 
-    pub fn init_winit_data(self) {
-        assert_eq!(!self.is_null(), true);
-        assert_eq!(!self.output().is_null(), true);
-        assert_eq!(self.output().winit.is_null(), true);
+    pub fn init_winit_data(self) -> bool {
+        assert_eq!(self.winit_data().is_none(), true);
         let data = Box::new(WinitFrameData::default());
-        self.output().winit = Box::into_raw(data) as *mut libc::c_void;
+        self.output()
+            .and_then(|mut o| Some(o.winit = Box::into_raw(data) as *mut libc::c_void))
+            .is_some()
     }
 
     pub fn winit_data(&self) -> Option<WinitFrameDataRef> {
-        if self.is_null() || self.output().is_null() {
-            return None;
-        }
-
-        Some(WinitFrameDataRef::new(
-            self.output().winit as *mut WinitFrameData,
-        ))
+        self.output()
+            .and_then(|o| WinitFrameDataRef::new(o.winit as *mut WinitFrameData))
     }
 
     pub fn cursor_color(&self) -> ColorF {

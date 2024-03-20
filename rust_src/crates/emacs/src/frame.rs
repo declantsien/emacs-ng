@@ -63,6 +63,7 @@ use crate::output::OutputRef;
 #[cfg(have_window_system)]
 use crate::terminal::TerminalRef;
 use std::ffi::CString;
+use std::ptr::NonNull;
 
 pub type Frame = frame;
 
@@ -206,7 +207,10 @@ impl FrameRef {
         let faces_map: &[*mut face] =
             unsafe { std::slice::from_raw_parts_mut((*cache).faces_by_id, (*cache).used as usize) };
 
-        faces_map.get(id as usize).copied().map(|f| FaceRef::new(f))
+        faces_map
+            .get(id as usize)
+            .copied()
+            .and_then(|f| FaceRef::new(f))
     }
 
     pub fn fg_color(&self) -> ColorF {
@@ -248,11 +252,13 @@ impl FrameRef {
         let params_fallback = || {
             let lparam: LispObject = param.into();
             if unsafe { Fassq(lparam, params) }.is_nil() {
-                let value = self.display_info().gui_arg(params, param);
-                if !value.base_eq(Qunbound) {
-                    return unsafe { Fcons(Fcons(param.into(), value), params) };
-                }
-                return params;
+                let value = self.display_info().map(|mut d| d.gui_arg(params, param));
+                match value {
+                    Some(v) if !v.base_eq(Qunbound) => {
+                        return unsafe { Fcons(Fcons(param.into(), v), params) }
+                    }
+                    _ => return params,
+                };
             }
             return params;
         };
@@ -373,7 +379,7 @@ impl FrameRef {
 
     #[allow(unreachable_code)]
     #[cfg(have_window_system)]
-    pub fn output(&self) -> OutputRef {
+    pub fn output(&self) -> Option<OutputRef> {
         #[cfg(feature = "window-system-pgtk")]
         return OutputRef::new(unsafe { self.output_data.pgtk });
         #[cfg(feature = "window-system-winit")]
@@ -382,37 +388,37 @@ impl FrameRef {
     }
 
     #[cfg(have_window_system)]
-    pub fn font(&self) -> FontRef {
-        self.output().font()
+    pub fn font(&self) -> Option<FontRef> {
+        self.output().and_then(|o| o.font())
     }
 
     #[cfg(have_window_system)]
-    pub fn fontset(&self) -> i32 {
-        self.output().fontset
+    pub fn fontset(&self) -> Option<i32> {
+        self.output().map(|o| o.fontset)
     }
 
     #[cfg(have_window_system)]
     pub fn set_font(&mut self, mut font: FontRef) {
-        self.output().font = font.as_mut();
+        self.output().map(|mut o| o.font = font.as_mut());
     }
 
     #[cfg(have_window_system)]
     pub fn set_fontset(&mut self, fontset: i32) {
-        self.output().fontset = fontset;
+        self.output().map(|mut o| o.fontset = fontset);
     }
 
     #[cfg(have_window_system)]
-    pub fn display_info(&self) -> DisplayInfoRef {
-        self.output().display_info()
+    pub fn display_info(&self) -> Option<DisplayInfoRef> {
+        self.output().and_then(|o| o.display_info())
     }
 
     #[cfg(have_window_system)]
     pub fn set_display_info(&mut self, mut dpyinfo: DisplayInfoRef) {
-        self.output().display_info = dpyinfo.as_mut();
+        self.output().map(|mut o| o.display_info = dpyinfo.as_mut());
     }
 
     #[cfg(have_window_system)]
-    pub fn terminal(&self) -> TerminalRef {
+    pub fn terminal(&self) -> Option<TerminalRef> {
         return TerminalRef::new(self.terminal);
     }
 
@@ -425,8 +431,9 @@ impl FrameRef {
         false
     }
 
-    pub fn image_cache(self) -> ImageCacheRef {
-        self.terminal().image_cache()
+    pub fn image_cache(self) -> Option<ImageCacheRef> {
+        self.terminal()
+            .and_then(|t| ImageCacheRef::new(t.image_cache))
     }
 
     pub fn build(mut dpyinfo: DisplayInfoRef, params: LispObject) -> Self {
@@ -448,9 +455,10 @@ impl FrameRef {
 
         let terminal = dpyinfo.terminal();
 
-        if terminal.name == std::ptr::null_mut() {
+        if terminal.and_then(|t| NonNull::new(t.name)).is_none() {
             error!("Terminal is not live, can't create new frames on it");
         }
+        let terminal = terminal.unwrap();
 
         let kb = terminal.kboard;
 
@@ -467,7 +475,7 @@ impl FrameRef {
             unsafe { make_frame(true) }
         };
 
-        let mut f = Self::new(f);
+        let mut f = Self::new(f).expect("frame ptr is null");
         /* Set the name; the functions to which we pass f expect the name to
         be set.  */
         if name.base_eq(Qunbound) || name.is_nil() {

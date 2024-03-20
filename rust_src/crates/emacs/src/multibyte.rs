@@ -100,7 +100,7 @@ impl LispObject {
         self.get_type() == Lisp_Type::Lisp_String
     }
 
-    pub fn force_string(self) -> LispStringRef {
+    pub fn force_string(self) -> Option<LispStringRef> {
         self.to_string_unchecked()
     }
 
@@ -108,7 +108,7 @@ impl LispObject {
         self.into()
     }
 
-    pub fn to_string_unchecked(self) -> LispStringRef {
+    pub fn to_string_unchecked(self) -> Option<LispStringRef> {
         LispStringRef::new(self.get_untaggedptr() as *mut Lisp_String)
     }
 
@@ -128,7 +128,7 @@ impl From<LispObject> for LispStringRef {
 impl From<LispObject> for Option<LispStringRef> {
     fn from(o: LispObject) -> Self {
         if o.is_string() {
-            Some(o.force_string())
+            o.force_string()
         } else {
             None
         }

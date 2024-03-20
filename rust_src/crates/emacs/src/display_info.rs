@@ -21,7 +21,7 @@ use crate::terminal::TerminalRef;
 pub type DisplayInfoRef = ExternalPtr<DisplayInfo>;
 
 impl DisplayInfoRef {
-    pub fn terminal(&self) -> TerminalRef {
+    pub fn terminal(&self) -> Option<TerminalRef> {
         return TerminalRef::new(self.terminal);
     }
 

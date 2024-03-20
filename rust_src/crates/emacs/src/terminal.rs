@@ -33,13 +33,13 @@ impl TerminalRef {
         }
     }
 
-    pub fn image_cache(self) -> ImageCacheRef {
+    pub fn image_cache(self) -> Option<ImageCacheRef> {
         ImageCacheRef::new(self.image_cache as *mut _)
     }
 
     #[allow(unreachable_code)]
     #[cfg(have_window_system)]
-    pub fn display_info(self) -> DisplayInfoRef {
+    pub fn display_info(self) -> Option<DisplayInfoRef> {
         #[cfg(feature = "window-system-pgtk")]
         return DisplayInfoRef::new(unsafe { self.display_info.pgtk });
         #[cfg(feature = "window-system-winit")]

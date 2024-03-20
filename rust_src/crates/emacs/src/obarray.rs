@@ -57,13 +57,17 @@ impl LispObarrayRef {
         self
     }
 
-    pub fn get(&self, idx: usize) -> LispSymbolRef {
-        LispObject::from(self).force_vector().get(idx).into()
+    pub fn get(&self, idx: usize) -> Option<LispSymbolRef> {
+        LispObject::from(self)
+            .force_vector()
+            .and_then(|v| v.get(idx).into())
     }
 
-    pub fn set<O: Into<LispObject>>(&mut self, idx: usize, item: O) {
-        let mut vec = LispObject::from(&*self).force_vector();
-        vec.set(idx, item.into());
+    pub fn set<O: Into<LispObject>>(&mut self, idx: usize, item: O) -> bool {
+        LispObject::from(&*self)
+            .force_vector()
+            .and_then(|mut v| Some(v.set(idx, item.into())))
+            .is_some()
     }
 
     /// Intern the string or symbol STRING. That is, return the new or existing
