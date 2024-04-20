@@ -13,6 +13,7 @@ pub use data::Package;
 pub use error::BuildError;
 use std::sync::LazyLock;
 
+pub use config;
 use std::env;
 use std::ffi::OsStr;
 use std::fs;
