@@ -7,11 +7,6 @@ use std::io::Read;
 // include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 pub fn run() -> Result<(), Box<dyn Error>> {
-    use std::any::type_name;
-    fn type_of<T>(_: T) -> &'static str {
-        type_name::<T>()
-    }
-
     let mut file = File::open(concat!(env!("OUT_DIR"), "/bindings.rs"))?;
     let mut content = String::new();
     file.read_to_string(&mut content)?;

@@ -4227,7 +4227,12 @@ extern void syms_of_data (void);
 extern void swap_in_global_binding (struct Lisp_Symbol *);
 
 /* Defined in emacs.c */
-extern _Noreturn int main1 (int, char **);
+#ifdef HAVE_PDUMPER
+extern _Noreturn int main1 (int, char **, char *, const char *, bool);
+#else
+extern _Noreturn int main1 (int, char **, char *, const char *);
+#endif
+extern bool load_seccomp_filters_from_file (const char *);
 
 /* Defined in cmds.c */
 extern void syms_of_cmds (void);

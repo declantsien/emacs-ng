@@ -10,6 +10,7 @@ build = "./crates/codegen/etc/build.rs"
 
 [dependencies]
 libc = "0.2"
+cli.path = "./crates/cli"
 emacs-sys.path = "./crates/emacs-sys"
 lisp-async.path = "./crates/lisp-async"
 lsp-json.path = "./crates/lsp-json"
@@ -36,6 +37,7 @@ features = [
 ]
 
 [build-dependencies]
+config = { path = "./crates/config" }
 codegen = { path = "./crates/codegen" }
 
 [lib]

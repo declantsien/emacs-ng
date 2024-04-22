@@ -923,14 +923,6 @@ load_pdump (int argc, char **argv, char *dump_file)
 #endif
     ;
 
-  /* TODO: maybe more thoroughly scrub process environment in order to
-     make this use case (loading a dump file in an unexeced emacs)
-     possible?  Right now, we assume that things we don't touch are
-     zero-initialized, and in an unexeced Emacs, this assumption
-     doesn't hold.  */
-  if (initialized)
-    fatal ("cannot load dump file in unexeced Emacs");
-
   /* Look for an explicitly-specified dump file.  */
   const char *path_exec = PATH_EXEC;
   dump_file = NULL;
@@ -1252,6 +1244,12 @@ load_seccomp (const char *file)
     emacs_close (fd);
   free (buffer);
   return success;
+ }
+
+bool
+load_seccomp_filters_from_file (const char *file)
+{
+  return load_seccomp(file);
 }
 
 /* Load Secure Computing filter from file specified with the --seccomp
@@ -1282,8 +1280,13 @@ maybe_load_seccomp (int argc, char **argv)
 int
 android_emacs_init (int argc, char **argv, char *dump_file)
 #else
+#ifdef HAVE_PDUMPER
 int
-main1 (int argc, char **argv)
+main1 (int argc, char **argv, char *temacs, const char *dump_mode, bool attempt_load_pdump)
+# else
+int
+main1 (int argc, char **argv, char *temacs, const char *dump_mode)
+#endif
 #endif
 {
   /* Variable near the bottom of the stack, and aligned appropriately
@@ -1318,115 +1321,7 @@ main1 (int argc, char **argv)
   /* Record (approximately) where the stack begins.  */
   stack_bottom = (char *) &stack_bottom_variable;
 
-  const char *dump_mode = NULL;
   int skip_args = 0;
-  char *temacs = NULL;
-  while (skip_args < argc - 1)
-    {
-      if (argmatch (argv, argc, "-temacs", "--temacs", 8, &temacs, &skip_args)
-	  || argmatch (argv, argc, "--", NULL, 2, NULL, &skip_args))
-	break;
-      skip_args++;
-    }
-#ifdef HAVE_PDUMPER
-  bool attempt_load_pdump = false;
-#endif
-
-  /* Look for this argument first, before any heap allocation, so we
-     can set heap flags properly if we're going to unexec.  */
-  if (!initialized && temacs)
-    {
-#ifdef HAVE_UNEXEC
-      if (strcmp (temacs, "dump") == 0 ||
-          strcmp (temacs, "bootstrap") == 0)
-        gflags.will_dump_with_unexec_ = true;
-#endif
-#ifdef HAVE_PDUMPER
-      if (strcmp (temacs, "pdump") == 0 ||
-          strcmp (temacs, "pbootstrap") == 0)
-        gflags.will_dump_with_pdumper_ = true;
-#endif
-#if defined HAVE_PDUMPER || defined HAVE_UNEXEC
-      if (strcmp (temacs, "bootstrap") == 0 ||
-          strcmp (temacs, "pbootstrap") == 0)
-        gflags.will_bootstrap_ = true;
-      gflags.will_dump_ =
-        will_dump_with_pdumper_p () ||
-        will_dump_with_unexec_p ();
-      if (will_dump_p ())
-        dump_mode = temacs;
-#endif
-      if (!dump_mode)
-        fatal ("Invalid temacs mode '%s'", temacs);
-    }
-  else if (temacs)
-    {
-      fatal ("--temacs not supported for unexeced emacs");
-    }
-  else
-    {
-      eassert (!temacs);
-#ifndef HAVE_UNEXEC
-      eassert (!initialized);
-#endif
-#ifdef HAVE_PDUMPER
-      if (!initialized)
-	attempt_load_pdump = true;
-#endif
-    }
-
-#ifdef HAVE_UNEXEC
-  if (!will_dump_with_unexec_p ())
-    gflags.will_not_unexec_ = true;
-#endif
-
-#ifdef WINDOWSNT
-  /* Grab our malloc arena space now, before anything important
-     happens.  This relies on the static heap being needed only in
-     temacs and only if we are going to dump with unexec.  */
-  bool use_dynamic_heap = true;
-  if (temacs)
-    {
-      char *temacs_str = NULL, *p;
-      for (p = argv[0]; (p = strstr (p, "temacs")) != NULL; p++)
-	temacs_str = p;
-      if (temacs_str != NULL
-	  && (temacs_str == argv[0] || IS_DIRECTORY_SEP (temacs_str[-1])))
-	{
-	  /* Note that gflags are set at this point only if we have been
-	     called with the --temacs=METHOD option.  We assume here that
-	     temacs is always called that way, otherwise the functions
-	     that rely on gflags, like will_dump_with_pdumper_p below,
-	     will not do their job.  */
-	  use_dynamic_heap = will_dump_with_pdumper_p ();
-	}
-    }
-  init_heap (use_dynamic_heap);
-  initial_cmdline = GetCommandLine ();
-#endif
-#if defined WINDOWSNT || defined HAVE_NTGUI
-  /* Set global variables used to detect Windows version.  Do this as
-     early as possible.  (w32proc.c calls this function as well, but
-     the additional call here is harmless.) */
-  cache_system_info ();
-#ifdef WINDOWSNT
-  /* On Windows 9X, we have to load UNICOWS.DLL as early as possible,
-     to have non-stub implementations of APIs we need to convert file
-     names between UTF-8 and the system's ANSI codepage.  */
-  maybe_load_unicows_dll ();
-  /* Initialize the codepage for file names, needed to decode
-     non-ASCII file names during startup.  */
-  w32_init_file_name_codepage ();
-  /* Initialize the startup directory, needed for emacs_wd below.  */
-  w32_init_current_directory ();
-#endif
-  w32_init_main_thread ();
-#endif
-
-#ifdef HAVE_NS
-  /* Initialize the Obj C autorelease pool.  */
-  ns_init_pool ();
-#endif
 
 #ifdef HAVE_PDUMPER
   if (attempt_load_pdump)

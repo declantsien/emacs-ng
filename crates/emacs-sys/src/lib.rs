@@ -39,6 +39,7 @@ pub mod sys;
 pub mod eval_macros;
 #[macro_use]
 pub mod vector_macros;
+pub mod emacs;
 pub mod lisp;
 
 pub mod buffer;
