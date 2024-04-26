@@ -408,3 +408,8 @@ exec/*.s.s
 
 # Ignore .direnv
 .direnv/
+/src/build/
+/src/build.ninja
+/src/.rustc_info.json
+/src/.ninja_deps
+/src/.ninja_log
