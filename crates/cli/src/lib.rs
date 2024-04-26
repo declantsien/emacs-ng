@@ -603,13 +603,15 @@ pub fn args() -> Args {
     let dump_file = matches.get_one::<PathBuf>("dump-file").map(|v| v.clone());
     let mut args = Args::default();
     args.dump_file = dump_file;
-    #[cfg(all(
+
+    if cfg!(all(
         have_linux_seccomp_h,
         have_linux_filter_h,
         have_decl_seccomp_set_mode_filter,
         have_decl_seccomp_filter_flag_tsync
-    ))]
-    args.seccomp = matches.get_one::<PathBuf>("seccomp").map(|v| v.clone());
+    )) {
+        args.seccomp = matches.get_one::<PathBuf>("seccomp").map(|v| v.clone());
+    }
     args.temacs = matches.get_one::<DumpMethod>("temacs").copied();
     args
 }
