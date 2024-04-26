@@ -6,6 +6,9 @@ use emacs_sys::bindings::build_string;
 use emacs_sys::bindings::gflags;
 use emacs_sys::bindings::globals;
 use emacs_sys::bindings::load_seccomp_filters_from_file;
+use emacs_sys::bindings::main1;
+use emacs_sys::bindings::terminate_due_to_signal;
+use emacs_sys::bindings::will_dump_p;
 use emacs_sys::bindings::will_dump_with_pdumper_p;
 use emacs_sys::bindings::will_dump_with_unexec_p;
 use emacs_sys::bindings::COPYRIGHT;
@@ -13,16 +16,12 @@ use emacs_sys::bindings::PACKAGE_BUGREPORT;
 use emacs_sys::bindings::PACKAGE_VERSION;
 use emacs_sys::emacs::initialized;
 use emacs_sys::lisp::LispObject;
+use std::os::unix::ffi::OsStringExt;
+use std::sync::LazyLock;
 use std::sync::Mutex;
 use tracing_subscriber::fmt;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
-
-use emacs_sys::bindings::main1;
-use emacs_sys::bindings::terminate_due_to_signal;
-use emacs_sys::bindings::will_dump_p;
-use std::os::unix::ffi::OsStringExt;
-use std::sync::LazyLock;
 
 // Include the main c_exports file that holds the main rust_init_syms.
 // This function calls the other crates init_syms functions which contain
@@ -34,13 +33,13 @@ include!(concat!(env!("OUT_DIR"), "/c_exports.rs"));
 #[no_mangle]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /* TODO: maybe more thoroughly scrub process environment in order to
-    make this use case (loading a dump file in an unexeced emacs)
-    possible?  Right now, we assume that things we don't touch are zero-initialized, and in an unexeced Emacs, this assumption
-    doesn't hold.  */
-    if initialized() {
-        panic!("cannot load dump file in unexeced Emacs");
-    }
+    // /* TODO: maybe more thoroughly scrub process environment in order to
+    // make this use case (loading a dump file in an unexeced emacs)
+    // possible?  Right now, we assume that things we don't touch are zero-initialized, and in an unexeced Emacs, this assumption
+    // doesn't hold.  */
+    // if initialized() {
+    //     panic!("cannot load dump file in unexeced Emacs");
+    // }
 
     use libc::c_char;
     use libc::c_int;
@@ -221,7 +220,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let exit_code = unsafe { main1(argc, argv, temacs, dump_mode, attempt_load_pdump) };
     #[cfg(not(have_pdumper))]
     let exit_code = unsafe { main1(argc, argv, temacs, dump_mode) };
-
 
     // emacs abort
     unsafe { terminate_due_to_signal(libc::SIGABRT, 40) };
