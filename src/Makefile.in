@@ -773,11 +773,14 @@ globals.h: gl-stamp; @true
 
 HEADERS=$(wildcard $(srcdir)/*.h)
 
-$(LIBEMACSNG_ARCHIVE) : FORCE
+build.ninja : FORCE
 	RUSTFLAGS="$(RUSTFLAGS)" \
 	EMACS_CFLAGS="$(EMACS_CFLAGS)" \
-	$(CARGO_BUILD) $(CARGO_FLAGS) $(CARGO_ADDITIONAL_FLAGS) -p emacsng \
-	--features "$(CARGO_FEATURES)" --out-dir ./
+	cargo ninja $(CARGO_FLAGS) $(CARGO_ADDITIONAL_FLAGS) -p emacsng \
+	--features "$(CARGO_FEATURES)" ./
+
+$(LIBEMACSNG_ARCHIVE) : build.ninja
+	ninja
 
 clippy:
 	RUSTFLAGS="$(RUSTFLAGS)" \
