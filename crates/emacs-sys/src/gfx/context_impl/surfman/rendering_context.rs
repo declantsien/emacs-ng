@@ -54,6 +54,7 @@ impl Drop for RenderingContextData {
     }
 }
 
+#[allow(dead_code)]
 impl RenderingContext {
     pub fn create(
         connection: &Connection,

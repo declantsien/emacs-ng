@@ -239,7 +239,7 @@ impl_vectorlike_ref! { LispVectorRef, LispVecIterator, ptrdiff_t::max_value() }
 pub static HEADER_SIZE: LazyLock<usize> =
     LazyLock::new(|| memoffset::offset_of!(crate::bindings::Lisp_Vector, contents));
 pub static WORD_SIZE: LazyLock<usize> =
-    LazyLock::new(|| ::std::mem::size_of::<crate::lisp::LispObject>());
+    LazyLock::new(::std::mem::size_of::<crate::lisp::LispObject>);
 
 pub trait LVector {
     fn vectorp(self) -> bool;
