@@ -18,7 +18,7 @@ colors = { path = "../colors", optional = true }
 surfman = { version = "0.9", features = ["chains", "sm-angle", "sm-angle-default"] , optional = true}
 glutin = { version = "0.31", optional = true }
 gleam = { workspace = true, optional = true }
-winit = { workspace = true, optional = true, default-features = false, features = ["rwh_06"]}
+winit = { workspace = true, optional = true }
 arboard = { workspace = true, optional = true}
 euclid.workspace = true
 
@@ -55,7 +55,6 @@ wayland = [
   "glutin?/wayland",
   "winit?/wayland",
   "winit?/wayland-dlopen",
-  "winit?/wayland-csd-adwaita",
 ]
 gtk3=["dep:gtk", "dep:gdk", "dep:gl_loader"]
 webrender = ["dep:raw-window-handle", "dep:webrender_api", "dep:image", "dep:colors", "dep:gleam"]
