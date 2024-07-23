@@ -18,7 +18,7 @@ colors = { path = "../colors", optional = true }
 surfman = { version = "0.9", features = ["chains", "sm-angle", "sm-angle-default"] , optional = true}
 glutin = { version = "0.31", optional = true }
 gleam = { workspace = true, optional = true }
-winit = { workspace = true, optional = true}
+winit = { workspace = true, optional = true, default-features = false, features = ["rwh_06"]}
 arboard = { workspace = true, optional = true}
 euclid.workspace = true
 
