@@ -1104,7 +1104,7 @@ and GNU mailutils."
   :package-version '(MH-E . "8.0"))
 
 (defgroup mh-tool-bar nil
-  "The tool bar"
+  "The tool bar."
   :link '(custom-manual "(mh-e)Tool Bar")
   :prefix "mh-"
   :group 'mh-e
@@ -2008,9 +2008,9 @@ absolute pathname, it is assumed to be in the `mh-progs'
 directory. You may link another program to `scan' (see
 \"mh-profile(5)\") to produce a different type of listing."
   :type 'string
+  :local t
   :group 'mh-scan-line-formats
   :package-version '(MH-E . "6.0"))
-(make-variable-buffer-local 'mh-scan-prog)
 
 ;;; Searching (:group 'mh-search)
 

@@ -95,7 +95,6 @@ static struct rlimit nofile_limit;
 #include <flexmember.h>
 #include <nproc.h>
 #include <sig2str.h>
-#include <verify.h>
 
 #endif	/* subprocesses */
 
@@ -275,9 +274,9 @@ static int read_process_output (Lisp_Object, int);
 static void create_pty (Lisp_Object);
 static void exec_sentinel (Lisp_Object, Lisp_Object);
 
-static Lisp_Object
-network_lookup_address_info_1 (Lisp_Object host, const char *service,
-                               struct addrinfo *hints, struct addrinfo **res);
+static Lisp_Object network_lookup_address_info_1 (Lisp_Object, const char *,
+						  struct addrinfo *,
+						  struct addrinfo **);
 
 /* Number of bits set in connect_wait_mask.  */
 static int num_pending_connects;
@@ -922,7 +921,7 @@ make_process (Lisp_Object name)
     p->open_fd[i] = -1;
 
 #ifdef HAVE_GNUTLS
-  verify (GNUTLS_STAGE_EMPTY == 0);
+  static_assert (GNUTLS_STAGE_EMPTY == 0);
   eassert (p->gnutls_initstage == GNUTLS_STAGE_EMPTY);
   eassert (NILP (p->gnutls_boot_parameters));
 #endif
@@ -1913,7 +1912,7 @@ usage: (make-process &rest ARGS)  */)
 
 #ifdef HAVE_GNUTLS
   /* AKA GNUTLS_INITSTAGE(proc).  */
-  verify (GNUTLS_STAGE_EMPTY == 0);
+  static_assert (GNUTLS_STAGE_EMPTY == 0);
   eassert (XPROCESS (proc)->gnutls_initstage == GNUTLS_STAGE_EMPTY);
   eassert (NILP (XPROCESS (proc)->gnutls_cred_type));
 #endif
@@ -2143,7 +2142,7 @@ enum
     EXEC_MONITOR_OUTPUT
   };
 
-verify (PROCESS_OPEN_FDS == EXEC_MONITOR_OUTPUT + 1);
+static_assert (PROCESS_OPEN_FDS == EXEC_MONITOR_OUTPUT + 1);
 
 static void
 create_process (Lisp_Object process, char **new_argv, Lisp_Object current_dir)
@@ -3540,9 +3539,9 @@ connect_network_socket (Lisp_Object proc, Lisp_Object addrinfos,
 		 structures, but the standards don't guarantee that,
 		 so verify it here.  */
 	      struct sockaddr_in6 sa6;
-	      verify ((offsetof (struct sockaddr_in, sin_port)
-		       == offsetof (struct sockaddr_in6, sin6_port))
-		      && sizeof (sa1.sin_port) == sizeof (sa6.sin6_port));
+	      static_assert ((offsetof (struct sockaddr_in, sin_port)
+			      == offsetof (struct sockaddr_in6, sin6_port))
+			     && sizeof (sa1.sin_port) == sizeof (sa6.sin6_port));
 #endif
 	      DECLARE_POINTER_ALIAS (psa1, struct sockaddr, &sa1);
 	      if (getsockname (s, psa1, &len1) == 0)
@@ -4471,7 +4470,7 @@ network_interface_info (Lisp_Object ifname)
   CHECK_STRING (ifname);
 
   if (sizeof rq.ifr_name <= SBYTES (ifname))
-    error ("interface name too long");
+    error ("Interface name too long");
   lispstpcpy (rq.ifr_name, ifname);
 
   s = socket (AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
@@ -4711,6 +4710,9 @@ network_lookup_address_info_1 (Lisp_Object host, const char *service,
 DEFUN ("network-lookup-address-info", Fnetwork_lookup_address_info,
        Snetwork_lookup_address_info, 1, 3, 0,
        doc: /* Look up Internet Protocol (IP) address info of NAME.
+NAME must be an ASCII-only string.  For looking up internationalized
+hostnames, use `puny-encode-domain' on the string first.
+
 Optional argument FAMILY controls whether to look up IPv4 or IPv6
 addresses.  The default of nil means both, symbol `ipv4' means IPv4
 only, symbol `ipv6' means IPv6 only.
@@ -4729,6 +4731,8 @@ returned from the lookup.  */)
 
   struct addrinfo *res, *lres;
   struct addrinfo hints;
+
+  CHECK_STRING (name);
 
   memset (&hints, 0, sizeof hints);
   if (NILP (family))
@@ -5350,7 +5354,7 @@ wait_reading_process_output (intmax_t time_limit, int nsecs, int read_kbd,
 	struct Lisp_Process *p;
 
 	retry_for_async = false;
-	FOR_EACH_PROCESS(process_list_head, aproc)
+	FOR_EACH_PROCESS (process_list_head, aproc)
 	  {
 	    p = XPROCESS (aproc);
 
@@ -5706,9 +5710,9 @@ wait_reading_process_output (intmax_t time_limit, int nsecs, int read_kbd,
 	  /* If wait_proc is somebody else, we have to wait in select
 	     as usual.  Otherwise, clobber the timeout. */
 	  if (tls_nfds > 0
-	      && (!wait_proc ||
-		  (wait_proc->infd >= 0
-		   && FD_ISSET (wait_proc->infd, &tls_available))))
+	      && (!wait_proc
+		  || (wait_proc->infd >= 0
+		      && FD_ISSET (wait_proc->infd, &tls_available))))
 	    timeout = make_timespec (0, 0);
 #endif
 
@@ -5773,8 +5777,8 @@ wait_reading_process_output (intmax_t time_limit, int nsecs, int read_kbd,
 		/* Slow path, merge one by one.  Note: nfds does not need
 		   to be accurate, just positive is enough. */
 		for (channel = 0; channel < FD_SETSIZE; ++channel)
-		  if (FD_ISSET(channel, &tls_available))
-		    FD_SET(channel, &Available);
+		  if (FD_ISSET (channel, &tls_available))
+		    FD_SET (channel, &Available);
 	    }
 #endif
 	}
@@ -6857,7 +6861,7 @@ send_process (Lisp_Object proc, const char *buf, ptrdiff_t len,
 		  pset_status (p, list2 (Qexit, make_fixnum (256)));
 		  p->tick = ++process_tick;
 		  deactivate_process (proc);
-		  error ("process %s no longer connected to pipe; closed it",
+		  error ("Process %s no longer connected to pipe; closed it",
 			 SDATA (p->name));
 		}
 	      else
@@ -8619,6 +8623,14 @@ init_process_emacs (int sockfd)
   int i;
 
   inhibit_sentinels = 0;
+
+#ifdef HAVE_UNEXEC
+  /* Clear child_signal_read_fd and child_signal_write_fd after dumping,
+     lest wait_reading_process_output should select on nonexistent file
+     descriptors which existed in the build process.  */
+  child_signal_read_fd = -1;
+  child_signal_write_fd = -1;
+#endif /* HAVE_UNEXEC */
 
   if (!will_dump_with_unexec_p ())
     {

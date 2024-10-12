@@ -31,7 +31,7 @@ General Public License for more details.
 @finalout
 @titlepage
 @title Transient User and Developer Manual
-@subtitle for version 0.7.2
+@subtitle for version 0.7.4
 @author Jonas Bernoulli
 @page
 @vskip 0pt plus 1filll
@@ -53,7 +53,7 @@ resource to get over that hurdle is Psionic K's interactive tutorial,
 available at @uref{https://github.com/positron-solutions/transient-showcase}.
 
 @noindent
-This manual is for Transient version 0.7.2.
+This manual is for Transient version 0.7.4.
 
 @insertcopying
 @end ifnottex
@@ -165,9 +165,9 @@ commands even have so many options that they introduce @emph{subcommands}
 @anchor{Using Transient for composing interactive commands}
 @heading Using Transient for composing interactive commands
 
-What about Emacs commands used interactively? How do these handle
+What about Emacs commands used interactively?  How do these handle
 options?  One solution is to make many versions of the same command,
-so you don't need to! Consider: @samp{delete-other-windows} vs.
+so you don't need to!  Consider: @samp{delete-other-windows} vs.
 @samp{delete-other-windows-vertically} (among many similar examples).
 
 Some Emacs commands will simply prompt you for the next "argument"
@@ -1019,7 +1019,7 @@ independently.  See @ref{Using History}.
 After a transient prefix command is invoked, @kbd{C-h @var{KEY}} can be used to
 show the documentation for the infix or suffix command that @kbd{@var{KEY}} is
 bound to (see @ref{Getting Help for Suffix Commands}), and infixes and
-suffixes can be removed from the transient using @kbd{C-x l @var{KEY}}. Infixes
+suffixes can be removed from the transient using @kbd{C-x l @var{KEY}}.  Infixes
 and suffixes that are disabled by default can be enabled the same way.
 See @ref{Enabling and Disabling Suffixes}.
 
@@ -1208,7 +1208,10 @@ prefix's @code{transient--layout} property, but it is often more convenient
 to use the same form as understood by @code{transient-define-prefix},
 described below.  If you use the latter approach, you can use the
 @code{transient-parse-suffixes} and @code{transient-parse-suffix} functions to
-transform them from the convenient to the expected form.
+transform them from the convenient to the expected form.  Depending
+on the used group class, @code{transient-parse-suffixes}'s SUFFIXES must be
+a list of group vectors (for @code{transient-columns}) or a list of suffix
+lists (for all other group classes).
 
 If you explicitly specify children and then transform them using
 @code{:setup-children}, then the class of the group is determined as usual,
@@ -1219,6 +1222,32 @@ If you do not explicitly specify children and thus rely solely on
 For backward compatibility, if you fail to do so, @code{transient-column}
 is used and a warning is displayed.  This warning will eventually
 be replaced with an error.
+
+@lisp
+(transient-define-prefix my-finder-by-keyword ()
+  "Select a keyword and list matching packages."
+  ;; The real `finder-by-keyword' is more convenient
+  ;; of course, but that is not the point here.
+  [:class transient-columns
+   :setup-children
+   (lambda (_)
+     (transient-parse-suffixes
+      'my-finder-by-keyword
+      (let ((char (1- ?A)))
+        (mapcar                  ; a list ...
+         (lambda (partition)
+           (vconcat              ; of group vectors ...
+            (mapcar (lambda (elt)
+                      (let ((keyword (symbol-name (car elt))))
+                                 ; ... where each suffix is a list
+                        (list (format "%c" (cl-incf char))
+                              keyword
+                              (lambda ()
+                                (interactive)
+                                (finder-list-matches keyword)))))
+                    partition)))
+         (seq-partition finder-known-keywords 7)))))])
+@end lisp
 
 @item
 The boolean @code{:pad-keys} argument controls whether keys of all suffixes
@@ -1258,7 +1287,7 @@ individual suffix command.
 The same form is also used when later binding additional commands
 using functions such as @code{transient-insert-suffix}, see @ref{Modifying Existing Transients}.
 
-Note that an infix is a special kind of suffix. Depending on context
+Note that an infix is a special kind of suffix.  Depending on context
 ``suffixes'' means ``suffixes (including infixes)'' or ``non-infix
 suffixes''.  Here it means the former.
 
@@ -1353,7 +1382,7 @@ argument supported by the constructor of that class.  See @ref{Suffix Slots}.
 @cindex defining suffix commands
 @cindex defining infix commands
 
-Note that an infix is a special kind of suffix. Depending on context
+Note that an infix is a special kind of suffix.  Depending on context
 ``suffixes'' means ``suffixes (including infixes)'' or ``non-infix
 suffixes''.
 
@@ -1429,7 +1458,7 @@ When returning to the command-loop after calling the suffix command,
 the arguments are reset to @code{nil} (which causes the function to return
 @code{nil} too).
 
-Like for Emacs' prefix arguments, it is advisable, but not mandatory,
+Like for Emacs's prefix arguments, it is advisable, but not mandatory,
 to access the infix arguments inside the command's @code{interactive} form.
 The preferred way of doing that is to call the @code{transient-args}
 function, which for infix arguments serves about the same purpose as
@@ -1468,15 +1497,31 @@ values.  In complex cases it might be necessary to use this variable
 instead, i.e., if you need access to information beside the value.
 @end defvar
 
+@defvar transient-current-command
+The transient from which this suffix command was invoked.  The
+returned value is a symbol, the transient prefix command.
+@end defvar
+
 @defvar transient-current-prefix
 The transient from which this suffix command was invoked.  The
 returned value is a @code{transient-prefix} object, which holds information
 associated with the transient prefix command.
 @end defvar
 
-@defvar transient-current-command
-The transient from which this suffix command was invoked.  The
-returned value is a symbol, the transient prefix command.
+@defvar transient-active-prefix
+This function returns the active transient object.  Return @code{nil} if
+there is no active transient, if the transient buffer isn't shown,
+and while the active transient is suspended (e.g., while the
+minibuffer is in use).
+
+Unlike @code{transient-current-prefix}, which is only ever non-@code{nil} in code
+that is run directly by a command that is invoked while a transient
+is current, this function is also suitable for use in asynchronous
+code, such as timers and callbacks (this function's main use-case).
+
+If optional PREFIXES is non-@code{nil}, it must be a list of prefix command
+symbols, in which case the active transient object is only returned
+if it matches one of the PREFIXES."
 @end defvar
 
 @node Transient State

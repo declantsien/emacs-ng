@@ -210,11 +210,17 @@ AS_IF([test "$XCONFIGURE" = "android"],[
 
   AC_MSG_NOTICE([configuring in `exec'])
 
+  # Derive a name for a cache file for this configure script from the
+  # current, if specified.
+  exec_cache_file=
+  AS_CASE([$cache_file], [/dev/null | ""], [],
+    [[[\\/]* | ?:[\\/]*]], [exec_cache_file="--cache-file=$cache_file.2"],
+    [*], [exec_cache_file="--cache-file=../$cache_file.2"])
   OLDCWD=`pwd`
   cd exec
   $CONFIG_SHELL $emacs_srcdir/exec/configure		\
 		--host=$host "CC=$CC" "LD=$CC" "AS=$CC"	\
-		"AR=$AR" "CFLAGS=$CFLAGS"
+		"AR=$AR" "CFLAGS=$CFLAGS" $exec_cache_file
   emacs_val=$?
   cd $OLDCWD
 
@@ -802,6 +808,17 @@ AS_IF([test "$with_android" = no || test -n "$XCONFIGURE"],[
     [android_enable_checking=yes
      export android_enable_checking])])
 
+AC_ARG_ENABLE([gc-mark-trace],
+ [AS_HELP_STRING([--disable-gc-mark-trace],
+                 [disable the mark trace buffer used for debugging the Emacs
+                 garbage collector])],
+ [ac_enable_gc_mark_trace="${enableval}"],
+ [ac_enable_gc_mark_trace=yes])
+if test "x$ac_enable_gc_mark_trace" = xyes ; then
+   AC_DEFINE([GC_REMEMBER_LAST_MARKED], [1],
+   [Define to 1 to enable GC mark trace buffer.])
+fi
+
 dnl The name of this option is unfortunate.  It predates, and has no
 dnl relation to, the "sampling-based elisp profiler" added in 24.3.
 dnl Actually, it stops it working.
@@ -973,7 +990,7 @@ a valid path to android.jar.  See config.log for more details.])
   fi
 
   AC_CACHE_CHECK([whether android.jar is new enough],
-    [emacs_cv_android_u_or_later],
+    [emacs_cv_android_v_or_later],
     AS_IF([rm -f conftest.class
 cat << EOF > conftest.java
 
@@ -981,18 +998,18 @@ import android.os.Build;
 
 class conftest
 {
-  private static int test = Build.VERSION_CODES.UPSIDE_DOWN_CAKE;
+  private static int test = Build.VERSION_CODES.VANILLA_ICE_CREAM;
 }
 
 EOF
 ("$JAVAC" -classpath "$with_android" -target 1.7 -source 1.7 conftest.java \
   -d . >&AS_MESSAGE_LOG_FD 2>&1) && test -s conftest.class && rm -f conftest.class],
-          [emacs_cv_android_u_or_later=yes],
-          [emacs_cv_android_u_or_later=no]))
+          [emacs_cv_android_v_or_later=yes],
+          [emacs_cv_android_v_or_later=no]))
 
-  if test "$emacs_cv_android_u_or_later" = "no"; then
+  if test "$emacs_cv_android_v_or_later" = "no"; then
     AC_MSG_ERROR([Emacs must be built with an android.jar file produced for \
-Android 14 (Upside Down Cake) or later.])
+Android 15 (Vanilla Ice Cream) or later.])
   fi
 
   dnl See if the Java compiler supports the `--release' option which
@@ -1052,7 +1069,7 @@ Please verify that the path to the SDK build tools you specified is correct])
   fi
 
   AC_PATH_PROGS([D8], [d8], [], "${SDK_BUILD_TOOLS}:$PATH")
-  if test "D8" = ""; then
+  if test "$D8" = ""; then
     AC_MSG_ERROR([The Android dexer was not found.
 Please verify that the path to the SDK build tools you specified is correct])
   fi
@@ -1201,6 +1218,8 @@ main (void)
    foo = "emacs_api_33";
 #elif __ANDROID_API__ < 35
    foo = "emacs_api_34";
+#elif __ANDROID_API__ < 36
+   foo = "emacs_api_35";
 #else
    foo = "emacs_api_future";
 #endif
@@ -1288,6 +1307,11 @@ packages targeting Android 2.2.])])
   # Now pass through some checking-related options.
   emacs_val="--enable-check-lisp-object-type=$enable_check_lisp_object_type"
   passthrough="$passthrough $emacs_val"
+
+  # And derive a name for the recursive configure invocation's cache
+  # file if one should be specified for this.
+  AS_IF([test -n "$cache_file" && test "$cache_file" != "/dev/null"],
+    [passthrough="$passthrough --cache-file=$cache_file.1"])
 
   AS_IF([test "x$with_mailutils" = "xyes"], [emacs_use_mailutils=yes])
   AC_SUBST([emacs_use_mailutils])
@@ -1812,7 +1836,6 @@ AS_IF([test $gl_gcc_warnings = no],
   nw="$nw -Wcast-align=strict"      # Emacs is tricky with pointers.
   nw="$nw -Wduplicated-branches"    # Too many false alarms
   nw="$nw -Wformat-overflow=2"      # False alarms due to GCC bug 110333
-  nw="$nw -Wsystem-headers"         # Don't let system headers trigger warnings
   nw="$nw -Woverlength-strings"     # Not a problem these days
   nw="$nw -Wvla"                    # Emacs uses <vla.h>.
   nw="$nw -Wunused-const-variable=2" # lisp.h declares const objects.
@@ -2114,7 +2137,7 @@ AC_CACHE_CHECK([for 'find' args to delete a file],
   [if touch conftest.tmp && find conftest.tmp -delete 2>/dev/null &&
       test ! -f conftest.tmp
    then emacs_cv_find_delete="-delete"
-   else emacs_cv_find_delete="-exec rm -f {} ';'"
+   else emacs_cv_find_delete="-exec rm -f {} +"
    fi])
 FIND_DELETE=$emacs_cv_find_delete
 AC_SUBST([FIND_DELETE])
@@ -2379,6 +2402,51 @@ case $canonical in
     fi
   ;;
 esac
+
+AC_CACHE_CHECK([for flags to work around GCC bug 58416],
+  [emacs_cv_gcc_bug_58416_CFLAGS],
+  [emacs_cv_gcc_bug_58416_CFLAGS='none needed'
+   AS_CASE([$canonical],
+     [[i[3456]86-* | x86_64-*]],
+       [AS_IF([test "$GCC" = yes],
+	  [old_CFLAGS=$CFLAGS
+	   # If no flags are needed (e.g., not GCC 4+), don't use any.
+	   # Otherwise, use -mfpmath=sse if already assuming SSE2.
+	   # Otherwise, use -fno-tree-sra.
+	   for emacs_cv_gcc_bug_58416_CFLAGS in \
+	       'none needed' -mfpmath=sse -fno-tree-sra
+	   do
+	     AS_CASE([$emacs_cv_gcc_bug_58416_CFLAGS],
+	       ['none needed'], [],
+	       [-fno-tree-sra], [break],
+	       [CFLAGS="$old_CFLAGS $emacs_cv_gcc_bug_58416_CFLAGS"])
+	     AC_COMPILE_IFELSE(
+	       [AC_LANG_DEFINES_PROVIDED
+		[/* Work around GCC bug with double in unions on x86,
+		    where the generated insns copy non-floating-point data
+		    via fldl/fstpl instruction pairs.  This can misbehave
+		    the data's bit pattern looks like a NaN.  See, e.g.:
+		       https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58416#c10
+		       https://gcc.gnu.org/bugzilla/show_bug.cgi?id=71460
+		       https://gcc.gnu.org/bugzilla/show_bug.cgi?id=93271
+		       https://gcc.gnu.org/bugzilla/show_bug.cgi?id=114659
+		    Problem observed with 'gcc -m32' with GCC 14.1.1
+		    20240607 (Red Hat 14.1.1-5) on x86-64.  */
+		 #include <float.h>
+		 #if \
+		     (4 <= __GNUC__ && __GNUC__ <= 14 && !defined __clang__ \
+		      && (defined __i386__ || defined __x86_64__) \
+		      && ! (0 <= FLT_EVAL_METHOD && FLT_EVAL_METHOD <= 1))
+		 # error "GCC bug 58416 is possibly present"
+		 #endif
+	       ]],
+	       [break])
+	   done
+	   CFLAGS=$old_CFLAGS])])])
+AS_CASE([$emacs_cv_gcc_bug_58416_CFLAGS],
+  [-*],
+    [C_SWITCH_MACHINE="$C_SWITCH_MACHINE $emacs_cv_gcc_bug_58416_CFLAGS"])
+
 AC_SUBST([C_SWITCH_MACHINE])
 
 C_SWITCH_SYSTEM=
@@ -3232,7 +3300,7 @@ if test "${HAVE_W32}" = "yes"; then
       NATIVE_IMAGE_API="yes (w32)"
       W32_OBJ="$W32_OBJ w32image.o"
     fi
-    W32_LIBS="$W32_LIBS -lwinmm -lusp10 -lgdi32 -lcomdlg32"
+    W32_LIBS="$W32_LIBS -lwinmm -lgdi32 -lcomdlg32"
     W32_LIBS="$W32_LIBS -lmpr -lwinspool -lole32 -lcomctl32"
     W32_RES_LINK="\$(EMACSRES)"
     CLIENTRES="emacsclient.res"
@@ -4010,6 +4078,8 @@ if test "${with_dbus}" = "yes"; then
      dnl dbus_watch_get_unix_fd has been introduced in D-Bus 1.1.1.
      dnl dbus_type_is_valid and dbus_validate_* have been introduced in
      dnl D-Bus 1.5.12.
+     dnl dbus_message_set_allow_interactive_authorization was introduced
+     dnl in D-Bus 1.8.10.
      OLD_LIBS=$LIBS
      LIBS="$LIBS $DBUS_LIBS"
      AC_CHECK_FUNCS([dbus_watch_get_unix_fd \
@@ -4017,7 +4087,8 @@ if test "${with_dbus}" = "yes"; then
 		    dbus_validate_bus_name \
                     dbus_validate_path \
 		    dbus_validate_interface \
-		    dbus_validate_member])
+		    dbus_validate_member \
+                    dbus_message_set_allow_interactive_authorization])
      LIBS=$OLD_LIBS
      DBUS_OBJ=dbusbind.o
    fi
@@ -4549,10 +4620,11 @@ XWIDGETS_OBJ=
 if test "$with_xwidgets" != "no"; then
   if test "$USE_GTK_TOOLKIT" = "GTK3" && test "$window_system" != "none"; then
     WEBKIT_REQUIRED=2.12
-    WEBKIT_MODULES="webkit2gtk-4.1 >= $WEBKIT_REQUIRED"
+    WEBKIT_BROKEN=2.41.92
+    WEBKIT_MODULES="webkit2gtk-4.1 >= $WEBKIT_REQUIRED webkit2gtk-4.1 < $WEBKIT_BROKEN"
     EMACS_CHECK_MODULES([WEBKIT], [$WEBKIT_MODULES])
     if test "$HAVE_WEBKIT" = "no"; then
-      WEBKIT_MODULES="webkit2gtk-4.0 >= $WEBKIT_REQUIRED"
+      WEBKIT_MODULES="webkit2gtk-4.0 >= $WEBKIT_REQUIRED webkit2gtk-4.0 < $WEBKIT_BROKEN"
       EMACS_CHECK_MODULES([WEBKIT], [$WEBKIT_MODULES])
     fi
     HAVE_XWIDGETS=$HAVE_WEBKIT
@@ -6036,7 +6108,7 @@ LIBS="$LIB_PTHREAD $LIB_MATH $LIBS"
 AC_CHECK_FUNCS([accept4 fchdir gethostname \
 getrusage get_current_dir_name \
 lrand48 random rint tcdrain trunc \
-select getpagesize setlocale newlocale \
+select getpagesize newlocale \
 getrlimit setrlimit shutdown \
 pthread_sigmask strsignal setitimer \
 sendto recvfrom getsockname getifaddrs freeifaddrs \
@@ -7816,8 +7888,7 @@ send your change to bug-gnu-emacs@gnu.org])])])
 
 AH_TOP([/* GNU Emacs site configuration template file.
 
-Copyright (C) 1988, 1993-1994, 1999-2002, 2004-2021
-  Free Software Foundation, Inc.
+Copyright (C) 1988-2024 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 

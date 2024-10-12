@@ -548,7 +548,7 @@ associated with an ERC session."
   "Speedbar update period.")
 
 (defvar-local erc-speedbar--last-ran nil
-  "When non-nil, a lisp timestamp updated when the speedbar timer runs.")
+  "When non-nil, a Lisp timestamp updated when the speedbar timer runs.")
 
 (defun erc-speedbar--prod-dframe-timer (&rest _)
   "Refresh speedbar if dormant for `erc-speedbar--force-update-interval-secs'."
@@ -652,8 +652,7 @@ unlock the window."
   (when-let ((window (get-buffer-window speedbar-buffer)))
     (let ((val (cond ((natnump arg) t)
                      ((integerp arg) nil)
-                     (t (not (window-parameter window
-                                               'no-other-window))))))
+                     (t (not (erc-compat--window-no-other-p window))))))
       (with-current-buffer speedbar-buffer
         (setq cursor-type (not val)))
       (set-window-parameter window 'no-other-window val)

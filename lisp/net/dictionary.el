@@ -336,7 +336,7 @@ Otherwise, `dictionary-search' displays definitions in a *Dictionary* buffer."
     (((type tty) (class color))
      (:foreground "green"))
     (t
-     (:inverse t)))
+     (:inverse-video t)))
   "The face that is used for displaying the initial word entry line."
   :group 'dictionary
   :version "28.1")
@@ -472,7 +472,7 @@ Otherwise, `dictionary-search' displays definitions in a *Dictionary* buffer."
                                    :vert-only t
                                    :help "Go backwards in history.")
     map)
-  "Like the default `tool-bar-map', but with additions for Dictionary mode")
+  "Like the default `tool-bar-map', but with additions for Dictionary mode.")
 
 ;;;###autoload
 (define-derived-mode dictionary-mode special-mode "Dictionary"

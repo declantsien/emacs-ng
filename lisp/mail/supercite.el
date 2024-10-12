@@ -727,7 +727,7 @@ If optional ATTRIBS-P is non-nil, the key/value pair is placed in
 
 ;; mail header nuking
 (defvar sc-mail-last-header-nuked-p nil
-  "True if the last header was nuked.")
+  "Non-nil if the last header was nuked.")
 
 (defun sc-mail-nuke-line ()
   "Nuke the current mail header line."
@@ -1244,9 +1244,7 @@ to the auto-selected attribution string."
 
 
 ;; ======================================================================
-;; filladapt hooks for supercite 3.1. you shouldn't need anything
-;; extra to make gin-mode understand supercited lines.  Even this
-;; stuff might not be entirely necessary...
+;; filladapt hooks for supercite 3.1.
 
 (defun sc-cite-regexp (&optional root-regexp)
   "Return a regexp describing a Supercited line.

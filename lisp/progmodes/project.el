@@ -218,7 +218,8 @@ else prompt the user for the project to use.  To prompt for a
 project, call the function specified by `project-prompter', which
 returns the directory in which to look for the project.  If no
 project is found in that directory, return a \"transient\"
-project instance.
+project instance.  When MAYBE-PROMPT is a string, it's passed to the
+prompter function as an argument.
 
 The \"transient\" project instance is a special kind of value
 which denotes a project rooted in that directory and includes all
@@ -235,7 +236,9 @@ of the project instance object."
      (pr)
      ((unless project-current-directory-override
         maybe-prompt)
-      (setq directory (funcall project-prompter)
+      (setq directory (if (stringp maybe-prompt)
+                          (funcall project-prompter maybe-prompt)
+                        (funcall project-prompter))
             pr (project--find-in-directory directory))))
     (when maybe-prompt
       (if pr
@@ -331,7 +334,10 @@ end it with `/'.  DIR must be either `project-root' or one of
 The file names should be relative to the project root.  And this can
 only happen when all returned files are in the same directory.
 In other words, the DIRS argument of `project-files' has to be nil or a
-list of only one element.")
+list of only one element.
+
+This variable is only meant to be set by Lisp code, not customized by
+the user.")
 
 (cl-defgeneric project-files (project &optional dirs)
   "Return a list of files in directories DIRS in PROJECT.
@@ -660,7 +666,7 @@ See `project-vc-extra-root-markers' for the marker value format.")
   (pcase backend
     (`Git
      (let* ((default-directory (expand-file-name (file-name-as-directory dir)))
-            (args '("-z"))
+            (args '("-z" "-c" "--exclude-standard"))
             (vc-git-use-literal-pathspecs nil)
             (include-untracked (project--value-in-dir
                                 'project-vc-include-untracked
@@ -668,7 +674,9 @@ See `project-vc-extra-root-markers' for the marker value format.")
             (submodules (project--git-submodules))
             files)
        (setq args (append args
-                          '("-c" "--exclude-standard")
+                          (and (<= 31 emacs-major-version)
+                               (version<= "2.35" (vc-git--program-version))
+                               '("--sparse"))
                           (and include-untracked '("-o"))))
        (when extra-ignores
          (setq args (append args
@@ -700,7 +708,10 @@ See `project-vc-extra-root-markers' for the marker value format.")
              (delq nil
                    (mapcar
                     (lambda (file)
-                      (unless (member file submodules)
+                      (unless (or (member file submodules)
+                                  ;; Should occur for sparse directories
+                                  ;; only, when sparse index is enabled.
+                                  (directory-name-p file))
                         (if project-files-relative-names
                             file
                           (concat default-directory file))))
@@ -1001,7 +1012,7 @@ requires quoting, e.g. `\\[quoted-insert]<space>'."
               (project-files pr)
             (let* ((dir (read-directory-name "Base directory: "
                                              caller-dir nil t)))
-              (setq default-directory dir)
+              (setq default-directory (file-name-as-directory dir))
               (project--files-in-directory dir
                                            nil
                                            (grep-read-files regexp))))))
@@ -1068,6 +1079,18 @@ using a command like `project-find-file'."
       (concat (file-name-as-directory (project-root project))
               (file-relative-name filename (project-root filename-proj)))
     filename))
+
+;;;###autoload
+(defun project-root-find-file (filename)
+  "Edit file FILENAME.
+
+Interactively, prompt for FILENAME, defaulting to the root directory of
+the current project."
+  (declare (interactive-only find-file))
+  (interactive (list (read-file-name "Find file in root: "
+                                     (project-root (project-current t)) nil
+                                     (confirm-nonexistent-file-or-buffer))))
+  (find-file filename t))
 
 ;;;###autoload
 (defun project-find-file (&optional include-all)
@@ -1715,7 +1738,7 @@ in `project-kill-buffer-conditions'."
     bufs))
 
 ;;;###autoload
-(defun project-kill-buffers (&optional no-confirm)
+(defun project-kill-buffers (&optional no-confirm project)
   "Kill the buffers belonging to the current project.
 Two buffers belong to the same project if their project
 instances, as reported by `project-current' in each buffer, are
@@ -1725,9 +1748,11 @@ is non-nil, the command will not ask the user for confirmation.
 NO-CONFIRM is always nil when the command is invoked
 interactively.
 
+If PROJECT is non-nil, kill buffers for that project instead.
+
 Also see the `project-kill-buffers-display-buffer-list' variable."
   (interactive)
-  (let* ((pr (project-current t))
+  (let* ((pr (or project (project-current t)))
          (bufs (project--buffers-to-kill pr))
          (query-user (lambda ()
                        (yes-or-no-p
@@ -1859,11 +1884,12 @@ the project list."
 
 (defvar project--dir-history)
 
-(defun project-prompt-project-dir ()
+(defun project-prompt-project-dir (&optional prompt)
   "Prompt the user for a directory that is one of the known project roots.
 The project is chosen among projects known from the project list,
 see `project-list-file'.
-It's also possible to enter an arbitrary directory not in the list."
+It's also possible to enter an arbitrary directory not in the list.
+When PROMPT is non-nil, use it as the prompt string."
   (project--ensure-read-project-list)
   (let* ((dir-choice "... (choose a dir)")
          (choices
@@ -1877,18 +1903,23 @@ It's also possible to enter an arbitrary directory not in the list."
       ;; If the user simply pressed RET, do this again until they don't.
       (setq pr-dir
             (let (history-add-new-input)
-              (completing-read "Select project: " choices nil t nil 'project--dir-history))))
+              (completing-read (if prompt
+                                   ;; TODO: Use `format-prompt' (Emacs 28.1+)
+                                   (format "%s: " (substitute-command-keys prompt))
+                                 "Select project: ")
+                               choices nil t nil 'project--dir-history))))
     (if (equal pr-dir dir-choice)
         (read-directory-name "Select directory: " default-directory nil t)
       pr-dir)))
 
 (defvar project--name-history)
 
-(defun project-prompt-project-name ()
+(defun project-prompt-project-name (&optional prompt)
   "Prompt the user for a project, by name, that is one of the known project roots.
 The project is chosen among projects known from the project list,
 see `project-list-file'.
-It's also possible to enter an arbitrary directory not in the list."
+It's also possible to enter an arbitrary directory not in the list.
+When PROMPT is non-nil, use it as the prompt string."
   (let* ((dir-choice "... (choose a dir)")
          project--name-history
          (choices
@@ -1912,7 +1943,10 @@ It's also possible to enter an arbitrary directory not in the list."
       ;; If the user simply pressed RET, do this again until they don't.
       (setq pr-name
             (let (history-add-new-input)
-              (completing-read "Select project: " table nil t nil 'project--name-history))))
+              (completing-read (if prompt
+                                   (format "%s: " prompt)
+                                 "Select project: ")
+                               table nil t nil 'project--name-history))))
     (if (equal pr-name dir-choice)
         (read-directory-name "Select directory: " default-directory nil t)
       (let ((proj (assoc pr-name choices)))

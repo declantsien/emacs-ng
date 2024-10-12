@@ -463,8 +463,7 @@ Also see `ignore'."
   (declare (pure t) (side-effect-free error-free))
   t)
 
-;; Signal a compile-error if the first arg is missing.
-(defun error (&rest args)
+(defun error (string &rest args)
   "Signal an error, making a message by passing ARGS to `format-message'.
 Errors cause entry to the debugger when `debug-on-error' is non-nil.
 This can be overridden by `debug-ignored-errors'.
@@ -481,9 +480,8 @@ for the sake of consistency.
 
 To alter the look of the displayed error messages, you can use
 the `command-error-function' variable."
-  (declare (ftype (function (string &rest t) nil))
-           (advertised-calling-convention (string &rest args) "23.1"))
-  (signal 'error (list (apply #'format-message args))))
+  (declare (ftype (function (string &rest t) nil)))
+  (signal 'error (list (apply #'format-message string args))))
 
 (defun user-error (format &rest args)
   "Signal a user error, making a message by passing ARGS to `format-message'.
@@ -1507,7 +1505,7 @@ The normal global definition of the character ESC indirects to this keymap.")
 (make-obsolete 'ESC-prefix 'esc-map "28.1")
 
 (defvar ctl-x-4-map (make-sparse-keymap)
-  "Keymap for subcommands of C-x 4.")
+  "Keymap for subcommands of \\`C-x 4'.")
 (defalias 'ctl-x-4-prefix ctl-x-4-map)
 
 (defvar ctl-x-5-map (make-sparse-keymap)
@@ -1530,8 +1528,9 @@ The normal global definition of the character ESC indirects to this keymap.")
     (define-key map "<" #'scroll-left)
     (define-key map ">" #'scroll-right)
     map)
-  "Default keymap for C-x commands.
-The normal global definition of the character C-x indirects to this keymap.")
+  "Default keymap for \\`C-x' commands.
+The normal global definition of the character \\`C-x' indirects to this
+keymap.")
 (fset 'Control-X-prefix ctl-x-map)
 (make-obsolete 'Control-X-prefix 'ctl-x-map "28.1")
 
@@ -2385,9 +2384,11 @@ LIST-VAR should not refer to a lexical variable.
 
 The return value is the new value of LIST-VAR.
 
-This is handy to add some elements to configuration variables,
-but please do not abuse it in Elisp code, where you are usually
-better off using `push' or `cl-pushnew'.
+This is meant to be used for adding elements to configuration
+variables, such as adding a directory to a path variable
+like `load-path', but please do not abuse it to construct
+arbitrary lists in Elisp code, where using `push' or `cl-pushnew'
+will get you more efficient code.
 
 If you want to use `add-to-list' on a variable that is not
 defined until a certain package is loaded, you should put the
@@ -3338,7 +3339,15 @@ only unbound fallback disabled is downcasing of the last event."
                       ;; though read-key-sequence thinks we should wait
                       ;; for more input to decide how to interpret the
                       ;; current input.
-                      (throw 'read-key keys)))))))
+		      ;;
+		      ;; As this treatment will completely defeat the
+		      ;; purpose of touch screen event conversion,
+		      ;; dispense with this timeout when the first
+		      ;; event in this vector is a touch-screen event.
+		      (unless (memq (car-safe (aref keys 0)) '(touchscreen-begin
+							       touchscreen-update
+							       touchscreen-end))
+			(throw 'read-key keys))))))))
     (unwind-protect
         (progn
 	  (use-global-map
@@ -3372,8 +3381,8 @@ only unbound fallback disabled is downcasing of the last event."
 
 (defvar touch-screen-events-received nil
   "Whether a touch screen event has ever been translated.
-The value of this variable governs whether
-`read--potential-mouse-event' calls read-key or read-event.")
+The value of this variable governs whether `read--potential-mouse-event'
+calls `read-key' or `read-event'.")
 
 ;; FIXME: Once there's a safe way to transition away from read-event,
 ;; callers to this function should be updated to that way and this
@@ -4478,8 +4487,8 @@ Otherwise, return nil."
   "Return the SHA-1 (Secure Hash Algorithm) of an OBJECT.
 OBJECT is either a string or a buffer.  Optional arguments START and
 END are character positions specifying which portion of OBJECT for
-computing the hash.  If BINARY is non-nil, return a 40-byte unibyte
-string; otherwise returna 40-character string.
+computing the hash.  If BINARY is non-nil, return a 20-byte unibyte
+string; otherwise return a 40-character string.
 
 Note that SHA-1 is not collision resistant and should not be used
 for anything security-related.  See `secure-hash' for

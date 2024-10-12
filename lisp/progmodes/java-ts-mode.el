@@ -24,6 +24,8 @@
 
 ;;; Commentary:
 ;;
+;; If the tree-sitter doxygen grammar is available, then the comment
+;; blocks can be highlighted according to this grammar.
 
 ;;; Code:
 
@@ -44,6 +46,17 @@
   :version "29.1"
   :type 'integer
   :safe 'integerp
+  :group 'java)
+
+(defcustom java-ts-mode-enable-doxygen nil
+  "Enable doxygen syntax highlighting.
+If Non-nil, enable doxygen based font lock for comment blocks.
+This needs to be set before enabling `java-ts-mode'; if you change
+the value after enabling `java-ts-mode', toggle the mode off and on
+again."
+  :version "31.1"
+  :type 'boolean
+  :safe 'booleanp
   :group 'java)
 
 (defvar java-ts-mode--syntax-table
@@ -155,8 +168,8 @@
   "Java operators for tree-sitter font-locking.")
 
 (defun java-ts-mode--string-highlight-helper ()
-"Returns, for strings, a query based on what is supported by
-the available version of Tree-sitter for java."
+  "Return, for strings, a query based on what is supported by
+the available version of Tree-sitter for Java."
   (condition-case nil
       (progn (treesit-query-capture 'java '((text_block) @font-lock-string-face))
 	     `((string_literal) @font-lock-string-face
@@ -312,7 +325,7 @@ Return nil if there is no name or if NODE is not a defun node."
 
 
 (defvar java-ts-mode--feature-list
-  '(( comment definition )
+  '(( comment document definition )
     ( constant keyword string type)
     ( annotation expression literal)
     ( bracket delimiter operator)))
@@ -326,76 +339,91 @@ Return nil if there is no name or if NODE is not a defun node."
   (unless (treesit-ready-p 'java)
     (error "Tree-sitter for Java isn't available"))
 
-  (treesit-parser-create 'java)
+  (let ((primary-parser (treesit-parser-create 'java)))
 
-  ;; Comments.
-  (c-ts-common-comment-setup)
+    ;; Comments.
+    (c-ts-common-comment-setup)
 
-  ;; Indent.
-  (setq-local c-ts-common-indent-type-regexp-alist
-              `((block . ,(rx (or "class_body"
-                                  "array_initializer"
-                                  "constructor_body"
-                                  "annotation_type_body"
-                                  "interface_body"
-                                  "lambda_expression"
-                                  "enum_body"
-                                  "switch_block"
-                                  "record_declaration_body"
-                                  "block")))
-                (close-bracket . "}")
-                (if . "if_statement")
-                (else . ("if_statement" . "alternative"))
-                (for . "for_statement")
-                (while . "while_statement")
-                (do . "do_statement")))
-  (setq-local c-ts-common-indent-offset 'java-ts-mode-indent-offset)
-  (setq-local treesit-simple-indent-rules java-ts-mode--indent-rules)
+    ;; Indent.
+    (setq-local c-ts-common-indent-type-regexp-alist
+                `((block . ,(rx (or "class_body"
+                                    "array_initializer"
+                                    "constructor_body"
+                                    "annotation_type_body"
+                                    "interface_body"
+                                    "lambda_expression"
+                                    "enum_body"
+                                    "switch_block"
+                                    "record_declaration_body"
+                                    "block")))
+                  (close-bracket . "}")
+                  (if . "if_statement")
+                  (else . ("if_statement" . "alternative"))
+                  (for . "for_statement")
+                  (while . "while_statement")
+                  (do . "do_statement")))
+    (setq-local c-ts-common-indent-offset 'java-ts-mode-indent-offset)
+    (setq-local treesit-simple-indent-rules java-ts-mode--indent-rules)
 
-  ;; Electric
-  (setq-local electric-indent-chars
-              (append "{}():;," electric-indent-chars))
+    ;; Electric
+    (setq-local electric-indent-chars
+                (append "{}():;," electric-indent-chars))
 
-  ;; Navigation.
-  (setq-local treesit-defun-type-regexp
-              (regexp-opt '("method_declaration"
-                            "class_declaration"
-                            "record_declaration"
-                            "interface_declaration"
-                            "enum_declaration"
-                            "import_declaration"
-                            "package_declaration"
-                            "module_declaration"
-                            "constructor_declaration")))
-  (setq-local treesit-defun-name-function #'java-ts-mode--defun-name)
+    ;; Navigation.
+    (setq-local treesit-defun-type-regexp
+                (regexp-opt '("method_declaration"
+                              "class_declaration"
+                              "record_declaration"
+                              "interface_declaration"
+                              "enum_declaration"
+                              "import_declaration"
+                              "package_declaration"
+                              "module_declaration"
+                              "constructor_declaration")))
+    (setq-local treesit-defun-name-function #'java-ts-mode--defun-name)
 
-  (setq-local treesit-thing-settings
-              `((java
-                (sexp ,(rx (or "annotation"
-                               "parenthesized_expression"
-                               "argument_list"
-                               "identifier"
-                               "modifiers"
-                               "block"
-                               "body"
-                               "literal"
-                               "access"
-                               "reference"
-                               "_type"
-                               "true"
-                               "false")))
-                (sentence ,(rx (or "statement"
-                                   "local_variable_declaration"
-                                   "field_declaration"
-                                   "module_declaration"
-                                   "package_declaration"
-                                   "import_declaration")))
-                (text ,(regexp-opt '("line_comment"
-                                     "block_comment"
-                                     "text_block"))))))
+    (setq-local treesit-thing-settings
+                `((java
+                   (sexp ,(rx (or "annotation"
+                                  "parenthesized_expression"
+                                  "argument_list"
+                                  "identifier"
+                                  "modifiers"
+                                  "block"
+                                  "body"
+                                  "literal"
+                                  "access"
+                                  "reference"
+                                  "_type"
+                                  "true"
+                                  "false")))
+                   (sentence ,(rx (or "statement"
+                                      "local_variable_declaration"
+                                      "field_declaration"
+                                      "module_declaration"
+                                      "package_declaration"
+                                      "import_declaration")))
+                   (text ,(regexp-opt '("line_comment"
+                                        "block_comment"
+                                        "text_block"))))))
 
-  ;; Font-lock.
-  (setq-local treesit-font-lock-settings java-ts-mode--font-lock-settings)
+    ;; Font-lock.
+    (setq-local treesit-font-lock-settings
+                java-ts-mode--font-lock-settings)
+
+    ;; Inject doxygen parser for comment.
+    (when (and java-ts-mode-enable-doxygen (treesit-ready-p 'doxygen t))
+      (setq-local treesit-primary-parser primary-parser)
+      (setq-local treesit-font-lock-settings
+                  (append treesit-font-lock-settings
+                          c-ts-mode-doxygen-comment-font-lock-settings))
+      (setq-local treesit-range-settings
+                  (treesit-range-rules
+                   :embed 'doxygen
+                   :host 'java
+                   :local t
+                   `(((block_comment) @cap (:match "/\\*\\*" @cap)))))))
+
   (setq-local treesit-font-lock-feature-list java-ts-mode--feature-list)
 
   ;; Imenu.
@@ -410,6 +438,9 @@ Return nil if there is no name or if NODE is not a defun node."
 
 (if (treesit-ready-p 'java)
     (add-to-list 'auto-mode-alist '("\\.java\\'" . java-ts-mode)))
+
+(when (and java-ts-mode-enable-doxygen (not (treesit-ready-p 'doxygen t)))
+  (message "Doxygen syntax highlighting can't be enabled, please install the language grammar."))
 
 (provide 'java-ts-mode)
 

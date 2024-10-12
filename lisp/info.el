@@ -223,7 +223,7 @@ These directories are searched after those in `Info-directory-list'."
       "org" "pcl-cvs" "pgg" "rcirc" "reftex" "remember" "sasl" "sc"
       "semantic" "ses" "sieve" "smtpmail" "speedbar" "srecode"
       "todo-mode" "tramp" "transient" "url" "use-package" "vhdl-mode"
-      "vip" "viper" "vtable" "widget" "wisent" "woman") .
+      "viper" "vtable" "widget" "wisent" "woman") .
      "https://www.gnu.org/software/emacs/manual/html_node/%m/%e"))
   "Alist telling `Info-mode' where manuals are accessible online.
 
@@ -1032,6 +1032,48 @@ If NOERROR, inhibit error messages when we can't find the node."
              Info-history))
   (Info-find-node-2 filename nodename no-going-back strict-case))
 
+(defun Info--record-tag-table (nodename)
+  "If the current Info file has a tag table, record its location for NODENAME.
+
+This creates a tag-table buffer, sets `Info-tag-table-buffer' to
+name that buffer, and records the buffer and the tag table in
+the marker `Info-tag-table-buffer'.  If the Info file has no
+tag table, or if NODENAME is \"*\", the function sets the marker
+to nil to indicate the tag table is not available/relevant.
+
+The function assumes that the Info buffer is widened, and does
+not preserve point."
+  (goto-char (point-max))
+  (forward-line -8)
+  ;; Use string-equal, not equal, to ignore text props.
+  (if (not (or (string-equal nodename "*")
+	       (not
+		(search-forward "\^_\nEnd tag table\n" nil t))))
+      (let (pos)
+	;; We have a tag table.  Find its beginning.
+	;; Is this an indirect file?
+	(search-backward "\nTag table:\n")
+	(setq pos (point))
+	(if (save-excursion
+	      (forward-line 2)
+	      (looking-at "(Indirect)\n"))
+	    ;; It is indirect.  Copy it to another buffer
+	    ;; and record that the tag table is in that buffer.
+	    (let ((buf (current-buffer))
+		  (tagbuf
+		   (or Info-tag-table-buffer
+		       (generate-new-buffer " *info tag table*"))))
+	      (setq Info-tag-table-buffer tagbuf)
+	      (with-current-buffer tagbuf
+		(buffer-disable-undo (current-buffer))
+		(setq case-fold-search t)
+		(erase-buffer)
+		(insert-buffer-substring buf))
+	      (set-marker Info-tag-table-marker
+			  (match-end 0) tagbuf))
+	  (set-marker Info-tag-table-marker pos)))
+    (set-marker Info-tag-table-marker nil)))
+
 ;;;###autoload
 (defun Info-on-current-buffer (&optional nodename)
   "Use Info mode to browse the current Info buffer.
@@ -1048,6 +1090,7 @@ otherwise, that defaults to `Top'."
         (or buffer-file-name
             ;; If called on a non-file buffer, make a fake file name.
             (concat default-directory (buffer-name))))
+  (Info--record-tag-table nodename)
   (Info-find-node-2 nil nodename))
 
 (defun Info-revert-find-node (filename nodename)
@@ -1210,36 +1253,7 @@ is non-nil)."
 		 (Info-file-supports-index-cookies filename))
 
 	    ;; See whether file has a tag table.  Record the location if yes.
-	    (goto-char (point-max))
-	    (forward-line -8)
-	    ;; Use string-equal, not equal, to ignore text props.
-	    (if (not (or (string-equal nodename "*")
-			 (not
-			  (search-forward "\^_\nEnd tag table\n" nil t))))
-		(let (pos)
-		  ;; We have a tag table.  Find its beginning.
-		  ;; Is this an indirect file?
-		  (search-backward "\nTag table:\n")
-		  (setq pos (point))
-		  (if (save-excursion
-			(forward-line 2)
-			(looking-at "(Indirect)\n"))
-		      ;; It is indirect.  Copy it to another buffer
-		      ;; and record that the tag table is in that buffer.
-		      (let ((buf (current-buffer))
-			    (tagbuf
-			     (or Info-tag-table-buffer
-				 (generate-new-buffer " *info tag table*"))))
-			(setq Info-tag-table-buffer tagbuf)
-			(with-current-buffer tagbuf
-			  (buffer-disable-undo (current-buffer))
-			  (setq case-fold-search t)
-			  (erase-buffer)
-			  (insert-buffer-substring buf))
-			(set-marker Info-tag-table-marker
-				    (match-end 0) tagbuf))
-		    (set-marker Info-tag-table-marker pos)))
-	      (set-marker Info-tag-table-marker nil))
+            (Info--record-tag-table nodename)
 	    (setq Info-current-file filename)
 	    )))
 
@@ -4661,7 +4675,7 @@ Advanced commands:
 
 (defvar Info-file-list-for-emacs
   '("ediff" "eudc" "forms" "gnus" "info" ("Info" . "info") ("mh" . "mh-e")
-    "sc" "message" ("dired" . "dired-x") "viper" "vip" "idlwave"
+    "sc" "message" ("dired" . "dired-x") "viper" "idlwave"
     ("c" . "ccmode") ("c++" . "ccmode") ("objc" . "ccmode")
     ("java" . "ccmode") ("idl" . "ccmode") ("pike" . "ccmode")
     ("skeleton" . "autotype") ("auto-insert" . "autotype")

@@ -241,9 +241,14 @@ not signal an error."
 ;;;###autoload
 (defmacro pcase-lambda (lambda-list &rest body)
   "Like `lambda' but allow each argument to be a pattern.
-I.e. accepts the usual &optional and &rest keywords, but every
-formal argument can be any pattern accepted by `pcase' (a mere
-variable name being but a special case of it)."
+I.e. accepts the usual &optional and &rest keywords, but every formal
+argument can be any pattern destructed by `pcase-let' (a mere variable
+name being but a special case of it).
+
+Each argument should match its respective pattern in the parameter
+list (i.e. be of a compatible structure); a mismatch may signal an error
+or may go undetected, binding arguments to arbitrary values, such as
+nil."
   (declare (doc-string 2) (indent defun)
            (debug (&define (&rest pcase-PAT) lambda-doc def-body)))
   (let* ((bindings ())
@@ -1169,7 +1174,11 @@ The predicate is the logical-AND of:
           `'(,(cadr upata) . ,(cadr upatd))
         `(and (pred consp)
               (app car-safe ,upata)
-              (app cdr-safe ,upatd)))))
+              (app cdr-safe ,upatd)
+              ,@(when (eq (car qpat) '\`)
+                  `((guard ,(macroexp-warn-and-return
+                             "Nested ` are not supported in Pcase patterns"
+                             t nil nil qpat))))))))
    ((or (stringp qpat) (numberp qpat) (symbolp qpat)) `',qpat)
    ;; In all other cases just raise an error so we can't break
    ;; backward compatibility when adding \` support for other

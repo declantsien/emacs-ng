@@ -119,8 +119,8 @@
 ;;
 ;;     FSF
 ;;     Free Software Foundation
-;;     51 Franklin Street, Fifth Floor
-;;     Boston, MA 02110-1301  USA.
+;;     31 Milk Street, # 960789
+;;     Boston, MA 02196  USA.
 ;;     (617) 542-5942
 ;;     gnu@gnu.org
 ;;
@@ -486,7 +486,7 @@ contain matches to the regexp.)")
 
 (define-obsolete-function-alias 'set-page-delimiter #'pages-set-delimiter "27.1")
 (defun pages-set-delimiter (regexp reset-p &optional interactively)
-  "Set buffer local value of page-delimiter to REGEXP.
+  "Set buffer local value of `page-delimiter' to REGEXP.
 Called interactively with a prefix argument, reset `page-delimiter' to
 its original value.
 

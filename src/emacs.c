@@ -23,6 +23,7 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 
 #include <errno.h>
 #include <fcntl.h>
+#include <locale.h>
 #include <stdlib.h>
 
 #include <sys/file.h>
@@ -132,10 +133,6 @@ extern char etext;
 # endif
 #endif
 
-#ifdef HAVE_SETLOCALE
-#include <locale.h>
-#endif
-
 #if HAVE_WCHAR_H
 # include <wchar.h>
 #endif
@@ -194,7 +191,7 @@ bool inhibit_window_system;
    data on the first attempt to change it inside asynchronous code.  */
 bool running_asynch_code;
 
-#if defined (HAVE_X_WINDOWS) || defined (HAVE_NS)
+#if defined (HAVE_X_WINDOWS) || defined (HAVE_PGTK) || defined (HAVE_NS)
 /* If true, -d was specified, meaning we're using some window system.  */
 bool display_arg;
 #endif
@@ -401,14 +398,6 @@ section of the Emacs manual or the file BUGS.\n"
 
 /* True if handling a fatal error already.  */
 bool fatal_error_in_progress;
-
-#if !HAVE_SETLOCALE
-static char *
-setlocale (int cat, char const *locale)
-{
-  return 0;
-}
-#endif
 
 /* True if the current system locale uses UTF-8 encoding.  */
 static bool
@@ -1410,6 +1399,10 @@ main1 (int argc, char **argv)
      the additional call here is harmless.) */
   cache_system_info ();
 #ifdef WINDOWSNT
+  /* This must be called to initialize w32_unicode_filenames and
+     is_windows_9x prior to w32_init_current_directory.  */
+  globals_of_w32 ();
+
   /* On Windows 9X, we have to load UNICOWS.DLL as early as possible,
      to have non-stub implementations of APIs we need to convert file
      names between UTF-8 and the system's ANSI codepage.  */
@@ -1521,11 +1514,10 @@ main1 (int argc, char **argv)
         }
     }
 #endif
-
   emacs_wd = emacs_get_current_dir_name ();
 #ifdef WINDOWSNT
   initial_wd = emacs_wd;
-#endif
+#endif /* WINDOWSNT */
 #ifdef HAVE_PDUMPER
   if (dumped_with_pdumper_p ())
     pdumper_record_wd (emacs_wd);
@@ -2086,7 +2078,7 @@ Using an Emacs configured with --with-x-toolkit=lucid does not have this problem
   {
     int count_before = skip_args;
 
-#ifdef HAVE_X_WINDOWS
+#if defined (HAVE_X_WINDOWS) || defined (HAVE_PGTK)
     char *displayname = 0;
 
     /* Skip any number of -d options, but only use the last one.  */
@@ -2180,7 +2172,10 @@ Using an Emacs configured with --with-x-toolkit=lucid does not have this problem
   init_atimer ();
 
 #ifdef WINDOWSNT
-  globals_of_w32 ();
+  /* We need to forget about libraries that were loaded during the
+     dumping process (e.g. libgccjit).  This must be done _after_
+     load_pdump.  */
+  Vlibrary_cache = Qnil;
 #ifdef HAVE_W32NOTIFY
   globals_of_w32notify ();
 #endif
@@ -3284,7 +3279,6 @@ You must run Emacs in batch mode in order to dump it.  */)
 #endif
 
 
-#if HAVE_SETLOCALE
 /* Recover from setlocale (LC_ALL, "").  */
 void
 fixup_locale (void)
@@ -3304,7 +3298,7 @@ synchronize_locale (int category, Lisp_Object *plocale, Lisp_Object desired_loca
       *plocale = desired_locale;
       char const *locale_string
 	= STRINGP (desired_locale) ? SSDATA (desired_locale) : "";
-# ifdef WINDOWSNT
+#ifdef WINDOWSNT
       /* Changing categories like LC_TIME usually requires specifying
 	 an encoding suitable for the new locale, but MS-Windows's
 	 'setlocale' will only switch the encoding when LC_ALL is
@@ -3313,9 +3307,9 @@ synchronize_locale (int category, Lisp_Object *plocale, Lisp_Object desired_loca
 	 numbers is unaffected.  */
       setlocale (LC_ALL, locale_string);
       fixup_locale ();
-# else	/* !WINDOWSNT */
+#else
       setlocale (category, locale_string);
-# endif	/* !WINDOWSNT */
+#endif
     }
 }
 
@@ -3329,21 +3323,20 @@ synchronize_system_time_locale (void)
 		      Vsystem_time_locale);
 }
 
-# ifdef LC_MESSAGES
+#ifdef LC_MESSAGES
 static Lisp_Object Vprevious_system_messages_locale;
-# endif
+#endif
 
 /* Set system messages locale to match Vsystem_messages_locale, if
    possible.  */
 void
 synchronize_system_messages_locale (void)
 {
-# ifdef LC_MESSAGES
+#ifdef LC_MESSAGES
   synchronize_locale (LC_MESSAGES, &Vprevious_system_messages_locale,
 		      Vsystem_messages_locale);
-# endif
+#endif
 }
-#endif /* HAVE_SETLOCALE */
 
 /* Return a diagnostic string for ERROR_NUMBER, in the wording
    and encoding appropriate for the current locale.  */
@@ -3615,7 +3608,7 @@ Special values:
   `windows-nt'   compiled as a native W32 application.
   `cygwin'       compiled using the Cygwin library.
   `haiku'        compiled for a Haiku system.
-  `android'	 compiled for Android.
+  `android'      compiled for Android.
 Anything else (in Emacs 26, the possibilities are: aix, berkeley-unix,
 hpux, usg-unix-v) indicates some sort of Unix system.  */);
   Vsystem_type = intern_c_string (SYSTEM_TYPE);

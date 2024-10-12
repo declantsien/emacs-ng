@@ -37,11 +37,12 @@ most deeply nested form.
 Normally a form is manually pushed onto the list at the beginning
 of `byte-compile-form', etc., and manually popped off at its end.
 This is to preserve the data in it in the event of a
-condition-case handling a signaled error.")
+`condition-case' handling a signaled error.")
 
 (defmacro macroexp--with-extended-form-stack (expr &rest body)
   "Evaluate BODY with EXPR pushed onto `byte-compile-form-stack'."
-  (declare (indent 1))
+  (declare (indent 1)
+           (debug (sexp body)))
   `(let ((byte-compile-form-stack (cons ,expr byte-compile-form-stack)))
      ,@body))
 

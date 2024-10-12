@@ -200,12 +200,6 @@ describing the mode, e.g. for using with `eshell-get-target'.")
 
 (defvar eshell-current-handles nil)
 
-(defvar-local eshell-last-command-status 0
-  "The exit code from the last command.  0 if successful.")
-
-(defvar eshell-last-command-result nil
-  "The result of the last command.  Not related to success.")
-
 (defvar eshell-output-file-buffer nil
   "If non-nil, the current buffer is a file output buffer.")
 
@@ -359,14 +353,14 @@ calling this function)."
 (defun eshell-duplicate-handles (handles &optional steal-p)
   "Create a duplicate of the file handles in HANDLES.
 This uses the targets of each handle in HANDLES, incrementing its
-reference count by one (unless STEAL-P is non-nil).  These
-targets are shared between the original set of handles and the
-new one, so the targets are only closed when the reference count
-drops to 0 (see `eshell-close-handles').
+reference count by one.  These targets are shared between the original
+set of handles and the new one, so the targets are only closed when the
+reference count drops to 0 (see `eshell-close-handles').
 
 This function also sets the DEFAULT field for each handle to
 t (see `eshell-create-handles').  Unlike the targets, this value
 is not shared with the original handles."
+  (declare (advertised-calling-convention (handles) "31.1"))
   (let ((dup-handles (make-vector eshell-number-of-handles nil)))
     (dotimes (idx eshell-number-of-handles)
       (when-let ((handle (aref handles idx)))
@@ -382,23 +376,27 @@ is not shared with the original handles."
       (cl-incf (cdar handle))))
   handles)
 
-(defun eshell-close-handles (&optional exit-code result handles)
+(declare-function eshell-exit-success-p "esh-cmd")
+
+(defun eshell-close-handles (&optional handles obsolete-1 obsolete-2)
   "Close all of the current HANDLES, taking refcounts into account.
-If HANDLES is nil, use `eshell-current-handles'.
+If HANDLES is nil, use `eshell-current-handles'."
+  (declare (advertised-calling-convention (&optional handles) "31.1"))
+  (when (or obsolete-1 obsolete-2 (numberp handles))
+    (declare-function eshell-set-exit-info "esh-cmd"
+                      (&optional exit-code result))
+    ;; In addition to setting the advertised calling convention, warn
+    ;; if we get here.  A caller may have called with the right number
+    ;; of arguments but the wrong type.
+    (display-warning '(eshell close-handles)
+                     "Called `eshell-close-handles' with obsolete arguments")
+    ;; Here, HANDLES is really the exit code.
+    (when (or handles obsolete-1)
+      (eshell-set-exit-info (or handles 0) (cadr obsolete-1)))
+    (setq handles obsolete-2))
 
-EXIT-CODE is the process exit code (zero, if the command
-completed successfully).  If nil, then use the exit code already
-set in `eshell-last-command-status'.
-
-RESULT is the quoted value of the last command.  If nil, then use
-the value already set in `eshell-last-command-result'."
-  (when exit-code
-    (setq eshell-last-command-status exit-code))
-  (when result
-    (cl-assert (eq (car result) 'quote))
-    (setq eshell-last-command-result (cadr result)))
   (let ((handles (or handles eshell-current-handles))
-        (succeeded (= eshell-last-command-status 0)))
+        (succeeded (eshell-exit-success-p)))
     (dotimes (idx eshell-number-of-handles)
       (eshell-close-handle (aref handles idx) succeeded))))
 
@@ -431,11 +429,10 @@ current list of targets."
       (when defaultp
         (cl-decf (cdar handle))
         (setcar handle (cons nil 1)))
-      (catch 'eshell-null-device
-        (let ((current (caar handle))
-              (where (eshell-get-target target mode)))
-          (unless (member where current)
-            (setcar (car handle) (append current (list where))))))
+      (let ((current (caar handle))
+            (where (eshell-get-target target mode)))
+        (when (and where (not (member where current)))
+          (setcar (car handle) (append current (list where)))))
       (setcar (cdr handle) nil))))
 
 (defun eshell-copy-output-handle (index index-to-copy &optional handles)
@@ -611,11 +608,13 @@ return an `eshell-generic-target' instance; otherwise, return a
 marker for a file named TARGET."
   (setq mode (or mode 'insert))
   (if-let ((redir (assoc raw-target eshell-virtual-targets)))
-      (let ((target (if (nth 2 redir)
-                        (funcall (nth 1 redir) mode)
-                      (nth 1 redir))))
-        (unless (eshell-generic-target-p target)
-          (setq target (eshell-function-target-create target)))
+      (let (target)
+        (catch 'eshell-null-device
+          (setq target (if (nth 2 redir)
+                           (funcall (nth 1 redir) mode)
+                         (nth 1 redir)))
+          (unless (eshell-generic-target-p target)
+            (setq target (eshell-function-target-create target))))
         target)
     (let ((exists (get-file-buffer raw-target))
           (buf (find-file-noselect raw-target t)))
@@ -713,7 +712,7 @@ Returns what was actually sent, or nil if nothing was sent.")
 
 (cl-defmethod eshell-output-object-to-target (object (target symbol))
   "Output OBJECT to the value of the symbol TARGET."
-  (if (not (symbol-value target))
+  (if (not (and (boundp target) (symbol-value target)))
       (set target object)
     (setq object (eshell-stringify object))
     (if (not (stringp (symbol-value target)))

@@ -63,6 +63,9 @@
 ;; will set up Emacs to use the C/C++ modes defined here for other
 ;; files, provided that you have the corresponding parser grammar
 ;; libraries installed.
+;;
+;; If the tree-sitter doxygen grammar is available, then the comment
+;; blocks can be highlighted according to this grammar.
 
 ;;; Code:
 
@@ -213,6 +216,17 @@ again."
   :safe 'booleanp
   :group 'c)
 
+(defcustom c-ts-mode-enable-doxygen nil
+  "Enable doxygen syntax highlighting.
+If Non-nil, enable doxygen based font lock for comment blocks.
+This needs to be set before enabling `c-ts-mode'; if you change
+the value after enabling `c-ts-mode', toggle the mode off and on
+again."
+  :version "31.1"
+  :type 'boolean
+  :safe 'booleanp
+  :group 'c)
+
 ;;; Syntax table
 
 (defvar c-ts-mode--syntax-table
@@ -324,10 +338,13 @@ characters of the current line."
           ;; If the start of the previous sibling isn't at the
           ;; beginning of a line, something's probably not quite
           ;; right, go a step further. (E.g., comment after a
-          ;; statement.)
+          ;; statement.)  If the previous sibling is the first named
+          ;; node then anchor to that, e.g. when returning an aggregate
+          ;; and starting the items on the same line as {.
           (_ (goto-char (treesit-node-start prev-sibling))
-             (if (looking-back (rx bol (* whitespace))
-                               (line-beginning-position))
+             (if (or (looking-back (rx bol (* whitespace))
+                                   (line-beginning-position)))
+                     (null (treesit-node-prev-sibling prev-sibling t))
                  (setq continue nil)
                (setq prev-sibling
                      (treesit-node-prev-sibling prev-sibling)))))))
@@ -463,7 +480,8 @@ MODE is either `c' or `cpp'."
            ,@(when (eq mode 'cpp)
                '(((node-is "access_specifier") parent-bol 0)
                  ;; Indent the body of namespace definitions.
-                 ((parent-is "declaration_list") parent-bol c-ts-mode-indent-offset)))
+                 ((parent-is "declaration_list") parent-bol c-ts-mode-indent-offset)
+                 ((parent-is "template_declaration") parent-bol 0)))
 
 
            ;; int[5] a = { 0, 0, 0, 0 };
@@ -539,7 +557,7 @@ NODE should be a labeled_statement.  PARENT is its parent."
 ;;; Font-lock
 
 (defvar c-ts-mode--feature-list
-  '(( comment definition)
+  '(( comment document definition)
     ( keyword preprocessor string type)
     ( assignment constant escape-sequence label literal)
     ( bracket delimiter error function operator property variable))
@@ -573,7 +591,7 @@ MODE is either `c' or `cpp'."
                   "or_eq" "override" "private" "protected"
                   "public" "requires" "template" "throw"
                   "try" "typename" "using"
-                  "xor" "xor_eq"))
+                  "xor" "xor_eq" "thread_local"))
       (append '("auto") c-keywords))))
 
 (defvar c-ts-mode--type-keywords
@@ -590,6 +608,15 @@ MODE is either `c' or `cpp'."
   (rx "FOR_EACH_" (or "TAIL" "TAIL_SAFE" "ALIST_VALUE"
                       "LIVE_BUFFER" "FRAME"))
   "A regexp matching all the variants of the FOR_EACH_* macro.")
+
+(defvar c-ts-mode--doxygen-comment-regex
+  (rx (| "/**" "/*!" "//!" "///"))
+  "A regexp that matches all doxygen comment styles.")
+
+(defun c-ts-mode--test-virtual-named-p ()
+  "Return t if the virtual keyword is a namded node, nil otherwise."
+  (ignore-errors
+    (progn (treesit-query-compile 'cpp "(virtual)" t) t)))
 
 (defun c-ts-mode--font-lock-settings (mode)
   "Tree-sitter font-lock settings.
@@ -635,8 +662,13 @@ MODE is either `c' or `cpp'."
    `([,@(c-ts-mode--keywords mode)] @font-lock-keyword-face
      ,@(when (eq mode 'cpp)
          '((auto) @font-lock-keyword-face
-           (this) @font-lock-keyword-face
-           (virtual) @font-lock-keyword-face)))
+           (this) @font-lock-keyword-face))
+     ,@(when (and (eq mode 'cpp)
+                  (c-ts-mode--test-virtual-named-p))
+         '((virtual) @font-lock-keyword-face))
+     ,@(when (and (eq mode 'cpp)
+                  (not (c-ts-mode--test-virtual-named-p)))
+         '("virtual" @font-lock-keyword-face)))
 
    :language mode
    :feature 'operator
@@ -674,7 +706,9 @@ MODE is either `c' or `cpp'."
    :language mode
    :feature 'definition
    ;; Highlights identifiers in declarations.
-   `((declaration
+   `(,@(when (eq mode 'cpp)
+         '((destructor_name (identifier) @font-lock-function-name-face)))
+     (declaration
       declarator: (_) @c-ts-mode--fontify-declarator)
 
      (field_declaration
@@ -1315,32 +1349,50 @@ in your init files."
     ;; Create an "for-each" parser, see `c-ts-mode--emacs-set-ranges'
     ;; for more.
     (when c-ts-mode-emacs-sources-support
-      (treesit-parser-create 'c nil nil 'for-each))
+      (setq-local treesit-primary-parser
+                  (treesit-parser-create 'c nil nil 'for-each)))
 
-    (treesit-parser-create 'c)
-    ;; Comments.
-    (setq-local comment-start "/* ")
-    (setq-local comment-end " */")
-    ;; Indent.
-    (setq-local treesit-simple-indent-rules
-                (c-ts-mode--get-indent-style 'c))
-    ;; Font-lock.
-    (setq-local treesit-font-lock-settings (c-ts-mode--font-lock-settings 'c))
-    ;; Navigation.
-    (setq-local treesit-defun-tactic 'top-level)
-    (treesit-major-mode-setup)
+    (let ((primary-parser (treesit-parser-create 'c)))
+      ;; Comments.
+      (setq-local comment-start "/* ")
+      (setq-local comment-end " */")
+      ;; Indent.
+      (setq-local treesit-simple-indent-rules
+                  (c-ts-mode--get-indent-style 'c))
+      ;; Font-lock.
+      (setq-local treesit-font-lock-settings
+                  (c-ts-mode--font-lock-settings 'c))
+      ;; Navigation.
+      (setq-local treesit-defun-tactic 'top-level)
+      (treesit-major-mode-setup)
 
-    ;; Emacs source support: handle DEFUN and FOR_EACH_* gracefully.
-    (when c-ts-mode-emacs-sources-support
-      (setq-local add-log-current-defun-function
-                  #'c-ts-mode--emacs-current-defun-name)
+      ;; Emacs source support: handle DEFUN and FOR_EACH_* gracefully.
+      (when c-ts-mode-emacs-sources-support
+        (setq-local add-log-current-defun-function
+                    #'c-ts-mode--emacs-current-defun-name)
 
-      (setq-local treesit-range-settings
-                  (treesit-range-rules 'c-ts-mode--emacs-set-ranges))
+        (setq-local treesit-range-settings
+                    (treesit-range-rules 'c-ts-mode--emacs-set-ranges))
 
-      (setq-local treesit-language-at-point-function
-                  (lambda (_pos) 'c))
-      (treesit-font-lock-recompute-features '(emacs-devel)))))
+        (setq-local treesit-language-at-point-function
+                    (lambda (_pos) 'c))
+        (treesit-font-lock-recompute-features '(emacs-devel)))
+
+      ;; Inject doxygen parser for comment.
+      (when (and c-ts-mode-enable-doxygen (treesit-ready-p 'doxygen t))
+        (setq-local treesit-primary-parser primary-parser)
+        (setq-local treesit-font-lock-settings
+                    (append
+                     treesit-font-lock-settings
+                     c-ts-mode-doxygen-comment-font-lock-settings))
+        (setq-local treesit-range-settings
+                    (treesit-range-rules
+                     :embed 'doxygen
+                     :host 'c
+                     :local t
+                     `(((comment) @cap
+                        (:match
+                         ,c-ts-mode--doxygen-comment-regex @cap)))))))))
 
 (derived-mode-add-parents 'c-ts-mode '(c-mode))
 
@@ -1368,24 +1420,40 @@ recommended to enable `electric-pair-mode' with this mode."
   :after-hook (c-ts-mode-set-modeline)
 
   (when (treesit-ready-p 'cpp)
+    (let ((primary-parser (treesit-parser-create 'cpp)))
 
-    (treesit-parser-create 'cpp)
+      ;; Syntax.
+      (setq-local syntax-propertize-function
+                  #'c-ts-mode--syntax-propertize)
 
-    ;; Syntax.
-    (setq-local syntax-propertize-function
-                #'c-ts-mode--syntax-propertize)
+      ;; Indent.
+      (setq-local treesit-simple-indent-rules
+                  (c-ts-mode--get-indent-style 'cpp))
 
-    ;; Indent.
-    (setq-local treesit-simple-indent-rules
-                (c-ts-mode--get-indent-style 'cpp))
+      ;; Font-lock.
+      (setq-local treesit-font-lock-settings
+                  (c-ts-mode--font-lock-settings 'cpp))
+      (treesit-major-mode-setup)
 
-    ;; Font-lock.
-    (setq-local treesit-font-lock-settings (c-ts-mode--font-lock-settings 'cpp))
-    (treesit-major-mode-setup)
+      (when c-ts-mode-emacs-sources-support
+        (setq-local add-log-current-defun-function
+                    #'c-ts-mode--emacs-current-defun-name))
 
-    (when c-ts-mode-emacs-sources-support
-      (setq-local add-log-current-defun-function
-                  #'c-ts-mode--emacs-current-defun-name))))
+      ;; Inject doxygen parser for comment.
+      (when (and c-ts-mode-enable-doxygen (treesit-ready-p 'doxygen t))
+        (setq-local treesit-primary-parser primary-parser)
+        (setq-local treesit-font-lock-settings
+                    (append
+                     treesit-font-lock-settings
+                     c-ts-mode-doxygen-comment-font-lock-settings))
+        (setq-local treesit-range-settings
+                    (treesit-range-rules
+                     :embed 'doxygen
+                     :host 'cpp
+                     :local t
+                     `(((comment) @cap
+                        (:match
+                         ,c-ts-mode--doxygen-comment-regex @cap)))))))))
 
 (derived-mode-add-parents 'c++-ts-mode '(c++-mode))
 
@@ -1483,6 +1551,9 @@ the code is C or C++, and based on that chooses whether to enable
 (when (and (treesit-ready-p 'cpp)
            (treesit-ready-p 'c))
   (add-to-list 'major-mode-remap-defaults '(c-or-c++-mode . c-or-c++-ts-mode)))
+
+(when (and c-ts-mode-enable-doxygen (not (treesit-ready-p 'doxygen t)))
+  (message "Doxygen syntax highlighting can't be enabled, please install the language grammar."))
 
 (provide 'c-ts-mode)
 (provide 'c++-ts-mode)
