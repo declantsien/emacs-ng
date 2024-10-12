@@ -405,7 +405,7 @@ extern "C" fn draw(
 }
 
 extern "C" fn list(frame: *mut frame, spec: LispObject) -> LispObject {
-    // println!("list font with spec: {:?}", spec);
+    println!("list font with spec: {:?}", spec);
     //TODO handle generial font family name
     // script -> charset language
     // webrender using font-index, add font using FontID
@@ -427,6 +427,7 @@ extern "C" fn list(frame: *mut frame, spec: LispObject) -> LispObject {
 }
 
 extern "C" fn match_(_f: *mut frame, spec: LispObject) -> LispObject {
+    println!("match font: {:?}", spec);    
     let spec = LispFontLike(spec);
     let family_name = spec.family_name();
     if family_name.is_none() {
@@ -513,6 +514,7 @@ pub type FontInfoRef = ExternalPtr<FontInfo>;
 
 extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: i32) -> LispObject {
     log::trace!("open font: {:?}", pixel_size);
+    println!("open font: {:?}", pixel_size);    
     let extra = unsafe {
         assq_no_quit(
             QCfont_entity,
@@ -856,6 +858,7 @@ pub extern "C" fn register_swash_font_driver(f: *mut frame) {
 #[allow(unused_variables)]
 #[no_mangle]
 pub extern "C" fn syms_of_swash_font() {
+    
     def_lisp_sym!(Qswash, "swash");
     def_lisp_sym!(Qmonospace, "monospace");
     def_lisp_sym!(Qfixed, "fixed");

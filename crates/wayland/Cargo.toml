@@ -1,0 +1,13 @@
+[package]
+name = "wayland"
+version = "0.1.0"
+edition = "2021"
+build = "../codegen/etc/build.rs"
+
+[dependencies]
+emacs-sys = { path = "../emacs-sys", features = ["window-system-wayland"] }
+webrender = { path = "../webrender", default-features = false, features = ["surfman"] }
+
+[build-dependencies]
+codegen = { path = "../codegen" }
+

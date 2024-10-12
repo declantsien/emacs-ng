@@ -2,6 +2,8 @@
 typedef struct pgtk_output output;
 #elif defined (HAVE_WINIT)
 typedef struct winit_output output;
+#elif defined (HAVE_WAYLAND)
+typedef struct wl_output output;
 #endif
 
 extern int wr_get_fontset(output* output);

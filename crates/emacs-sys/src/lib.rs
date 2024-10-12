@@ -66,10 +66,10 @@ pub mod terminal;
 pub mod thread;
 pub mod vector;
 pub mod window;
-#[cfg(all(any(have_winit, have_pgtk), use_webrender))]
+#[cfg(all(any(have_winit, have_pgtk, have_wayland), use_webrender))]
 mod window_system;
 pub mod xdisp;
-#[cfg(all(any(have_winit, have_pgtk), use_webrender))]
+#[cfg(all(any(have_winit, have_pgtk, have_wayland), use_webrender))]
 pub use window_system::*;
 #[cfg(any(glutin, surfman, gtk3))]
 pub mod gfx {

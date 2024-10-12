@@ -1,3 +1,7 @@
+#[cfg(have_wayland)]
+mod wayland;
+#[cfg(have_wayland)]
+pub use wayland::*;
 #[cfg(have_pgtk)]
 mod pgtk;
 #[cfg(have_pgtk)]

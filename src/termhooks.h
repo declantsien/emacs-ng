@@ -66,6 +66,7 @@ enum output_method
   output_haiku,
   output_android,
   output_winit,
+  output_wayland,
 };
 
 /* Input queue declarations and hooks.  */
@@ -545,6 +546,7 @@ struct terminal
     struct haiku_display_info *haiku;		/* haikuterm.h */
     struct android_display_info *android;	/* androidterm.h */
     struct winit_display_info *winit;	        /* winitterm.h */
+    struct wl_display_info *wayland;		/* wlterm.h */
   } display_info;
 
 
@@ -957,9 +959,12 @@ extern struct terminal *terminal_list;
 #elif defined (HAVE_ANDROID)
 #define TERMINAL_FONT_CACHE(t)						\
   (t->type == output_android ? t->display_info.android->name_list_element : Qnil)
-#elif defined (USE_WEBRENDER)
+#elif defined (HAVE_WINIT)
 #define TERMINAL_FONT_CACHE(t)						\
   (t->type == output_winit ? t->display_info.winit ->name_list_element : Qnil)
+#elif defined (HAVE_WAYLAND)
+#define TERMINAL_FONT_CACHE(t)						\
+  (t->type == output_wayland ? t->display_info.wayland->name_list_element : Qnil)
 #endif
 
 extern struct terminal *decode_live_terminal (Lisp_Object);

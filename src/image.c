@@ -92,7 +92,7 @@ typedef struct x_bitmap_record Bitmap_Record;
 #endif	/* !USE_CAIRO */
 #endif /* HAVE_X_WINDOWS */
 
-#if defined(USE_CAIRO) || defined(HAVE_NS)
+#if defined(USE_CAIRO) || defined(HAVE_NS) || defined(USE_WEBRENDER)
 #define RGB_TO_ULONG(r, g, b) (((r) << 16) | ((g) << 8) | (b))
 #ifndef HAVE_NS
 #define ARGB_TO_ULONG(a, r, g, b) (((a) << 24) | ((r) << 16) | ((g) << 8) | (b))
@@ -6958,7 +6958,7 @@ image_to_emacs_colors (struct frame *f, struct image *img, bool rgb_p)
   for (y = 0; y < img->height; ++y)
     {
 #if !defined USE_CAIRO && !defined HAVE_NS && !defined HAVE_HAIKU	\
-  && !defined HAVE_ANDROID
+  && !defined HAVE_ANDROID && !defined HAVE_WAYLAND
       Emacs_Color *row = p;
       for (x = 0; x < img->width; ++x, ++p)
 	p->pixel = GET_PIXEL (ximg, x, y);
@@ -7209,7 +7209,7 @@ image_edge_detection (struct frame *f, struct image *img,
 
 
 #if defined HAVE_X_WINDOWS || defined USE_CAIRO || defined HAVE_HAIKU	\
-  || defined HAVE_ANDROID
+  || defined HAVE_ANDROID || defined use_webren
 
 static void
 image_pixmap_draw_cross (struct frame *f, Emacs_Pixmap pixmap,
@@ -7304,7 +7304,7 @@ image_disable_image (struct frame *f, struct image *img)
 #ifndef HAVE_NTGUI
 #ifndef HAVE_NS  /* TODO: NS support, however this not needed for toolbars */
 
-#if !defined USE_CAIRO && !defined HAVE_HAIKU && !defined HAVE_ANDROID
+#if !defined USE_CAIRO && !defined HAVE_HAIKU && !defined HAVE_ANDROID && !defined USE_WEBRENDER
 #define CrossForeground(f) BLACK_PIX_DEFAULT (f)
 #define MaskForeground(f)  WHITE_PIX_DEFAULT (f)
 #else  /* USE_CAIRO || HAVE_HAIKU */
@@ -7312,7 +7312,7 @@ image_disable_image (struct frame *f, struct image *img)
 #define MaskForeground(f)  PIX_MASK_DRAW
 #endif	/* USE_CAIRO || HAVE_HAIKU */
 
-#if !defined USE_CAIRO && !defined HAVE_HAIKU
+#if !defined USE_CAIRO && !defined HAVE_HAIKU && !defined USE_WEBRENDER
       image_sync_to_pixmaps (f, img);
 #endif	/* !USE_CAIRO && !HAVE_HAIKU */
       image_pixmap_draw_cross (f, img->pixmap, 0, 0, img->width, img->height,

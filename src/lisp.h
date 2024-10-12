@@ -5500,6 +5500,14 @@ extern void init_xterm (void);
 extern void syms_of_xterm (void);
 #endif /* HAVE_X_WINDOWS */
 
+#ifdef HAVE_WAYLAND
+/* Defined in wlfns.c.  */
+extern void syms_of_wlfns (void);
+
+/* Defined in wlterm.c.  */
+extern void syms_of_wlterm (void);
+#endif /* HAVE_WAYLAND */
+
 #ifdef HAVE_WINDOW_SYSTEM
 /* Defined in xterm.c, nsterm.m, w32term.c.  */
 extern char *get_keysym_name (int);

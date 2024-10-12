@@ -358,7 +358,8 @@ fn main() {
         // Emacs
             use_webrender: { feature = "webrender"},
         have_ntgui: { feature = "window-system-w32" },
-        have_pgtk: { feature = "window-system-pgtk" },
+        have_wayland: { feature = "window-system-wayland" },
+        have_pgtk: { feature = "window-system-pgtk" },        
         have_x11: { feature = "window-system-x11" },
         have_ns: { feature = "window-system-nextstep" },
         have_haiku: { feature = "window-system-haiku"},
@@ -368,7 +369,7 @@ fn main() {
         glutin: { feature = "glutin" },
         gtk3: { all(feature = "gtk3", have_pgtk) },
         have_window_system: {
-        any(have_ntgui, have_pgtk, have_x11, have_ns, have_haiku, have_android, have_winit)},
+        any(have_ntgui, have_pgtk, have_wayland, have_x11, have_ns, have_haiku, have_android, have_winit)},
 
     }
 }

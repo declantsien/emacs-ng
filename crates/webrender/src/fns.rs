@@ -305,6 +305,7 @@ pub extern "C" fn wr_new_font(
     font_object: LispObject,
     fontset: i32,
 ) -> LispObject {
+    println!("open font: {:?}", font_object);    
     let mut frame: FrameRef = frame.into();
 
     let font = LispFontRef::from_vectorlike(font_object.as_vectorlike().unwrap()).as_font_mut();

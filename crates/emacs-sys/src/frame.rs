@@ -380,6 +380,8 @@ impl FrameRef {
         return OutputRef::new(unsafe { self.output_data.pgtk });
         #[cfg(feature = "window-system-winit")]
         return OutputRef::new(unsafe { self.output_data.winit });
+        #[cfg(feature = "window-system-wayland")]
+        return OutputRef::new(unsafe { self.output_data.wayland });
         unimplemented!();
     }
 

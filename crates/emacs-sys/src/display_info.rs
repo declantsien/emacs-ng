@@ -7,7 +7,7 @@ pub use crate::bindings::ns_display_info as DisplayInfo;
 pub use crate::bindings::w32_display_info as DisplayInfo;
 #[cfg(have_x11)]
 pub use crate::bindings::x_display_info as DisplayInfo;
-#[cfg(any(feature = "window-system-pgtk", feature = "window-system-winit"))]
+#[cfg(any(feature = "window-system-pgtk", feature = "window-system-winit", feature = "window-system-wayland"))]
 pub use crate::bindings::Display_Info as DisplayInfo;
 use crate::display_traits::FrameParam;
 use crate::frame::FrameRef;

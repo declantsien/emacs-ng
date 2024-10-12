@@ -234,6 +234,7 @@ Value is:
  `haiku' for an Emacs frame running in Haiku.
  `android' for an Emacs frame running in Android.
  `winit' for an Emacs frame running using Rust Winit.
+ `wayland' for an Emacs frame running on Wayland.
 See also `frame-live-p'.  */)
   (Lisp_Object object)
 {
@@ -260,6 +261,8 @@ See also `frame-live-p'.  */)
       return Qandroid;
     case output_winit:
       return Qwinit;
+    case output_wayland:
+      return Qwayland;
     default:
       emacs_abort ();
     }
@@ -5418,7 +5421,7 @@ gui_display_get_resource (Display_Info *dpyinfo, Lisp_Object attribute,
   *nz++ = '.';
   lispstpcpy (nz, attribute);
 
-#ifndef HAVE_ANDROID
+#if !defined (HAVE_ANDROID) && !defined (HAVE_WAYLAND)
   const char *value
     = dpyinfo->terminal->get_string_resource_hook (&dpyinfo->rdb,
 						   name_key,
@@ -6349,6 +6352,8 @@ syms_of_frame (void)
   DEFSYM (Qandroid, "android");
   DEFSYM (Qwinit, "winit");
   DEFSYM (Qwr, "wr");
+  DEFSYM (Qwayland, "wayland");
+  DEFSYM (Qwebrender, "webrender");
   DEFSYM (Qvisible, "visible");
   DEFSYM (Qbuffer_predicate, "buffer-predicate");
   DEFSYM (Qbuffer_list, "buffer-list");

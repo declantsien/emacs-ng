@@ -62,6 +62,9 @@
 #ifdef HAVE_WINIT
 # include "winitterm.h"
 #endif
+#ifdef HAVE_WAYLAND
+# include "wlterm.h"
+#endif
 #ifdef HAVE_PGTK
 # include "pgtkterm.h"
 # include "gtkutil.h"

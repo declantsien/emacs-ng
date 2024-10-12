@@ -6660,6 +6660,14 @@ init_display_interactive (void)
     }
 #endif /* HAVE_WINIT */
 
+#ifdef HAVE_WAYLAND
+  if (!inhibit_window_system && !will_dump_p ())
+    {
+      Vinitial_window_system = Qwayland;
+      return;
+    }
+#endif
+
   /* If no window system has been specified, try to use the terminal.  */
   if (! isatty (STDIN_FILENO))
     fatal ("standard input is not a tty");

@@ -458,6 +458,8 @@ return values.  */)
       return Qandroid;
     case output_winit:
       return Qwinit;
+    case output_wayland:
+      return Qwayland;
     default:
       emacs_abort ();
     }

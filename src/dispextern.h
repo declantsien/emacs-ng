@@ -165,23 +165,29 @@ typedef Emacs_Pixmap Emacs_Pix_Container;
 typedef Emacs_Pixmap Emacs_Pix_Context;
 #endif
 
-#ifdef USE_WEBRENDER
-#include "wrgui.h"
-#ifdef HAVE_WINIT
-typedef struct winit_display_info Display_Info;
-#endif
-typedef WRImage *XImagePtr;
-typedef XImagePtr XImagePtr_or_DC;
-typedef Emacs_Pixmap Emacs_Pix_Container;
-typedef Emacs_Pixmap Emacs_Pix_Context;
-#endif /* USE_WEBRENDER */
-
 #ifdef HAVE_ANDROID
 #include "androidgui.h"
 typedef struct android_display_info Display_Info;
 typedef struct android_image *Emacs_Pix_Container;
 typedef struct android_image *Emacs_Pix_Context;
 #endif
+
+#ifdef HAVE_WINIT
+typedef struct winit_display_info Display_Info;
+#endif
+
+#ifdef HAVE_WAYLAND
+typedef struct wl_display_info Display_Info;
+typedef int *Emacs_Cursor;
+#endif /* HAVE_WAYLAND */
+
+#ifdef USE_WEBRENDER
+#include "wrgui.h"
+typedef WRImage *XImagePtr;
+typedef XImagePtr XImagePtr_or_DC;
+typedef Emacs_Pixmap Emacs_Pix_Container;
+typedef Emacs_Pixmap Emacs_Pix_Context;
+#endif /* USE_WEBRENDER */
 
 #ifdef HAVE_WINDOW_SYSTEM
 # include <time.h>

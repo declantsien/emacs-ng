@@ -611,6 +611,8 @@ OPTION_DEFAULT_ON([xinput2],[don't use version 2 of the X Input Extension for in
 OPTION_DEFAULT_OFF([small-ja-dic],[generate a smaller-size Japanese dictionary])
 OPTION_DEFAULT_OFF([android],[cross-compile Android application package])
 OPTION_DEFAULT_ON([android-debug],[don't build Emacs as a debug package on Android])
+OPTION_DEFAULT_OFF([webrender],[enable use of WebRender as rendering engine])
+OPTION_DEFAULT_OFF([wayland],[use Wayland client to support window system])
 
 # Find out of Android support is enabled and mailutils has defaulted
 # to `yes-unless-android'.  Disable it if so.
@@ -660,9 +662,6 @@ OPTION_DEFAULT_OFF([xwidgets],
 OPTION_DEFAULT_OFF([winit],
   [winit(written in Rust) as GUI backend on multiple
    platforms (Linux, Windows and MacOS) (experimental)])
-
-OPTION_DEFAULT_OFF([webrender],
-  [enable use of webrender(written in Rust) as rendering engine (experimental)])
 
 ## Based on Deno 1.9.1
 ## Update the above when upgrading Deno
@@ -2806,13 +2805,6 @@ AC_SUBST([AUTO_DEPEND])
 
 window_system=none
 
-if test "X${with_winit}" != "X" && test "X${with_winit}" != "Xno"; then
-  no_x=yes
-  with_ns=no
-  window_system=winit
-  with_webrender=yes
-fi
-
 ANDROID_OBJ=
 ANDROID_LIBS=
 # ANDROID_CFLAGS is a precious variable used to pass information to
@@ -2906,23 +2898,22 @@ if test "${with_pgtk}" = "yes"; then
   window_system=pgtk
 fi
 
+if test "${with_winit}" = "yes"; then
+  no_x=yes
+  with_ns=no
+  window_system=winit
+fi
+
+if test "${with_wayland}" = "yes"; then
+  no_x=yes
+  window_system=wayland
+fi
+
 if test "${ANDROID}" != "yes"; then
   AC_PATH_X
   if test "$no_x" != yes && test "${with_pgtk}" != "yes"; then
     window_system=x11
   fi
-fi
-
-if test "${with_webrender}" = "yes" ; then
-  with_cairo=no
-dnl WebRender support these images from native image support
-  with_xpm=no
-  with_jpeg=no
-  with_tiff=no
-  with_gif=no
-  with_png=no
-  with_rsvg=no
-  with_webp=no
 fi
 
 LD_SWITCH_X_SITE_RPATH=
@@ -3408,6 +3399,10 @@ dnl use the toolkit if we have gtk, or X11R5 or newer.
       * ) USE_X_TOOLKIT=maybe ;;
     esac
   ;;
+  wayland )
+    term_header=wlterm.h
+    with_webrender=yes
+  ;;
   nextstep )
     term_header=nsterm.h
   ;;
@@ -3416,6 +3411,7 @@ dnl use the toolkit if we have gtk, or X11R5 or newer.
   ;;
   winit )
     term_header=winitterm.h
+    with_webrender=yes
   ;;
   pgtk )
     term_header=pgtkterm.h
@@ -3433,6 +3429,18 @@ dnl use the toolkit if we have gtk, or X11R5 or newer.
 esac
 
 AC_SUBST([HAVE_PGTK])
+
+if test "${with_webrender}" = "yes" ; then
+  with_cairo=no
+dnl WebRender support these images from native image support
+  with_xpm=no
+  with_jpeg=no
+  with_tiff=no
+  with_gif=no
+  with_png=no
+  with_rsvg=no
+  with_webp=no
+fi
 
 if test "$window_system" = none && test "X$with_x" != "Xno"; then
    AC_CHECK_PROG([HAVE_XSERVER], [X], [true], [false])
@@ -4064,6 +4072,21 @@ if test "$window_system" = "pgtk"; then
 fi
 AC_SUBST([PGTK_OBJ])
 AC_SUBST([PGTK_LIBS])
+
+WAYLAND_OBJ=
+HAVE_WAYLAND=no
+if test "$window_system" = "wayland"; then
+  EMACS_CHECK_MODULES([WAYLAND], [wayland-client >= 1.0])
+  if test "$HAVE_WAYLAND" = yes; then
+    AC_DEFINE([HAVE_WAYLAND], [1], [Define to 1 if you have pure Wayland.])
+    WAYLAND_OBJ="wlfns.o wlterm.o"
+  else
+    AC_MSG_ERROR([--with-wayland requires libwayland])
+  fi
+fi
+AC_SUBST([WAYLAND_CFLAGS])
+AC_SUBST([WAYLAND_LIBS])
+AC_SUBST([WAYLAND_OBJ])
 
 AC_CHECK_FUNCS([malloc_trim])
 
@@ -7424,8 +7447,8 @@ AC_SUBST(WINIT_LIBS)
 WEBRENDER_LIBS=
 if test "${with_webrender}" = "yes" ; then
 
-  if test "${window_system}" != "winit" && test "${window_system}" != "pgtk" ; then
-     AC_MSG_ERROR(Webrender currently only supports winit and pgtk window system.
+  if test "${window_system}" != "wayland" && test "${window_system}" != "winit" && test "${window_system}" != "pgtk" ; then
+     AC_MSG_ERROR(Webrender currently only supports wayland, winit and pgtk window system.
      Current window system detection is $window_system. Please explicitly
      provide --with-winit.)
   fi
@@ -8021,7 +8044,7 @@ if test $window_system = pgtk && test "${with_webrender}" = "yes"; then
     pgtk_use_wr=yes
 fi
 for opt in libgit use-xml2 pgtk winit winit/x11 javascript glyph-debug \
-    profiling winit/glutin winit/surfman wr_pgtk ng-module; do
+    profiling winit/glutin winit/surfman wr_pgtk ng-module wayland; do
     tmp=no
     if test "${window_system}" = "$opt"; then
 	tmp=yes
@@ -8043,7 +8066,7 @@ for opt in libgit use-xml2 pgtk winit winit/x11 javascript glyph-debug \
       xno|xnone|x) continue ;;
     esac
     case $opt in
-      x11|w32|haiku|winit|pgtk|android|nextstep) opt="window-system-${opt}" ;;
+      wayland|x11|w32|haiku|winit|pgtk|android|nextstep) opt="window-system-${opt}" ;;
       glyph-debug|profiling) opt="${window_system}/${opt}" ;;
       winit/x11)
         if test "${window_system}" != "winit" ; then
